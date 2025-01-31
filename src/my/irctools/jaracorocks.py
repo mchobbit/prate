@@ -74,11 +74,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     """
 
     def __init__(self, channel, nickname, realname, server, port=6667):
-        self.__realname = realname
         irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname, realname)
-        self.__whois_dct = {}  # Results of /whois will be stored here
         self.__initial_nickname = nickname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
+        self.__whois_dct = {}  # Results of /whois will be stored here
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
 
@@ -103,6 +102,11 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.connection.nick(value)
 
     @property
+    def realname(self):
+        """The realname that was specified by me for the server."""
+        return self._realname
+
+    @property
     def connected(self):
         """Am I connected to the server?"""
         return self.connection.is_connected()
@@ -112,25 +116,19 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """Am I a member of the channel that I wanted the server to join?"""
         return True if self.__initial_channel in self.channels else False
 
-    @property
-    def realname(self):
-        """What is my real name?"""
-        return self.__realname  # Read-only. Never changes.
+    def on_nicknameinuse(self, _c, _e):
+        """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
+        new_nick = generate_irc_handle() + str(randint(11, 99))
+        self.nickname = new_nick
+
+    def _on_whoisuser(self, _c=None, e=None):
+        """Triggered when the event-handler receives RPL_WHOISUSER."""
+        nick = e.arguments[0]  # Also, channel = e.target
+        self.__whois_dct[nick] = ' '.join([r for r in e.arguments])
 
     def _on_nosuchnick(self, _c, e):
         """Triggered when the event-handler receives ERR_NOSUCHNICK."""
         self.__whois_dct[e.arguments[0]] = None
-
-    def _on_whoisuser(self, _c=None, e=None):
-        """Triggered when the event-handler receives RPL_WHOISUSER."""
-        nick = e.arguments[0]
-        _channel = e.target
-        self.__whois_dct[nick] = ' '.join([r for r in e.arguments])
-
-    def on_nicknameinuse(self, _c, _e):
-        """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
-        new_nick = generate_irc_handle() + str(randint(1111, 9999))
-        self.nickname = new_nick
 
     def call_whois_and_wait_for_response(self, user, timeout=3):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
