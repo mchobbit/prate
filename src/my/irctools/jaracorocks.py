@@ -122,9 +122,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             if i < 0:
                 found = None
             else:
-#                return self.
                 user = cmd[i + 1:]
-                found = self.call_whois_and_wait_for_response(user, timeout=3)
+                found = self.call_whois_and_wait_for_response(user)
                 if found:
                     c.notice(nick, found)
                 else:
