@@ -17,9 +17,14 @@ URL of Jaraco's project:
 Todo:
     * Finish docs
     * WRITE UNIT TESTS!
+    * Make _whois_dct threadsafe
 
-.. _Google Python Style Guide:
+..  _Google Python Style Guide:
    http://google.github.io/styleguide/pyguide.html
+
+.. _Napoleon/Sphinx Guide:
+   https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
 """
 
 from random import randint, choice
@@ -174,4 +179,3 @@ if __name__ == "__main__":
     ircbot = SingleServerIRCBotWithWhoisSupport(channel="#prate", nickname='clyde', realname='ccllyyddee', server='cinqcent.local', port=6667)
     ircbot.connect("cinqcent.local", 6667, "clyde")
     ircbot.start()
-
