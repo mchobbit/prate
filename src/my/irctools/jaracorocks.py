@@ -100,7 +100,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     @nickname.setter
     def nickname(self, value):
-        raise ValueError("Do not try to set a readonly item. Use nick() instead.")
+        self.connection.nick(value)
 
     def on_welcome(self, c, e):
         del e
