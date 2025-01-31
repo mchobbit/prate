@@ -150,7 +150,6 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """Triggered when the event-handler receives RPL_WHOISUSER."""
         cmd = e.arguments[0]
         nick = e.source.nick
-#        c = self.connection
         if cmd == "disconnect":
             self.disconnect()
         elif cmd == "die":
