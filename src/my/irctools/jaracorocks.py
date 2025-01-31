@@ -91,7 +91,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             try:
                 return self._whois_dct[user]
             except KeyError:
-                print("Still waiting")
+                pass  #                print("Still waiting")
         raise TimeoutError("Ran out of time, waiting for answer to /whois %s" % user)
 
     @property
