@@ -79,18 +79,22 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     @property
     def initial_nickname(self):
+        """The nickname that the server was meant to use for me."""
         return self.__initial_nickname
 
     @property
     def initial_channel(self):
+        """The channel that the server was meant to join for me."""
         return self.__initial_channel
 
     @property
     def nickname(self):
+        """The nickname that the server currently uses for me."""
         return self.connection.get_nickname()
 
     @nickname.setter
     def nickname(self, value):
+        """Tell the server to change the nickname that it uses for me."""
         self.connection.nick(value)
 
     @property
@@ -99,25 +103,31 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     @property
     def joined(self):
+        """Am I a member of the channel that I wanted the server to join?"""
         return True if self.__initial_channel in self.channels else False
 
     @property
     def realname(self):
+        """What is my real name?"""
         return self.__realname  # Read-only. Never changes.
 
     def _on_nosuchnick(self, _c, e):
+        """Triggered when the event-handler receives ERR_NOSUCHNICK."""
         self.__whois_dct[e.arguments[0]] = None
 
     def _on_whoisuser(self, _c=None, e=None):
+        """Triggered when the event-handler receives RPL_WHOISUSER."""
         nick = e.arguments[0]
         _channel = e.target
         self.__whois_dct[nick] = ' '.join([r for r in e.arguments])
 
     def on_nicknameinuse(self, _c, _e):
+        """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
         new_nick = generate_irc_handle() + str(randint(1111, 9999))
         self.nickname = new_nick
 
     def call_whois_and_wait_for_response(self, user, timeout=3):
+        """Sends a /whois to the server. Waits for a response. Returns the response."""
         if not self.connected:
             raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
         c = self.connection
@@ -132,12 +142,12 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
 
     def on_welcome(self, c, _e):
+        """Triggered when the event-handler receives RPL_WELCOME."""
         c.join(self.__initial_channel)
 
-    def on_privmsg(self, _c, e):
-        self.do_command(e, e.arguments[0])
-
-    def do_command(self, e, cmd):
+    def on_privmsg(self, c, e):
+        """Triggered when the event-handler receives RPL_WHOISUSER."""
+        cmd = e.arguments[0]
         nick = e.source.nick
         c = self.connection
         if cmd == "disconnect":
