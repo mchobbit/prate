@@ -82,7 +82,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         print("NICKNAME IN USE. It was %s; now, it's %s." % (n, new_nick))
         c.nick(new_nick)
 
-    def call_whois_and_wait_for_response(self, user, timeout=30):
+    def call_whois_and_wait_for_response(self, user, timeout=3):
         c = self.connection
         c.whois(user)  # make initial request
         for _ in range(0, timeout * 10):
