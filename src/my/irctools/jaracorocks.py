@@ -66,15 +66,18 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
 
     def _on_nosuchnick(self, c, e):
+        del c
         self._whois_dct[e.arguments[0]] = None
         print("ERR_NOSUCHNICK")
 
     def _on_whoisuser(self, c=None, e=None):
+        del c
         nick = e.arguments[0]
         channel = e.target
         self._whois_dct[nick] = ' '.join([r for r in e.arguments])
 
     def on_nicknameinuse(self, c, e):
+        del e
         n = c.get_nickname()
         new_nick = generate_irc_handle(13, 15) + str(randint(1111, 9999))
         print("NICKNAME IN USE. It was %s; now, it's %s." % (n, new_nick))
@@ -101,9 +104,11 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         raise ValueError("Do not try to set a readonly item. Use nick() instead.")
 
     def on_welcome(self, c, e):
+        del e
         c.join(self.channel)
 
     def on_privmsg(self, c, e):  # Will be re-defined in any subclass, probably
+        del c
         self.do_command(e, e.arguments[0])
 
     def do_command(self, e, cmd):
