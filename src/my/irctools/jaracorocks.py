@@ -60,6 +60,12 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     Attributes:
         nickname (str): The current nickname, per the IRC server.
 
+    Examples:
+
+        $ from my.irctools.jaracorocks import SingleServerIRCBotWithWhoisSupport
+        $ svr = SingleServerIRCBotWithWhoisSupport('#prate', 'clyde', 'Clyde Barrow, a naughty boy', 'cinqcent.local')
+        $ svr.start()
+
     """
 
     def __init__(self, channel, nickname, realname, server, port=6667):
