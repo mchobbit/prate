@@ -118,16 +118,18 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.nickname = new_nick
 
     def call_whois_and_wait_for_response(self, user, timeout=3):
+        if not self.connected:
+            raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
         c = self.connection
-        c.whois(user)  # make initial request
+        c.whois(user)  # Send request to the IRC server
         for _ in range(0, timeout * 10):
             sleep(.1)
-            self.reactor.process_once()
+            self.reactor.process_once()  # Process incoming & outgoing events w/ IRC server
             try:
-                return self._whois_dct[user]
+                return self.__whois_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
             except KeyError:
-                pass  #                print("Still waiting")
-        raise TimeoutError("Ran out of time, waiting for answer to /whois %s" % user)
+                pass  # Still waiting for answer
+        raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
 
     def on_welcome(self, c, _e):
         c.join(self.__initial_channel)
