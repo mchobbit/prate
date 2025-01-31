@@ -30,11 +30,6 @@ def get_my_public_ip_address():
     return ip2
 
 
-try:
-    MY_IP_ADDRESS = get_my_public_ip_address()
-except ValueError:
-    MY_IP_ADDRESS = "127.0.0.1"
-
 steg_dct_CLUMPS = {'a':
                    {'а':'0', 'ạ':'1', 'ą':'00', 'ä':'01', 'à':'10', 'á':'11', 'ą':'000'},
                    'c':
@@ -111,4 +106,9 @@ WHOIS_RESPCODE_LST = [ERR_NOSUCHNICK, ERR_NOSUCHSERVER, ERR_NONICKNAMEGIVEN, RPL
             RPL_WHOISREGNICK, RPL_WHOISUSER, RPL_WHOISSERVER, RPL_WHOISOPERATOR, RPL_WHOISIDLE,
             RPL_WHOISCHANNELS, RPL_WHOISSPECIAL, RPL_WHOISACCOUNT, RPL_WHOISACTUALLY,
             RPL_WHOISHOST, RPL_WHOISMODES, RPL_WHOISSECURE, RPL_AWAY, RPL_ENDOFWHOIS]
+
+try:
+    MY_IP_ADDRESS = get_my_public_ip_address()
+except:
+    MY_IP_ADDRESS = "127.0.0.1"
 
