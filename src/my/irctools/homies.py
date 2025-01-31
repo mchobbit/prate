@@ -3,30 +3,10 @@ Created on Jan 30, 2025
 
 @author: mchobbit
 '''
-from my.classes.readwritelock import ReadWriteLock
-
-import requests
-import types
-import irc.bot
-import sys
-import queue
-
-import datetime
-from time import sleep
-from my.stringtools import generate_irc_handle, get_word_salad, get_bits_to_be_encoded, encode_via_steg, decode_via_steg, strict_encode_via_steg, multiline_encode_via_steg
-from random import randint, choice, shuffle
-from threading import Thread
-from _queue import Empty
 
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-from cryptography.fernet import Fernet, InvalidToken
-import base64
-from dns.rdataclass import NONE
-from my.globals import RPL_WHOISUSER, RPL_ENDOFWHOIS, WHOIS_ERRORS_LST, WHOIS_RESPCODE_LST
-from my.globals.poetry import CICERO
+from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
-from my.irctools.jaracorocks import add_whois_support_to_ircbot
 
 
 class Homie:
