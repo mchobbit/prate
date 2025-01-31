@@ -63,12 +63,32 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     """
 
     def __init__(self, channel, nickname, realname, server, port=6667):
+        self.__realname = realname
         irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname, realname)
         self._whois_dct = {}
-        self._initial_nickname = nickname
+        self.__initial_nickname = nickname
+#        self.__nickname = nickname
         self.channel = channel  # This channel will automatically joined at Welcome stage
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
+
+    @property
+    def initial_nickname(self):
+        return self.__initial_nickname
+
+    @property
+    def nickname(self):
+#        return self.__nickname  # TODO: Make threadsafe.
+        return self.connection.get_nickname()
+
+    @nickname.setter
+    def nickname(self, value):  # TODO: Make threadsafe.
+        self.connection.nick(value)
+#        self.nickname = value
+
+    @property
+    def realname(self):
+        return self.__realname  # Read-only. Never changes.
 
     def _on_nosuchnick(self, c, e):
         del c
@@ -82,10 +102,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def on_nicknameinuse(self, c, e):
         del e
-        n = c.get_nickname()
-        new_nick = generate_irc_handle(13, 15) + str(randint(1111, 9999))
-        print("NICKNAME IN USE. It was %s; now, it's %s." % (n, new_nick))
-        c.nick(new_nick)
+        new_nick = generate_irc_handle() + str(randint(1111, 9999))
+        self.nickname = new_nick
 
     def call_whois_and_wait_for_response(self, user, timeout=3):
         c = self.connection
@@ -98,14 +116,6 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             except KeyError:
                 pass  #                print("Still waiting")
         raise TimeoutError("Ran out of time, waiting for answer to /whois %s" % user)
-
-    @property
-    def nickname(self):
-        return self.connection.get_nickname()
-
-    @nickname.setter
-    def nickname(self, value):
-        self.connection.nick(value)
 
     def on_welcome(self, c, e):
         del e
