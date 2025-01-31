@@ -1,17 +1,27 @@
 # -*- coding: utf-8 -*-
-"""
+"""Classes and functions from (or inspired by) Jaraco's IRC project
+
 Created on Jan 22, 2025
 
 @author: mchobbit
 
-Adjustment to jaraco's project
-https://github.com/jaraco/irc/blob/main/scripts/irccat.py
+This module contains classes, functions, and other tools that were inspired
+by or taken from the work that Jaraco did on an IRC project. That project
+helps programmers to speak to IRC servers in meaningful ways. For example,
+some of the classes and subclasses facilitate asynchronous communication
+with a chosen server, sending messages, running channels, etc.
+
+URL of Jaraco's project:
+    https://github.com/jaraco/irc/blob/main/scripts/irccat.py
 
 Todo:
     * Finish docs
     * WRITE UNIT TESTS!
 
+.. _Google Python Style Guide:
+   http://google.github.io/styleguide/pyguide.html
 """
+
 from random import randint
 import irc.bot
 from time import sleep
@@ -19,6 +29,33 @@ from my.stringtools import generate_irc_handle
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
+    """Single-server IRC bot with Whois support.
+
+    This class is a simple IRC bot. It logs into the specified IRC server,
+    communicates with it, and responds accordingly. It runs in the foreground,
+    thanks to the start() call, but many of the underlying activites occur
+    in the background. Cf call_whois_and_wait_for_response().
+
+    Note:
+        This is only a simplistic example of how to use Jaraco's classes.
+
+    Args:
+        channel (str): The channel to join, e.g. #test
+        nickname (str): The ideal nickname. The actual nickname is
+            that one, unless there's a collision reported by the
+            server. In that case, _on_nicknameinuse() will be
+            triggered and a new nick will be chosen & submitted.
+            The current nick is always available from the attribute
+            .nickname .
+        realname (str): The blurb that goes after the nickname in /whois.
+            This could be dozens of characters long, per IRC's rules.
+        server (str): The server, e.g. irc.dal.net
+        port (int): The port# to use.
+
+    Attributes:
+        nickname (str): The current nickname, per the IRC server.
+
+    """
 
     def __init__(self, channel, nickname, realname, server, port=6667):
         irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname, realname)
