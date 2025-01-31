@@ -154,7 +154,7 @@ def get_word_salad(the_incoming_phrase=VANILLA_WORD_SALAD):
     return the_incoming_phrase
 
 
-def generate_irc_handle(minimum_desired_length:int=20, maximum_desired_length:int=32, salad_txt=VANILLA_WORD_SALAD) -> str:
+def generate_irc_handle(minimum_desired_length:int=15, maximum_desired_length:int=20, salad_txt=VANILLA_WORD_SALAD) -> str:
     """Generate a random IRC handle of at least N characters.
 
     Args:
