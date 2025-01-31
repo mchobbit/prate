@@ -22,10 +22,15 @@ Todo:
    http://google.github.io/styleguide/pyguide.html
 """
 
-from random import randint
+from random import randint, choice
 import irc.bot
 from time import sleep
-from my.stringtools import generate_irc_handle
+import string
+try:
+    from my.stringtools import generate_irc_handle  # @UnusedImport
+except ImportError:
+    print("generate_irc_handle() is missing. Fine. We'll do it the hard way.")
+    generate_irc_handle = lambda: ''.join(choice(string.ascii_lowercase) for _ in range(16))
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
