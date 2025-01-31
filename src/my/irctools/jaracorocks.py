@@ -72,7 +72,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def _on_whoisuser(self, c=None, e=None):
         del c
         nick = e.arguments[0]
-        channel = e.target
+        _channel = e.target
         self._whois_dct[nick] = ' '.join([r for r in e.arguments])
 
     def on_nicknameinuse(self, c, e):
