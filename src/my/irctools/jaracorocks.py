@@ -99,6 +99,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     @property
     def connected(self):
+        """Am I connected to the server?"""
         return self.connection.is_connected()
 
     @property
