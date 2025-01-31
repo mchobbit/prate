@@ -71,10 +71,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def __init__(self, channel, nickname, realname, server, port=6667):
         self.__realname = realname
         irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname, realname)
-        self._whois_dct = {}
+        self.__whois_dct = {}  # Results of /whois will be stored here
         self.__initial_nickname = nickname
-#        self.__nickname = nickname
-        self.channel = channel  # This channel will automatically joined at Welcome stage
+        self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
 
@@ -83,31 +82,38 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         return self.__initial_nickname
 
     @property
+    def initial_channel(self):
+        return self.__initial_channel
+
+    @property
     def nickname(self):
-#        return self.__nickname  # TODO: Make threadsafe.
         return self.connection.get_nickname()
 
     @nickname.setter
-    def nickname(self, value):  # TODO: Make threadsafe.
+    def nickname(self, value):
         self.connection.nick(value)
-#        self.nickname = value
+
+    @property
+    def connected(self):
+        return self.connection.is_connected()
+
+    @property
+    def joined(self):
+        return True if self.__initial_channel in self.channels else False
 
     @property
     def realname(self):
         return self.__realname  # Read-only. Never changes.
 
-    def _on_nosuchnick(self, c, e):
-        del c
-        self._whois_dct[e.arguments[0]] = None
+    def _on_nosuchnick(self, _c, e):
+        self.__whois_dct[e.arguments[0]] = None
 
-    def _on_whoisuser(self, c=None, e=None):
-        del c
+    def _on_whoisuser(self, _c=None, e=None):
         nick = e.arguments[0]
         _channel = e.target
-        self._whois_dct[nick] = ' '.join([r for r in e.arguments])
+        self.__whois_dct[nick] = ' '.join([r for r in e.arguments])
 
-    def on_nicknameinuse(self, c, e):
-        del e
+    def on_nicknameinuse(self, _c, _e):
         new_nick = generate_irc_handle() + str(randint(1111, 9999))
         self.nickname = new_nick
 
@@ -123,12 +129,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
                 pass  #                print("Still waiting")
         raise TimeoutError("Ran out of time, waiting for answer to /whois %s" % user)
 
-    def on_welcome(self, c, e):
-        del e
-        c.join(self.channel)
+    def on_welcome(self, c, _e):
+        c.join(self.__initial_channel)
 
-    def on_privmsg(self, c, e):  # Will be re-defined in any subclass, probably
-        del c
+    def on_privmsg(self, _c, e):
         self.do_command(e, e.arguments[0])
 
     def do_command(self, e, cmd):
