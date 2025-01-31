@@ -4,28 +4,13 @@ Created on Jan 30, 2025
 @author: mchobbit
 '''
 
-import requests
-import types
-import irc.bot
-import sys
-import queue
-
-import datetime
-from time import sleep
-from my.stringtools import generate_irc_handle, get_word_salad, get_bits_to_be_encoded, encode_via_steg, decode_via_steg, strict_encode_via_steg, multiline_encode_via_steg
-from random import randint, choice, shuffle
-from threading import Thread
-from _queue import Empty
+from random import choice
 
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
-from cryptography.fernet import Fernet, InvalidToken
 import base64
-from dns.rdataclass import NONE
-from my.globals import RPL_WHOISUSER, RPL_ENDOFWHOIS, WHOIS_ERRORS_LST, WHOIS_RESPCODE_LST
 from my.globals.poetry import CICERO
-from my.classes.readwritelock import ReadWriteLock
-from my.irctools.jaracorocks import add_whois_support_to_ircbot
+# from my.classes.readwritelock import ReadWriteLock
 
 
 def skinny_key(k:RSA.RsaKey) -> str:
@@ -174,3 +159,12 @@ def get_random_Cicero_line() -> str:
     all_useful_lines = [r for r in CICERO.split('\n') if len(r) >= 5]
     return str(choice(all_useful_lines))
 
+
+def squeeze_da_keez(i):
+#    return skinny_key(i)
+    return pubkey_to_b85(i)
+
+
+def unsqueeze_da_keez(i):
+#    return unskin_key(i)
+    return b85_to_pubkey(i)
