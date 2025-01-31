@@ -52,7 +52,6 @@ import irc.bot
 from my.irctools.cryptoish import pubkey_to_b85, b85_to_pubkey, rsa_decrypt, rsa_encrypt
 from my.irctools import LifoQueuedSimpleIRCBot
 from my.irctools.homies import Homie
-from my.irctools.jaracorocks import add_whois_support_to_ircbot
 
 # Generate RSA keys
 
@@ -78,7 +77,6 @@ class MyObject(object):
 class MyWrapperForTheGroovyTestBot:
 
     def __init__(self, channel, desired_nickname, rsa_key, irc_server, port):
-#        self.__homies = {}
         self.homies = {}
         self.__channel = channel
         self.__desired_nickname = desired_nickname
@@ -86,7 +84,6 @@ class MyWrapperForTheGroovyTestBot:
         self.__server_url = irc_server
         self.__port = port
         self.__channel = channel
-#        self.__homies_lock = ReadWriteLock()
         self.__channel_lock = ReadWriteLock()
         self.__nickname_lock = ReadWriteLock()
         self.__desired_nickname_lock = ReadWriteLock()
@@ -94,7 +91,7 @@ class MyWrapperForTheGroovyTestBot:
         self.__server_url_lock = ReadWriteLock()
         self.__port_lock = ReadWriteLock()
         self.rx_queue = queue.LifoQueue()
-        self.tx_queue = queue.LifoQueue()  # self, channel, nickname, server, port=6667
+        self.tx_queue = queue.LifoQueue()
         self.ircbot = LifoQueuedSimpleIRCBot(channel=self.channel, nickname=self.desired_nickname,
                                       realname=squeeze_da_keez(self.rsa_key), server=self.server_url, port=self.port)
         self.input_queue = queue.LifoQueue()
@@ -343,7 +340,7 @@ class MyWrapperForTheGroovyTestBot:
 #        print("Received IP address (%s) for %s" % (ipaddr, sender))
 
     def get_pubkey_from_whois(self, user):
-        whois_res = self.ircbot.connection.whois(user, interrogate=True)
+        whois_res = self.ircbot.connection.whois(user)
         try:
             squozed_key = whois_res.split(' ', 3)[-1]
             return unsqueeze_da_keez(squozed_key)
@@ -404,11 +401,10 @@ if __name__ == "__main__":
     svr = MyWrapperForTheGroovyTestBot(channel=my_channel, desired_nickname=desired_nickname,
                                        rsa_key=MY_RSAKEY.public_key(),
                                        irc_server=my_irc_server, port=my_port)
-    add_whois_support_to_ircbot(svr.ircbot)
     while not svr.ready:
         sleep(1)
 
-    svr.ircbot.connection.whois('mchobbit', interrogate=True)
+    svr.ircbot.connection.whois('mchobbit')
 
     print("Press CTRL-C to quit.")
     try:
