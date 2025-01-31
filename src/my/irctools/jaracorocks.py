@@ -68,7 +68,6 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def _on_nosuchnick(self, c, e):
         del c
         self._whois_dct[e.arguments[0]] = None
-        print("ERR_NOSUCHNICK")
 
     def _on_whoisuser(self, c=None, e=None):
         del c
