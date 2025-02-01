@@ -5,8 +5,8 @@ Created on Jan 21, 2025
 
 @author: mchobbit
 
-This module contains every custom exception that the app uses. The classes and subclasses
-are named accordingly.
+This module contains every custom exception that the app uses. The classes
+and subclasses are named accordingly.
 
 Error
     StartupError
@@ -16,13 +16,6 @@ Error
             PyQtUICompilerError
         VersionError
             PythonVersionError
-    Text2SpeechError
-        ElevenLabsWebsiteError
-            ElevenLabsDownError
-            ElevenLabsAPIError
-        ElevenLabsMissingKeyError
-        VoiceNotFoundError
-            NoProfessionalVoicesError
     WebAPIError
         WebAPIOutputError
         WebAPITimeoutError
@@ -184,61 +177,6 @@ class StillAwaitingCachedValue(CachingError):
         code (int): Exception error code.
 
     """
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class Text2SpeechError(Error):
-    """Class for all text2speech errors"""
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class ElevenLabsMissingKeyError(Text2SpeechError):
-    """If the elevenlabs key file is missing, throw this"""
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class ElevenLabsWebsiteError(Text2SpeechError):
-    """If the Eleven Labs website appears to be down"""
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class ElevenLabsAPIError(ElevenLabsWebsiteError):
-    """If the Eleven Labs API returns an error"""
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class ElevenLabsDownError(ElevenLabsWebsiteError):
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class VoiceNotFoundError(ElevenLabsWebsiteError):
-    """Class for all 'voice not found' errors"""
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class NoProfessionalVoicesError(VoiceNotFoundError):
-    """Class for all 'there are no professional voices available' errors"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
