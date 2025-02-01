@@ -221,7 +221,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("Warning - failed to decode %s's message (fernet key not found?)." % sender)
             else:
                 print("From %s: %s" % (sender, str(decoded_msg)))
-                self.crypto_rx_queue.put([sender, decoded_msg])
+                self.crypto_rx_queue.put([sender, decoded_msg.encode()])
         else:
             print("Probably a private message from %s: %s" % (sender, txt))
             print("What is private message %s for? " % cmd)
