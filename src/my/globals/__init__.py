@@ -1,17 +1,39 @@
 # -*- coding: utf-8 -*-
-'''
+"""Global variables and consts, used by our project.
 
-'''
+This module contains various constants and global variables that our project
+uses.
+
+Todo:
+    * Better docs
+
+.. _Google Python Style Guide:
+   http://google.github.io/styleguide/pyguide.html
+
+.. _Napoleon Style Guide:
+   https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
+"""
 from my.globals.poetry import CICERO, HAMLET
 import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO  # + ". " + HAMLET + ". "
 MY_RSAKEY = RSA.generate(1024)
-# MY_PUBLIC_KEY = MY_RSAKEY.publickey().export_key()
 
 
 def get_my_public_ip_address():
+    """Get my public IP address.
+
+    Deduce my public IP address. Return it as a string.
+
+    Args:
+        none
+
+    Returns:
+        str: The IP address, or None if failure.
+
+    """
     from requests import get
     endpoint = 'https://ipinfo.io/json'
     response = get(endpoint, verify=True)
