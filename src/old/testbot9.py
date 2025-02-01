@@ -274,7 +274,7 @@ class MyWrapperForTheGroovyTestBot:
             if self.homies[sender].pubkey is None:
                 print("I can't transmit my fernet key: I don't know %s's public key!" % sender)
             else:
-                self.ircbot.put(sender, "TXFERN%s" % self.encrypt_fernetkey(sender, self.homies[sender]._my_fernet))
+                self.ircbot.put(sender, "TXFERN%s" % self.encrypt_fernetkey(sender, self.homies[sender].my_locally_generated_fernetkey))
         elif cmd == "TXFERN":
             self.homies[sender]._his_fernet = rsa_decrypt(base64.b64decode(stem))
         elif cmd == "RQIPAD":
