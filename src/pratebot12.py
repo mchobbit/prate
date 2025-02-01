@@ -215,7 +215,9 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Write the list of our users (and their crypto info) to screen."""
         outstr = ""
         for user in self.homies:
-            if self.homies[user].keyless is True:
+            if user == self.nickname:
+                pass
+            elif self.homies[user].keyless is True:
                 outstr += "\n%-20s pubkey nope" % user
             elif self.homies[user].pubkey is None:
                 outstr += "\n%-20s pubkey unk" % user
