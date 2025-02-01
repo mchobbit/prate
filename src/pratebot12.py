@@ -125,9 +125,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def __scanusers_worker_loop(self):
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         while True:
-            if not self.connected:
-                sleep(.1)
-            elif not self.joined:
+            if not self.ready:
                 sleep(.1)
             else:
                 self._scan_all_users_for_public_keys_etc()  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
