@@ -23,6 +23,28 @@ Todo:
 .. _Napoleon Style Guide:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
+EXAMPLE
+
+from random import randint
+from pratebot11 import *
+from my.irctools import *
+from cryptography.fernet import Fernet, InvalidToken
+import irc.bot
+import types
+
+desired_nickname = "clyde"  # nickname='mac' + str(randint(100,999)
+rx_q = queue.LifoQueue()
+tx_q = queue.LifoQueue()
+svr = PrateBot(channel="#prate", nickname=desired_nickname, realname=squeeze_da_keez(MY_RSAKEY.public_key()),
+                    irc_server='cinqcent.local', port=6667, crypto_rx_queue=rx_q, crypto_tx_queue=_tx_q)
+
+while not svr.ready:
+    sleep(1)
+
+tx_q.put(('mac2', b'HELLO'))
+incoming = crypto_rx_q.get()
+print(incoming)
+
 """
 
 import sys
@@ -348,27 +370,7 @@ class PrateBot:
 ##########################################################################################################
 
 '''
-from random import randint
-from pratebot11 import *
-from my.irctools import *
-from cryptography.fernet import Fernet, InvalidToken
-import irc.bot
-import types
 
-desired_nickname = "clyde"  # nickname='mac' + str(randint(100,999)
-crypto_rx_q = queue.LifoQueue()
-svr = PrateBot(channel="#prate", nickname=desired_nickname, realname=squeeze_da_keez(MY_RSAKEY.public_key()),
-                    irc_server='cinqcent.local', port=6667, crypto_rx_queue=crypto_rx_q)
-
-while not svr.ready:
-    sleep(1)
-
-
-
-
-svr.bot.crypto_put('mac2', b'HELLO')
-incoming = crypto_rx_q.get()
-print(incoming)
 
 '''
 
