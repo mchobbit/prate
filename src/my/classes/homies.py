@@ -50,6 +50,8 @@ class Homie:
         self.__nickname = nickname
         self.__keyless = False
         self.__keyless_lock = ReadWriteLock()
+        self.__didwelook = False
+        self.__didwelook_lock = ReadWriteLock()
         self.__pubkey = pubkey
         self.__remotely_supplied_fernetkey = remotely_supplied_fernetkey
         self.__remotely_supplied_fernetkey_lock = ReadWriteLock()
@@ -173,6 +175,24 @@ class Homie:
             self.__keyless_lock.release_write()
 
     @property
+    def didwelook(self):
+        """didwelook (bool): True if this user's /whois was searched for a
+        public key since initialization. False if it wasn't."""
+        self.__didwelook_lock.acquire_read()
+        try:
+            return self.__didwelook
+        finally:
+            self.__didwelook_lock.release_read()
+
+    @didwelook.setter
+    def didwelook(self, value):
+        self.__didwelook_lock.acquire_write()
+        try:
+            self.__didwelook = value
+        finally:
+            self.__didwelook_lock.release_write()
+
+    @property
     def ipaddr(self):
         """str: The IP address of this user, or None if we dont know."""
         self.__ipaddr_lock.acquire_read()
@@ -186,7 +206,7 @@ class Homie:
     def ipaddr(self, value):
         self.__ipaddr_lock.acquire_write()
         try:
-            if value is None or type(value) is not str:
+            if value is not None and type(value) is not str:
                 raise ValueError("When setting ipaddr, specify a string & not a {t}".format(t=str(type(value))))
             self.__ipaddr = value
         finally:

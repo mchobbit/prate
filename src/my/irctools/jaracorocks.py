@@ -156,7 +156,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         else:
             c.notice(nick, "Unknown command => " + cmd)
 
-    def call_whois_and_wait_for_response(self, user, timeout=3):
+    def call_whois_and_wait_for_response(self, user, timeout=5):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
         if not self.connected:
             raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
