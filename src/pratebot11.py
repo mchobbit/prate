@@ -236,21 +236,21 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             print("Probably a private message from %s: %s" % (sender, txt))
             print("What is private message %s for? " % cmd)
 
-    def _txfern(self, c, e, sender, stem):
+    def _txfern(self, c, e, user, stem):
         """If cmd==TXFERN is received, receive the user's fernet key & save it to our homie database."""
         del c, e
         try:
-            decrypted_remote_fernkey = rsa_decrypt(base64.b64decode(stem))
+            decrypted_remote_fernetkey = rsa_decrypt(base64.b64decode(stem))
         except ValueError:
             print("Failed to decode the encrypted key in the stem")
         else:
             try:
-                self.homies[sender].remotely_supplied_fernetkey = decrypted_remote_fernkey
+                self.homies[user].remotely_supplied_fernetkey = decrypted_remote_fernetkey
             except AttributeError:
-                print("I cannot update %s's remotely supplied fernetkey: I already have one." % sender)
+                print("I cannot update %s's remotely supplied fernetkey: I already have one." % user)
             else:
-                if self.homies[sender].fernetkey is not None:
-                    print("YAY! I have %s's fernetkey!" % sender)
+                if self.homies[user].fernetkey is not None:
+                    print("YAY! I have %s's fernetkey!" % user)
 
     @property
     def crypto_empty(self):
@@ -265,17 +265,18 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Get next record from crypto rx queue. Throw exception if queue is empty."""
         return self.crypto_rx_queue.get_nowait()
 
-    def _receiving_his_IP_address(self, sender, stem):
-        if self.homies[sender].fernetkey is None:
-            print("I do not possess %s's fernetkey. Please negotiate one" % sender)
+    def _receiving_his_IP_address(self, user, stem):
+        """Receive the user's IP address."""
+        if self.homies[user].fernetkey is None:
+            print("I do not possess %s's fernetkey. Please negotiate one" % user)
             return
-        cipher_suite = Fernet(self.homies[sender].fernetkey)
+        cipher_suite = Fernet(self.homies[user].fernetkey)
         try:
             decoded_msg = cipher_suite.decrypt(stem)
         except InvalidToken:
-            return "Warning - failed to decode %s's message. " % sender
+            return "Warning - failed to decode %s's message. " % user
         ipaddr = decoded_msg.decode()
-        self.homies[sender].ipaddr = ipaddr
+        self.homies[user].ipaddr = ipaddr
 
     def encrypt_fernetkey(self, user, fernetkey):
         """Encrypt the user's fernet key with the user's public key."""
@@ -384,11 +385,12 @@ if __name__ == "__main__":
 
     while True:
         sleep(.1)
-        if datetime.datetime.now().second % 3 == 0:
+#        svr.bot.crypto_put('mac2', b'HELLO')
+        if datetime.datetime.now().second % 30 == 0:
             svr.bot.show_users_dct_info()
-#            svr.bot.introduce_myself_to_everyone()  # ...if they have pub keys in their realname fields
             sleep(1)
         try:
+
             the_user, the_blk = crypto_rx_q.get_nowait()
             print(the_user, "=>", the_blk)
         except Empty:
