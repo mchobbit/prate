@@ -338,28 +338,18 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             raise ValueError("I can't the fernetkey unless I have a public key to do it with")
 
 
-class PrateBot:
+class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
 
     def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue):
+        super().__init__(channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue)
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
         self.__ready_lock = ReadWriteLock()
-        self.bot = CryptoOrientedSingleServerIRCBotWithWhoisSupport(channel, nickname,
-                                                            realname, irc_server, port,
-                                                            crypto_rx_queue, crypto_tx_queue)
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
 
     def _start(self):
         self.__bot_thread.start()
-
-    @property
-    def ready(self):
-        self.__ready_lock.acquire_read()
-        try:
-            return self.bot.ready
-        finally:
-            self.__ready_lock.release_read()
 
     @property
     def time_to_quit(self):
@@ -376,7 +366,7 @@ class PrateBot:
 
     def __bot_worker_loop(self):
         print("Starting bot thread")
-        self.bot.start()
+        self.start()
         print("You should not get here.")
         while not self.__time_to_quit:
             sleep(1)
@@ -414,11 +404,11 @@ if __name__ == "__main__":
 
     while True:
         sleep(.1)
-        for u in list(svr.bot.channels[my_channel].users()):
-            if svr.bot.homies[u].ipaddr is not None:
-                tx_q.put((u, ('HELLO from %s' % svr.bot.nickname).encode()))
+        for u in list(svr.channels[my_channel].users()):
+            if u != svr.nickname and svr.homies[u].ipaddr is not None:
+                tx_q.put((u, ('HELLO from %s' % svr.nickname).encode()))
         if datetime.datetime.now().second % 30 == 0:
-            svr.bot.show_users_dct_info()
+            svr.show_users_dct_info()
             sleep(1)
         try:
             while True:
