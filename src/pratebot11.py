@@ -333,11 +333,10 @@ svr = PrateBot(channel="#prate", nickname=desired_nickname, realname=squeeze_da_
 while not svr.ready:
     sleep(1)
 
-svr.bot.paused = True
-svr.bot._scan_users_for_public_keys()
 
 
-svr.crypto_put('mac2', 'HELLO')
+
+svr.bot.crypto_put('mac2', b'HELLO')
 incoming = crypto_rx_q.get()
 print(incoming)
 
