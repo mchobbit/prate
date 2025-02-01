@@ -1,4 +1,9 @@
 eclipse.preferences.version=1
+encoding//src/main.py=utf-8
+encoding//src/my/classes/homies.py=utf-8
+encoding//src/my/globals/__init__.py=utf-8
 encoding//src/my/irctools/__init__.py=utf-8
 encoding//src/my/irctools/jaracorocks.py=utf-8
 encoding//src/my/stringtools/__init__.py=utf-8
+encoding//src/pratebot11.py=utf-8
+encoding//src/sheepdip.py=utf-8
