@@ -252,8 +252,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         stem = txt[6:]
         if sender == self.nickname:
             raise ValueError("WHY AM I TALKING TO MYSELF?")
-        if e.type == 'foo':
-            print("e type is foo for %s; this is a foo-tile attempt at a test." % e.target)
         elif cmd == "RQFERN":  # you asked for a copy of my fernet key
             print("Sending my fernetkey to %s" % sender)
             if self.homies[sender].keyless is False and self.homies[sender].pubkey is not None:
