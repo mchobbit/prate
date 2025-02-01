@@ -1,18 +1,30 @@
 # -*- coding: utf-8 -*-
+"""Example Google style docstrings.
+
+Created on Jan 30, 2025
+
+@author: mchobbit
+
+This module contains classes for creating a Prate class that monitors the IRC
+server and sets up secure comms between users.
+
+Todo:
+    * Better docs
+    * Detect if users' nicknames change
+    * Make the users' dictionary threadsafe
+    * Make the entire class threadsafe
+    * Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
+    * Turn the users' dictionary into a class
+    * Auto-check the nicknames whenever using a dictionary entry
+
+.. _Google Python Style Guide:
+   http://google.github.io/styleguide/pyguide.html
+
+.. _Napoleon Style Guide:
+   https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
 """
 
-TO DO
-
-Detect if users' nicknames change
-Make the users' dictionary threadsafe
-Make the entire class threadsafe
-Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
-Turn the users' dictionary into a class
-Auto-check the nicknames whenever using a dictionary entry
-
-WRITE UNIT TESTS!
-
-"""
 import sys
 import queue
 from time import sleep
