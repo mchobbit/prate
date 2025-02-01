@@ -31,6 +31,26 @@ from my.classes.homies import HomiesDct
 
 
 class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSupport):
+    """Crypto-oriended single server IRC bot with Whois Support.
+
+    This is a subclass of a subclass of Jaraco's amazing IRC server class.
+    It joins the specified room, runs /whois to find the users whose public
+    keys are in their realname fields, exchanges public keys, establishes
+    a secure (symmetric) encoded channel, and exchanges IP addresses. Then,
+    it presents an easy way for programmers to tell the two (or more) users
+    to talk to one another programmatically and privately.
+
+    Attributes:
+        channel (str): IRC channel to be joined.
+        nickname (str): Initial nickname. The real nickname will be changed
+            if the IRC server reports a nickname collision.
+        realname (str): The string that is stored in the realname field of /whois.
+            This is usually our stringified public key.
+        irc_server (str): The IRC server URL.
+        port (int): The port number of the IRC server.
+        crypto_rx_queue (LifoQueue): The
+
+    """
 
     def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue):
         super().__init__(channel=channel, nickname=nickname,
@@ -43,6 +63,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     @property
     def homies(self):
+        """Dictionary of relevant IRC users."""
         self.__homies_lock.acquire_read()
         try:
             retval = self.__homies
@@ -60,9 +81,11 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     @property
     def ready(self):
+        """bool: Are we connected to the IRC server *and* have we joined the room that we want?"""
         return True if self.connected and self.joined else False
 
     def __scanusers_worker_loop(self):
+        """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         while True:
             if not self.connected:
                 sleep(.1)
@@ -73,6 +96,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 sleep(randint(5, 10) / 10.)
 
     def _scan_all_users_for_public_keys_etc(self, channel=None):
+        """Run a one-off scan the current channel for any users who have public keys in their realname fields."""
         if channel is None:
             channel = self.initial_channel
         try:
@@ -99,6 +123,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                         pass  # print("%s has EVERYTHING." % user)
 
     def _scan_user_for_pubkey(self, user):
+        """Scan this user's realname field for a public key."""
         if self.homies[user].keyless is True:
             if 0 != randint(0, 1000):
                 return
@@ -116,13 +141,16 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 self.homies[user].keyless = True
 
     def privmsg(self, user, msg):
+        """Send a private message on IRC. Then, pause; don't overload the server."""
         self.connection.privmsg(user, msg)
         sleep(randint(16, 20) / 10.)  # Do not send more than 20 messages in 30 seconds! => 30/(((20+16)/2)/10)=16.7 messages per 30 seconds.
 
     def whois(self, user):
+        """Run /whois and get the result."""
         return self.call_whois_and_wait_for_response(user)
 
     def crypto_put(self, user, byteblock):
+        """Write an encrypted message to this user via a private message on IRC."""
         if self.homies[user].keyless is False \
         and self.homies[user].pubkey is not None \
         and self.homies[user].fernetkey is not None:
@@ -137,6 +165,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             raise ValueError("pubkey and/or fernetkey missing")
 
     def show_users_dct_info(self):
+        """Write the list of our users (and their crypto info) to screen."""
         outstr = ""
         for user in self.homies:
             if self.homies[user].keyless is True:
@@ -161,6 +190,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         return cipher_text.decode()
 
     def on_privmsg(self, c, e):  # @UnusedVariable
+        """Process on_privmsg event from the bot's reactor IRC thread."""
         # self.reactor.process_once()
         if e is None:  # e is event
             raise AttributeError("act_on_msg_from_irc() has an e of None")
@@ -207,6 +237,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             print("What is private message %s for? " % cmd)
 
     def _txfern(self, c, e, sender, stem):
+        """If cmd==TXFERN is received, receive the user's fernet key & save it to our homie database."""
         del c, e
         try:
             decrypted_remote_fernkey = rsa_decrypt(base64.b64decode(stem))
@@ -223,12 +254,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     @property
     def crypto_empty(self):
+        """Is the incoming crypto rx queue empty?"""
         return self.crypto_rx_queue.empty()
 
     def crypto_get(self):
+        """Get next record from crypto rx queue. Wait if necessary."""
         return self.crypto_rx_queue.get()
 
     def crypto_get_nowait(self):
+        """Get next record from crypto rx queue. Throw exception if queue is empty."""
         return self.crypto_rx_queue.get_nowait()
 
     def _receiving_his_IP_address(self, sender, stem):
@@ -244,6 +278,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.homies[sender].ipaddr = ipaddr
 
     def encrypt_fernetkey(self, user, fernetkey):
+        """Encrypt the user's fernet key with the user's public key."""
         if self.homies[user].keyless is False \
         and self.homies[user].pubkey is not None:
             encrypted_fernetkey = rsa_encrypt(message=fernetkey, public_key=self.homies[user].pubkey)
