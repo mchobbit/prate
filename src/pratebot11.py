@@ -107,7 +107,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 else:
                     self._scan_user_for_pubkey(user)
                     if self.homies[user].keyless is True:
-                        print("Ignoring %s because he's keyless" % user)
+                        pass  # print("Ignoring %s because he's keyless" % user)
                     elif self.homies[user].pubkey is None:
                         print("Ignoring %s because he doesn't have a public key yet" % user)
                     elif self.homies[user].fernetkey is None:
@@ -117,7 +117,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                         print("%s has no IP address get. I'll try to get one via RQIPAD." % user)
                         self.privmsg(user, "RQIPAD")  # Request his IP address; in due course, he'll send it via TXIPAD.
                     else:
-                        print("%s has EVERYTHING." % user)
+                        pass  # print("%s has EVERYTHING." % user)
 
     def _scan_user_for_pubkey(self, user):
         if self.homies[user].keyless is True:
