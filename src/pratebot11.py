@@ -151,10 +151,11 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 outstr += "\n%-20s pubkey OK, fernetkey OK, IP %s" % (user, self.homies[user].ipaddr)
         print(outstr)
 
-    def my_encrypted_ipaddr(self, sender):
-        if self.homies[sender].fernetkey is None:
-            raise ValueError("Please download %s's fernet key before you try to encrypt." % sender)
-        cipher_suite = Fernet(self.homies[sender].fernetkey)
+    def my_encrypted_ipaddr(self, user):
+        """Encrypt our IP address w/ the user's fernet key."""
+        if self.homies[user].fernetkey is None:
+            raise ValueError("Please download %s's fernet key before you try to encrypt." % user)
+        cipher_suite = Fernet(self.homies[user].fernetkey)
         ipaddr_str = MY_IP_ADDRESS
         cipher_text = cipher_suite.encrypt(ipaddr_str.encode())
         return cipher_text.decode()
