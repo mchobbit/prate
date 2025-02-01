@@ -295,7 +295,9 @@ class PrateBot:
         self.__time_to_quit_lock = ReadWriteLock()
         self.__ready_lock = ReadWriteLock()
         self.rx_queue = crypto_rx_queue
-        self.bot = CryptoOrientedSingleServerIRCBotWithWhoisSupport(channel, nickname, realname, irc_server, port, crypto_rx_queue)
+        self.bot = CryptoOrientedSingleServerIRCBotWithWhoisSupport(channel, nickname,
+                                                            realname, irc_server, port,
+                                                            crypto_rx_queue)
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
 
@@ -377,7 +379,6 @@ if __name__ == "__main__":
                                        realname=squeeze_da_keez(MY_RSAKEY.public_key()),
                                        irc_server=my_irc_server, port=my_port,
                                        crypto_rx_queue=crypto_rx_q)
-
     while not svr.ready:
         sleep(1)
 
