@@ -35,8 +35,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue):
         super().__init__(channel=channel, nickname=nickname,
                          realname=realname, server=irc_server, port=port)
-        self.__paused = False
-        self.__paused_lock = ReadWriteLock()
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
         self.crypto_rx_queue = crypto_rx_queue
@@ -64,23 +62,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def ready(self):
         return True if self.connected and self.joined else False
 
-    @property
-    def paused(self):
-        self.__paused_lock.acquire_read()
-        try:
-            retval = self.__paused
-            return retval
-        finally:
-            self.__paused_lock.release_read()
-
-    @paused.setter
-    def paused(self, value):
-        self.__paused_lock.acquire_write()
-        try:
-            self.__paused = value
-        finally:
-            self.__paused_lock.release_write()
-
     def __scanusers_worker_loop(self):
         while True:
             if not self.connected:
@@ -88,8 +69,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             elif not self.joined:
                 sleep(.1)
             else:
-                if self.__paused:
-                    continue
                 self._scan_all_users_for_public_keys_etc()  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
                 sleep(randint(5, 10) / 10.)
 
