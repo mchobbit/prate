@@ -82,18 +82,22 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             This is usually our stringified public key.
         irc_server (str): The IRC server URL.
         port (int): The port number of the IRC server.
-        crypto_rx_queue (LifoQueue): The
+        crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
+        crypto_tx_queue (LifoQueue): User-and-msg stuff to be encrypted goes here.
 
     """
 
-    def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue):
+    def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue):
         super().__init__(channel=channel, nickname=nickname,
                          realname=realname, server=irc_server, port=port)
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
-        self.crypto_rx_queue = crypto_rx_queue
+        self.__crypto_rx_queue = crypto_rx_queue
+        self.__crypto_tx_queue = crypto_tx_queue
         self.__scanusers_thread = Thread(target=self.__scanusers_worker_loop, daemon=True)
+        self.__crypto_tx_thread = Thread(target=self.__crypto_tx_loop, daemon=True)
         self.__scanusers_thread.start()
+        self.__crypto_tx_thread.start()
 
     @property
     def homies(self):
@@ -128,6 +132,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             else:
                 self._scan_all_users_for_public_keys_etc()  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
                 sleep(randint(5, 10) / 10.)
+
+    def __crypto_tx_loop(self):
+        while True:
+            sleep(.1)
+            try:
+                (user, byteblock) = self.__crypto_tx_queue.get_nowait()
+                self.crypto_put(user, byteblock)
+            except Empty:
+                pass
 
     def _scan_all_users_for_public_keys_etc(self, channel=None):
         """Run a one-off scan the current channel for any users who have public keys in their realname fields."""
@@ -265,7 +278,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("Warning - failed to decode %s's message (fernet key not found?)." % sender)
             else:
                 print("From %s: %s" % (sender, str(decoded_msg)))
-                self.crypto_rx_queue.put([sender, decoded_msg.encode()])
+                self.__crypto_rx_queue.put([sender, decoded_msg.encode()])
         else:
             print("Probably a private message from %s: %s" % (sender, txt))
             print("What is private message %s for? " % cmd)
@@ -289,15 +302,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     @property
     def crypto_empty(self):
         """Is the incoming crypto rx queue empty?"""
-        return self.crypto_rx_queue.empty()
+        return self.__crypto_rx_queue.empty()
 
     def crypto_get(self):
         """Get next record from crypto rx queue. Wait if necessary."""
-        return self.crypto_rx_queue.get()
+        return self.__crypto_rx_queue.get()
 
     def crypto_get_nowait(self):
         """Get next record from crypto rx queue. Throw exception if queue is empty."""
-        return self.crypto_rx_queue.get_nowait()
+        return self.__crypto_rx_queue.get_nowait()
 
     def _receiving_his_IP_address(self, user, stem):
         """Receive the user's IP address."""
@@ -325,14 +338,13 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
 class PrateBot:
 
-    def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue):
+    def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue):
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
         self.__ready_lock = ReadWriteLock()
-        self.rx_queue = crypto_rx_queue
         self.bot = CryptoOrientedSingleServerIRCBotWithWhoisSupport(channel, nickname,
                                                             realname, irc_server, port,
-                                                            crypto_rx_queue)
+                                                            crypto_rx_queue, crypto_tx_queue)
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
 
@@ -389,24 +401,27 @@ if __name__ == "__main__":
 
     my_irc_server = 'cinqcent.local'
     my_port = 6667
-    crypto_rx_q = queue.LifoQueue()
+    rx_q = queue.LifoQueue()
+    tx_q = queue.LifoQueue()
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
                                        realname=squeeze_da_keez(MY_RSAKEY.public_key()),
                                        irc_server=my_irc_server, port=my_port,
-                                       crypto_rx_queue=crypto_rx_q)
+                                       crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
     while not svr.ready:
         sleep(1)
 
     while True:
         sleep(.1)
-#        svr.bot.crypto_put('mac2', b'HELLO')
+        for u in list(svr.bot.channels[my_channel].users()):
+            if svr.bot.homies[u].ipaddr is not None:
+                tx_q.put((u, ('HELLO from %s' % svr.bot.nickname).encode()))
         if datetime.datetime.now().second % 30 == 0:
             svr.bot.show_users_dct_info()
             sleep(1)
         try:
-
-            the_user, the_blk = crypto_rx_q.get_nowait()
-            print(the_user, "=>", the_blk)
+            while True:
+                the_user, the_blk = rx_q.get_nowait()
+                print(the_user, "=>", the_blk)
         except Empty:
             pass
 
