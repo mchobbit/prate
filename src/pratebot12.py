@@ -69,10 +69,11 @@ from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez, s
 from my.irctools.jaracorocks import SingleServerIRCBotWithWhoisSupport
 from _queue import Empty
 import datetime
-from random import randint
+from random import randint, choice
 from my.classes.homies import HomiesDct, Homie
 from my.stringtools import generate_irc_handle
 from numpy import squeeze
+from copy import deepcopy
 
 
 class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSupport):
@@ -194,6 +195,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         elif self.homies[user].keyless:
             if datetime.datetime.now().second % 180 == 0:
                 print("QQQ Re-enable this someday")
+                sleep(1)
                 # print("Just for giggles, let's re-scan %s and see if the old user has gone, replaced with someone who has a public key." % user)
                 # self.load_homie_pubkey(user)
         elif self.homies[user].pubkey is None:
@@ -212,7 +214,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             assert(self.homies[user].pubkey is not None)
             assert(self.homies[user].fernetkey is not None)
             print("Initiating IP address exchange with %s" % user)
-            self.privmsg(user, "RQIPAD")
+            self.privmsg(user, "RQIPAD%s" % squeeze_da_keez(MY_RSAKEY))  # Request his IP address; in due course, he'll send it via TXIPAD.
         else:
             return user  # He's kosher
 
@@ -281,6 +283,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def show_users_dct_info(self):
         """Write the list of our users (and their crypto info) to screen."""
+        self.__homies_lock.acquire_read()
         outstr = "\n%-20s pubkey %s                        (me)" % (self.nickname, squeeze_da_keez(MY_RSAKEY.publickey())[-12:-8])
         for user in self.homies:
             if user == self.nickname:
@@ -296,6 +299,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             else:
                 outstr += "\n%-20s pubkey %s  fernetkey %s  IP %s" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode(), self.homies[user].ipaddr)
         print(outstr)
+        self.__homies_lock.release_read()
 
     def my_encrypted_ipaddr(self, user):
         """Encrypt our IP address w/ the user's fernet key."""
@@ -336,14 +340,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if sender == self.nickname:
             raise ValueError("WHY AM I TALKING TO MYSELF?")
         elif cmd == "RQFERN":  # Sender requested a copy of my fernet key
-            if stem != '':
-                self.save_pubkey_from_stem(sender, stem)
-            if self.homies[sender].keyless is True or self.homies[sender].pubkey is None:
-                print("I can't send RQFERN to %s: he's keyless" % sender)
-            else:
-                print("rqfern received from %s. REPLYING..." % sender)
-                self.privmsg(sender, "TXFERN%s" % self.encrypt_fernetkey(sender, self.homies[sender].locally_generated_fernetkey))
-                self.reactor.process_once()  # Is this necessary?
+            self._rqfern(sender, stem)
+            self.reactor.process_once()  # Is this necessary?
         elif cmd == "TXFERN":
             self._txfern(sender, stem)
         elif cmd == "RQIPAD":
@@ -361,6 +359,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         else:
             print("Probably a private message from %s: %s" % (sender, txt))
             print("What is private message %s for? " % cmd)
+
+    def _rqfern(self, sender, stem):
+        if stem != '':
+            self.save_pubkey_from_stem(sender, stem)
+        if self.homies[sender].keyless is True or self.homies[sender].pubkey is None:
+            print("I can't send RQFERN to %s: he's keyless" % sender)
+        else:
+            print("rqfern received from %s. REPLYING..." % sender)
+            self.privmsg(sender, "TXFERN%s" % self.encrypt_fernetkey(sender, self.homies[sender].locally_generated_fernetkey))
 
     def _txfern(self, user, stem):
         """If cmd==TXFERN is received, receive the user's fernet key & save it to our homie database."""
@@ -382,8 +389,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     pass
 
     def _rqipad(self, sender, stem):
-#        if stem != '':
-#            self.save_pubkey_from_stem(sender, stem)
+        if stem != '':
+            self.save_pubkey_from_stem(sender, stem)
         if self.homies[sender].keyless is True:
             print("%s sent me an RQIPAD, a request for my IP address. I can't help him: he's keyless." % sender)
         elif self.homies[sender].pubkey is None:
@@ -414,7 +421,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 #                self.homies[sender].remotely_supplied_fernetkey = None
                 self.privmsg(sender, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
             else:
-                print("From %s: %s" % (sender, str(decoded_msg)))
+#                print("From %s: %s" % (sender, str(decoded_msg)))
                 self.__crypto_rx_queue.put([sender, decoded_msg.encode()])
 
     @property
@@ -510,9 +517,9 @@ if __name__ == "__main__":
                                        irc_server=my_irc_server, port=my_port,
                                        crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
-    print("*** MY NICK IS %s ***" % svr.nickname)
+    print("*** MY NICK SHOULD BE %s ***" % desired_nickname)
 
-    shouldbe_nickname = desired_nickname
+    old_nick = desired_nickname
     while True:
         if not svr.ready:
             sleep(1)
@@ -521,31 +528,23 @@ if __name__ == "__main__":
         if my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
-        if datetime.datetime.now().second % 60 == 0:
+        nick = svr.nickname
+        if old_nick != nick:
+            print("*** MY NICK CHANGED TO %s ***" % nick)
+            old_nick = nick
+        if datetime.datetime.now().second % 30 == 0:
             svr.show_users_dct_info()
-            sleep(1)
-            if shouldbe_nickname != svr.nickname:
-                shouldbe_nickname = svr.nickname
-                renegotiate_keys = True
-            try:
-                my_whois_pubkey = unsqueeze_da_keez(svr.call_whois_and_wait_for_response(shouldbe_nickname).split(' ', 4)[-1])
-                my_real_pubkey = MY_RSAKEY.publickey()
-                renegotiate_keys = True if my_whois_pubkey != my_real_pubkey else False
-            except TimeoutError:
-                renegotiate_keys = False
-            for u in svr.homies:
-                # if u != svr.nickname and svr.homies[u].ipaddr is not None:
-                #     if renegotiate_keys:
-                #         print("Renegotiating keys w/ %s" % u)
-                #         svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
-                #     else:
-                if svr.homies[u].ipaddr is not None:
-                    tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
-            try:
-                while True:
-                    the_user, the_blk = rx_q.get_nowait()
-                    assert("HELLO from" in the_blk.decode())
-                    print(the_user, "=>", the_blk)
-            except Empty:
-                continue
+        u = choice(list(svr.homies.keys()))
+        # if u != svr.nickname and svr.homies[u].ipaddr is not None:
+        #     print("Renegotiating keys w/ %s" % u)
+        #     svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
+        if svr.homies[u].ipaddr is not None:
+            tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
+        try:
+            while True:
+                the_user, the_blk = rx_q.get_nowait()
+                assert("HELLO from" in the_blk.decode())
+                print(the_user, "==>", the_blk)
+        except Empty:
+            continue
 
