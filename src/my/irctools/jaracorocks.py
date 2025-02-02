@@ -82,6 +82,16 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
 
     @property
+    def ready(self):
+        """bool: Are we connected to the IRC server *and* have we joined the room that we want?"""
+        if not self.connected:
+            return False
+        elif not self.joined:
+            return False
+        else:
+            return True
+
+    @property
     def initial_nickname(self):
         """The nickname that the server was meant to use for me."""
         return self.__initial_nickname

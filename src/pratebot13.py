@@ -129,16 +129,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         finally:
             self.__homies_lock.release_write()
 
-    @property
-    def ready(self):
-        """bool: Are we connected to the IRC server *and* have we joined the room that we want?"""
-        if not self.connected:
-            return False
-        elif not self.joined:
-            return False
-        else:
-            return True
-
     def __crypto_tx_loop(self):
         while True:
             sleep(.1)
