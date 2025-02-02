@@ -179,14 +179,16 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 for user in new_users:
                     the_userlist += [user]
                     print("New user: %s" % user)
-                for user in the_userlist:
-                    self.scan_a_user_for_public_keys_etc(user)  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
+                for user in the_userlist: # QQQ WHY IS 'user' NOT A STRING?
+                    self.scan_a_user_for_public_keys_etc(str(user))  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
 
     def scan_a_user_for_public_keys_etc(self, channel=None):
         with self.__scan_a_user_mutex:
             self.__scan_a_user_for_public_keys_etc(channel)
 
     def __scan_a_user_for_public_keys_etc(self, user):
+        if type(user) is not str:
+            raise ValueError("Supplied parameter", user, "must be a string")
         if not self.homies[user].didwelook:
             self.load_homie_pubkey(user)
         elif self.homies[user].keyless:
