@@ -188,7 +188,9 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         assert(self.homies[user].didwelook)
         assert(not self.homies[user].keyless)
         if self.homies[user].pubkey is None:
-            print("%s has a null public key, BUT WE LOOKED!" % user)
+            print("%s has a null public key, but we looked. Perhaps we were offline at the time. Let's try rqfern." % user)
+            self.privmsg(user, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
+            sleep(30)
             if not self.homies[user].didwelook:
                 print("Seriously?! WE DIDN'T LOOK?!")
                 self.load_homie_pubkey(user)
@@ -197,7 +199,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         assert(not self.homies[user].keyless)
         assert(self.homies[user].pubkey is not None)
         if self.homies[user].fernetkey is None:
-            print("I am asking %s for a fernet key exchange via RQFERN." % user)
+            print("As part of a regular scan, I am asking %s for a fernet key exchange." % user)
             self.homies[user].remotely_supplied_fernetkey = None
             self.privmsg(user, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
             return
@@ -206,7 +208,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         assert(self.homies[user].pubkey is not None)
         assert(self.homies[user].fernetkey is not None)
         if self.homies[user].ipaddr is None:
-            print("As part of a regular scan, asking %s for his IP addy via RQIPAD." % user)
+            print("As part of a regular scan, I am asking %s for his IP address." % user)
             self.privmsg(user, "RQIPAD%s" % squeeze_da_keez(MY_RSAKEY))  # Request his IP address; in due course, he'll send it via TXIPAD.
             return
         return user
@@ -297,7 +299,10 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if old_pubkey is None or old_pubkey == stemkey:
             pass  # print("%s's public key did not change. Good." % sender)
         if old_pubkey is None or old_pubkey != stemkey:
-            print("Saving %s's latest public key from incoming msg (not from whois)" % sender)
+            if old_pubkey is None:
+                print("Saving %s's public key from incoming msg (not from whois)" % sender)
+            else:
+                print("Saving %s's new pubkey from incoming msg (not from whois)" % sender)
             self.homies[sender].ipaddr = None
 #            self.homies[sender].remotely_supplied_fernetkey = None
             self.homies[sender].keyless = False
@@ -491,23 +496,38 @@ if __name__ == "__main__":
                                        realname=squeeze_da_keez(MY_RSAKEY.public_key()),
                                        irc_server=my_irc_server, port=my_port,
                                        crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+
+    print("*** MY NICK IS %s ***" % svr.nickname)
     while not svr.ready:
         sleep(1)
 
     sleep(30)
-    svr.paused = True
+#    svr.paused = True
 
-    print("*** MY NICK IS %s ***" % svr.nickname)
+    shouldbe_nickname = desired_nickname
     while True:
         if my_channel not in svr.channels:
-            raise AttributeError("WARNING -- we dropped out of %s" % my_channel)
+            print("WARNING -- we dropped out of %s" % my_channel)
+            svr.connection.join(my_channel)
         if datetime.datetime.now().second % 30 == 0:
             svr.show_users_dct_info()
             sleep(1)
+            if shouldbe_nickname != svr.nickname:
+                shouldbe_nickname = svr.nickname
+                renegotiate_keys = True
+            try:
+                my_whois_pubkey = unsqueeze_da_keez(svr.call_whois_and_wait_for_response(shouldbe_nickname).split(' ', 4)[-1])
+                my_real_pubkey = MY_RSAKEY.publickey()
+                renegotiate_keys = True if my_whois_pubkey != my_real_pubkey else False
+            except TimeoutError:
+                renegotiate_keys = False
             for u in list(svr.channels[my_channel].users()):
                 if u != svr.nickname and svr.homies[u].ipaddr is not None:
-                    pass
-                    tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
+                    if renegotiate_keys:
+                        print("Renegotiating keys w/ %s" % u)
+                        svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
+                    else:
+                        tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
             try:
                 while True:
                     the_user, the_blk = rx_q.get_nowait()
