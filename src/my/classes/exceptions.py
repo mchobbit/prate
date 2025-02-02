@@ -22,6 +22,10 @@ Error
     CachingError
         MissingFromCacheError
         StillAwaitingCachedValue
+    MyIrcError
+        MyIrcConnectionError
+            MyIrcRealnameTruncationError
+
 
 Example:
     n/a
@@ -177,6 +181,30 @@ class StillAwaitingCachedValue(CachingError):
         code (int): Exception error code.
 
     """
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcError(Error):
+    """Class for all MyIrcErrors"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcConnectionError(MyIrcError):
+    """Class for all MyIrcConnectionError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcRealnameTruncationError(MyIrcConnectionError):
+    """If the realname is truncated by the server"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
