@@ -179,6 +179,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 for user in new_users:
                     the_userlist += [user]
                     print("New user: %s" % user)
+                # FYI, user is NOT A STRING! It's an IRCFlattenSomethingsomething.
                 for user in the_userlist: # QQQ WHY IS 'user' NOT A STRING?
                     self.scan_a_user_for_public_keys_etc(str(user))  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
 
@@ -399,7 +400,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def _txipad(self, sender, stem):
         try:
             self._receiving_his_IP_address(sender, stem)
-            print("%s sent his IP address. Yay!" % sender)
+            print("%s sent me his IP address. Yay." % sender)
         except InvalidToken:
             print("%s used the wrong fernet key to encrypt a message. To rectify, I'll initiate a new fernet key exchange." % sender)
             self.homies[sender].remotely_supplied_fernetkey = None
