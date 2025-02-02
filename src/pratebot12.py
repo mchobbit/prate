@@ -70,10 +70,7 @@ from my.irctools.jaracorocks import SingleServerIRCBotWithWhoisSupport
 from _queue import Empty
 import datetime
 from random import randint, choice
-from my.classes.homies import HomiesDct, Homie
-from my.stringtools import generate_irc_handle
-from numpy import squeeze
-from copy import deepcopy
+from my.classes.homies import HomiesDct
 
 
 class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSupport):
@@ -385,8 +382,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("I cannot update %s's remotely supplied fernetkey: I already have one." % user)
             else:
                 if self.homies[user].fernetkey is not None:
-                    print("YAY! I have %s's fernetkey!" % user)
-                    pass
+                    pass  # print("YAY! I have %s's fernetkey!" % user)
 
     def _rqipad(self, sender, stem):
         if stem != '':
@@ -439,9 +435,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def _receiving_his_IP_address(self, user, stem):
         """Receive the user's IP address."""
-        '''exceptions
-        InvalidToken - bad key
-        '''
         if self.homies[user].fernetkey is None:
             print("I do not possess %s's fernetkey. Please negotiate one" % user)
             return
@@ -449,6 +442,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         decoded_msg = cipher_suite.decrypt(stem)
         ipaddr = decoded_msg.decode()
         self.homies[user].ipaddr = ipaddr
+        # EXCEPTION MIGHT BE THROWN. It would be InvalidKey.
 
     def encrypt_fernetkey(self, user, fernetkey):
         """Encrypt the user's fernet key with the user's public key."""
@@ -467,7 +461,6 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         super().__init__(channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue)
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
-        self.__ready_lock = ReadWriteLock()
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
 
