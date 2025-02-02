@@ -129,8 +129,10 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         the_userlist = []
         while True:
             if not self.ready:
-                print("Waiting for the bot to be ready")
-                sleep(.2)
+                print("Waiting for the bot to be ready...")
+                while not self.ready:
+                    sleep(5)
+                print("Bot is ready now. Proceeding...")
             elif self.paused:
                 sleep(.2)
             else:
