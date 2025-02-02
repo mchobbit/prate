@@ -201,6 +201,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             assert(self.homies[user].didwelook)
             assert(not self.homies[user].keyless)
             print("%s has a null public key, but we looked. Perhaps we were offline at the time. I'll try again in a second or two." % user)
+            sleep(5)
         elif self.homies[user].fernetkey is None:
             assert(self.homies[user].didwelook)
             assert(not self.homies[user].keyless)
