@@ -546,7 +546,7 @@ if __name__ == "__main__":
             pass
         else:
             svr.show_users_dct_info()
-            sleep(randint(50, 100) / 10.)
+            sleep(randint(5, 20))
             # if u != svr.nickname and svr.homies[u].ipaddr is not None:
             #     print("Renegotiating keys w/ %s" % u)
             #     svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
