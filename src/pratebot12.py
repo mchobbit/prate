@@ -315,7 +315,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             pass  # print("%s's public key did not change. Good." % sender)
         if old_pubkey is None or old_pubkey != stemkey:
             if old_pubkey is None:
-                print("Saving %s's public key from incoming msg (not from whois)" % sender)
+                pass  # print("Saving %s's public key from incoming msg (not from whois)" % sender)
             else:
                 print("Saving %s's new pubkey from incoming msg (not from whois)" % sender)
             self.homies[sender].ipaddr = None
@@ -388,13 +388,13 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if stem != '':
             self.save_pubkey_from_stem(sender, stem)
         if self.homies[sender].keyless is True:
-            print("%s sent me an RQIPAD, a request for my IP address. I can't help him: he's keyless." % sender)
+            print("%s requests my IP address, but he's keyless." % sender)
         elif self.homies[sender].pubkey is None:
-            print("%s sent me an RQIPAD, a request for my IP address. I can't help him: I don't have his public key." % sender)
+            print("%s requests my IP address, but I don't have his public key." % sender)
         elif self.homies[sender].fernetkey is None:
-            print("%s sent me an RQIPAD, a request for my IP address. I can't help him: we don't have a fernet key yet." % sender)
+            print("%s requests my IP address, but we don't have a fernet key yet." % sender)
         else:
-            print("%s's RQIPAD received, understood, and handled. I'm replying with a TXIPAD containing my IP address" % sender)
+            print("%s requests my IP address, and I'm sending it." % sender)
             self.privmsg(sender, "TXIPAD%s" % self.my_encrypted_ipaddr(sender))
 
     def _txtxtx(self, sender, stem):
@@ -515,8 +515,7 @@ if __name__ == "__main__":
     old_nick = desired_nickname
     while True:
         if not svr.ready:
-            sleep(1)
-            print("Waiting for server to be ready")
+            sleep(.1)
             continue
         if my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
@@ -525,19 +524,23 @@ if __name__ == "__main__":
         if old_nick != nick:
             print("*** MY NICK CHANGED TO %s ***" % nick)
             old_nick = nick
-        if datetime.datetime.now().second % 30 == 0:
-            svr.show_users_dct_info()
-        u = choice(list(svr.homies.keys()))
-        # if u != svr.nickname and svr.homies[u].ipaddr is not None:
-        #     print("Renegotiating keys w/ %s" % u)
-        #     svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
-        if svr.homies[u].ipaddr is not None:
-            tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
         try:
-            while True:
-                the_user, the_blk = rx_q.get_nowait()
-                assert("HELLO from" in the_blk.decode())
-                print(the_user, "==>", the_blk)
-        except Empty:
-            continue
+            u = choice(list(svr.homies.keys()))
+        except IndexError:
+            pass
+        else:
+            svr.show_users_dct_info()
+            sleep(randint(50, 100) / 10.)
+            # if u != svr.nickname and svr.homies[u].ipaddr is not None:
+            #     print("Renegotiating keys w/ %s" % u)
+            #     svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
+            if svr.homies[u].ipaddr is not None:
+                tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
+            try:
+                while True:
+                    the_user, the_blk = rx_q.get_nowait()
+                    assert("HELLO from" in the_blk.decode())
+                    print(the_user, "==>", the_blk)
+            except Empty:
+                continue
 
