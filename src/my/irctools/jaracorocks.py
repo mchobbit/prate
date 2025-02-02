@@ -94,6 +94,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     @property
     def nickname(self):
         """The nickname that the server currently uses for me."""
+        while not hasattr(self.connection, 'real_nickname'):
+            sleep(.1)
         return self.connection.get_nickname()
 
     @nickname.setter
