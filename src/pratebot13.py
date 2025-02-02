@@ -27,7 +27,7 @@ EXAMPLE
 
 desired_nickname = "mac1"
 from random import randint
-from pratebot12 import *
+from pratebot13 import *
 from my.irctools import *
 from cryptography.fernet import Fernet, InvalidToken
 import irc.bot
@@ -170,8 +170,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             else:
                 irc_channel_members = list(self.channels[self.initial_channel].users())
                 irc_channel_members.sort()
-                new_users = [u for u in irc_channel_members if u not in the_userlist and u != self.nickname]
-                dead_users = [u for u in the_userlist if u not in irc_channel_members and u != self.nickname]
+                new_users = [str(u) for u in irc_channel_members if u not in the_userlist and str(u) != self.nickname]
+                dead_users = [str(u) for u in the_userlist if u not in irc_channel_members and str(u) != self.nickname]
                 for user in dead_users:
                     print("%s has died. Removing him from our list." % user)
                     self.load_homie_pubkey(user, None)
@@ -180,8 +180,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     the_userlist += [user]
                     print("New user: %s" % user)
                 # FYI, user is NOT A STRING! It's an IRCFlattenSomethingsomething.
-                for user in the_userlist:  # QQQ WHY IS 'user' NOT A STRING?
-                    self.scan_a_user_for_public_keys_etc(str(user))  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
+                for user in [str(u) for u in the_userlist if str(u) != self.nickname]:  # QQQ WHY IS 'user' NOT A STRING?
+                    self.scan_a_user_for_public_keys_etc(user)  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
 
     def scan_a_user_for_public_keys_etc(self, channel=None):
         with self.__scan_a_user_mutex:
@@ -232,11 +232,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             self.__load_homie_pubkey_from_parameter(user, pubkey)
 
     def __load_homie_pubkey_from_parameter(self, user, pubkey):
+        if type(user) is not str:
+            raise ValueError(user, "should be type str")
         self.homies[user].didwelook = True
         self.homies[user].pubkey = pubkey
         self.homies[user].keyless = False  # He's GONE. He is neither keyful nor keyless. Keyless means "He's here & he has no key."
 
     def __load_homie_pubkey_from_whois_record(self, user):
+        if type(user) is not str:
+            raise ValueError(user, "should be type str")
         self.homies[user].didwelook = False
         self.homies[user].keyless = False
         old_pk = self.homies[user].pubkey
@@ -289,6 +293,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__homies_lock.acquire_read()
         outstr = "\n%-30s  %s   <==pubkey     vv---fernet key---vv     IP==>   %s" % (self.nickname, squeeze_da_keez(MY_RSAKEY.publickey())[-12:-8], MY_IP_ADDRESS)
         for user in self.homies:
+            if type(user) is not str:
+                print("WARNING -- %s it not a string" % str(user))
             if user == self.nickname:
                 pass  # print("WARNING - our nickname is on a list of homies")
             if self.homies[user].keyless is True:
