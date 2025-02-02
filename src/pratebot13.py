@@ -462,6 +462,24 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
 
 class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
+    """A background-threaded CryptoOrientedSingleServerIRCBotWithWhoisSupport.
+
+    This is a subclass of CryptoOrientedSingleServerIRCBotWithWhoisSupport. Its
+    primary purpose is to instantiate that class as a background thread. (Do I mean
+    'instantiate'?)
+
+    Attributes:
+        channel (str): IRC channel to be joined.
+        nickname (str): Initial nickname. The real nickname will be changed
+            if the IRC server reports a nickname collision.
+        realname (str): The string that is stored in the realname field of /whois.
+            This is usually our stringified public key.
+        irc_server (str): The IRC server URL.
+        port (int): The port number of the IRC server.
+        crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
+        crypto_tx_queue (LifoQueue): User-and-msg stuff to be encrypted goes here.
+
+    """
 
     def __init__(self, channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue):
         super().__init__(channel, nickname, realname, irc_server, port, crypto_rx_queue, crypto_tx_queue)
@@ -483,10 +501,12 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
             self.__time_to_quit_lock.release_read()
 
     def quit(self):  # Do we need this?
+        """Quit this bot."""
         self.__time_to_quit = True
         self.__bot_thread.join()  # print("Joining server thread")
 
     def __bot_worker_loop(self):
+        """Start this bot."""
         print("Starting bot thread")
         self.start()
         print("You should not get here.")
@@ -517,7 +537,6 @@ if __name__ == "__main__":
                                        crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
     print("*** MY NICK SHOULD BE %s ***" % desired_nickname)
-
     old_nick = desired_nickname
     while True:
         if not svr.ready:
