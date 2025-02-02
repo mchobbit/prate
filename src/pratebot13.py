@@ -556,9 +556,6 @@ if __name__ == "__main__":
         else:
             svr.show_users_dct_info()
             sleep(randint(5, 20))
-            # if u != svr.nickname and svr.homies[u].ipaddr is not None:
-            #     print("Renegotiating keys w/ %s" % u)
-            #     svr.privmsg(u, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
             if svr.homies[u].ipaddr is not None:
                 tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
             try:
