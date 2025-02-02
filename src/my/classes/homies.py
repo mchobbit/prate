@@ -216,11 +216,15 @@ class Homie:
 class HomiesDct(dict):
 
     def __setitem__(self, key, item):
-        self.__dict__[key] = item
+        if type(key) is not str:
+            raise AttributeError("key %s should be a string" % str(key))
+        self.__dict__[str(key)] = item
 
     def __getitem__(self, key):
+        if type(key) is not str:
+            raise AttributeError("key %s should be a string" % str(key))
         if key not in self.__dict__:
-            self.__setattr__(key, Homie(nickname=key))
+            self.__setattr__(key, Homie(nickname=str(key)))
         return self.__dict__[key]
 
     def __repr__(self):
@@ -230,6 +234,8 @@ class HomiesDct(dict):
         return len(self.__dict__)
 
     def __delitem__(self, key):
+        if type(key) is not str:
+            raise AttributeError("key %s should be a string" % str(key))
         del self.__dict__[key]
 
     def clear(self):
@@ -239,6 +245,8 @@ class HomiesDct(dict):
         return self.__dict__.copy()
 
     def has_key(self, k):
+        if type(k) is not str:
+            raise AttributeError("key %s should be a string" % str(k))
         return k in self.__dict__
 
     def update(self, *args, **kwargs):
@@ -260,6 +268,8 @@ class HomiesDct(dict):
 #        return self.__cmp__(self.__dict__, dict_)
 
     def __contains__(self, item):
+        if type(item) is not str:
+            print("__contains__ parameter item is", type(item), "and not a string. Is that okay? I'm not sure.")  # FIXME: Is it okay?
         return item in self.__dict__
 
     def __iter__(self):
