@@ -23,36 +23,6 @@ Todo:
 .. _Napoleon Style Guide:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
-EXAMPLE
-
-desired_nickname = "mac1"
-from random import randint
-from pratebot13 import *
-from my.irctools import *
-from cryptography.fernet import Fernet, InvalidToken
-import irc.bot
-import types
-rx_q = queue.LifoQueue()
-tx_q = queue.LifoQueue()
-svr = PrateBot(channel="#prate", nickname=desired_nickname, realname=squeeze_da_keez(MY_RSAKEY.public_key()),
-                    irc_server='cinqcent.local', port=6667, crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
-
-svr.paused = True
-while not svr.ready:
-    sleep(1)
-
-while 'mac1' not in svr.channels['#prate'].users() and 'mac2' not in svr.channels['#prate'].users():
-    sleep(1)
-
-svr.show_users_dct_info()
-svr.scan_all_users_for_public_keys_etc()
-svr.show_users_dct_info()
-
-
-
-tx_q.put(('mac2', b'HELLO'))
-incoming = crypto_rx_q.get()
-print(incoming)
 
 """
 
@@ -68,7 +38,6 @@ from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez, squeeze_da_keez
 from my.irctools.jaracorocks import SingleServerIRCBotWithWhoisSupport
 from _queue import Empty
-import datetime
 from random import randint, choice
 from my.classes.homies import HomiesDct
 
@@ -249,7 +218,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     new_pk = unsqueezed_key
                     if old_pk is not None and old_pk != new_pk:
                         print("HEY! HAS %s'S PUBLIC KEY CHANGED?!?!" % user)  # print("New key:", new_pk)
-                    self.homies[user].pubkey = new_pk  # FIXME: I do not know what this line does.
+                    self.homies[user].pubkey = new_pk
                     break  # ...from 'i'
             except TimeoutError:
                 continue
