@@ -205,6 +205,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             assert(self.homies[user].pubkey is not None)
             print("Initiating fernet key exchange with %s" % user)
             self.privmsg(user, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
+            sleep(5)
         elif self.homies[user].ipaddr is None:
             assert(self.homies[user].didwelook)
             assert(not self.homies[user].keyless)
@@ -212,6 +213,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             assert(self.homies[user].fernetkey is not None)
             print("Initiating IP address exchange with %s" % user)
             self.privmsg(user, "RQIPAD%s" % squeeze_da_keez(MY_RSAKEY))  # Request his IP address; in due course, he'll send it via TXIPAD.
+            sleep(5)
         else:
             return user  # He's kosher
 
