@@ -215,9 +215,6 @@ class Homie:
 
 class HomiesDct(dict):
 
-    def __init__(self):
-        super().__init__()
-
     def __setitem__(self, key, item):
         self.__dict__[key] = item
 
