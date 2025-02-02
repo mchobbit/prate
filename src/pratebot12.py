@@ -180,7 +180,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     the_userlist += [user]
                     print("New user: %s" % user)
                 # FYI, user is NOT A STRING! It's an IRCFlattenSomethingsomething.
-                for user in the_userlist: # QQQ WHY IS 'user' NOT A STRING?
+                for user in the_userlist:  # QQQ WHY IS 'user' NOT A STRING?
                     self.scan_a_user_for_public_keys_etc(str(user))  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
 
     def scan_a_user_for_public_keys_etc(self, channel=None):
@@ -287,20 +287,20 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def show_users_dct_info(self):
         """Write the list of our users (and their crypto info) to screen."""
         self.__homies_lock.acquire_read()
-        outstr = "\n%-20s pubkey %s                        (me)" % (self.nickname, squeeze_da_keez(MY_RSAKEY.publickey())[-12:-8])
+        outstr = "\n%-30s  %s   <==pubkey     vv---fernet key---vv     IP==>   %s" % (self.nickname, squeeze_da_keez(MY_RSAKEY.publickey())[-12:-8], MY_IP_ADDRESS)
         for user in self.homies:
             if user == self.nickname:
                 pass  # print("WARNING - our nickname is on a list of homies")
             if self.homies[user].keyless is True:
-                outstr += "\n%-20s pubkey nope" % user
+                outstr += "\n%-30s  nope" % user
             elif self.homies[user].pubkey is None:
-                outstr += "\n%-20s pubkey unk" % user
+                outstr += "\n%-30s  unk" % user
             elif self.homies[user].fernetkey is None:
-                outstr += "\n%-20s pubkey %s  fernetkey unk" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8])
+                outstr += "\n%-30s  %s   unk" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8])
             elif self.homies[user].ipaddr is None:
-                outstr += "\n%-20s pubkey %s  fernetkey %s  IP nope" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode())
+                outstr += "\n%-30s  %s   %s   nope" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode())
             else:
-                outstr += "\n%-20s pubkey %s  fernetkey %s  IP %s" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode(), self.homies[user].ipaddr)
+                outstr += "\n%-30s  %s   %s   %s" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode(), self.homies[user].ipaddr)
         print(outstr)
         self.__homies_lock.release_read()
 
