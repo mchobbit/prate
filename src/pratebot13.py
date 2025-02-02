@@ -84,6 +84,11 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__time_to_quit_lock = ReadWriteLock()
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
+        while not self.ready:
+            sleep(.1)
+        if self.realname != self.desired_realname:
+            raise MyIrcRealnameTruncationError("Realname was truncated from %d chars to only %d chars by server." %
+                                           (len(self.desired_realname), len(self.realname)))
 
     def _start(self):
         self.__bot_thread.start()
@@ -128,12 +133,6 @@ if __name__ == "__main__":
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
                                        irc_server=my_irc_server, port=my_port,
                                        crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
-
-    while not svr.ready:
-        sleep(.1)
-    if svr.realname != svr.desired_realname:
-        raise MyIrcRealnameTruncationError("Realname was truncated from %d chars to only %d chars by server." %
-                                           (len(svr.desired_realname), len(svr.realname)))
 
     print("*** MY NICK SHOULD BE %s ***" % desired_nickname)
     old_nick = desired_nickname
