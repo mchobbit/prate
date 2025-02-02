@@ -79,7 +79,7 @@ class Homie:
                 if self.__remotely_supplied_fernetkey != value and value is not None:
                     raise AttributeError("remotely_supplied_fernetkey already set! I don't want to replace it. You're being fishy.")
             if self.__remotely_supplied_fernetkey == value and value is not None:
-                print("remotely_supplied_fernetkey is already", value, "... and that makes me wonder, why are you setting it to the same value that it already holds?")
+                pass  # print("remotely_supplied_fernetkey is already", value, "... and that makes me wonder, why are you setting it to the same value that it already holds?")
             self.__remotely_supplied_fernetkey = value
         finally:
             self.__remotely_supplied_fernetkey_lock.release_write()
