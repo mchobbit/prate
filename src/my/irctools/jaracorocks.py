@@ -172,15 +172,13 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
         if not self.connected:
             raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
-        c = self.connection
-        c.whois(user)  # Send request to the IRC server
+        self.connection.whois(user)  # Send request to the IRC server
         for _ in range(0, timeout * 10):
-            sleep(.1)
             self.reactor.process_once()  # Process incoming & outgoing events w/ IRC server
             try:
                 return self.__whois_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
             except KeyError:
-                pass  # Still waiting for answer
+                sleep(.1)  # Still waiting for answer
         raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
 
 ####################################################################################
