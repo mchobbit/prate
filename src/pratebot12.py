@@ -139,6 +139,25 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         else:
             return True
 
+    def __crypto_tx_loop(self):
+        while True:
+            sleep(.1)
+            try:
+                (user, byteblock) = self.__crypto_tx_queue.get_nowait()
+            except Empty:
+                pass
+            else:
+                if self.homies[user].keyless:
+                    print("I cannot crypto_put() to %s: he is keyless" % user)
+                elif self.homies[user].pubkey is None:
+                    print("I cannot crypto_put() to %s: idk his pubkey" % user)
+                elif self.homies[user].fernetkey is None:
+                    print("I cannot crypto_put() to %s: idk his fernetkey" % user)
+                elif self.homies[user].ipaddr is None:
+                    print("I cannot crypto_put() to %s: idk his ipaddr" % user)
+                else:
+                    self.crypto_put(user, byteblock)
+
     def __scanusers_worker_loop(self):
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         the_userlist = []
@@ -162,25 +181,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     print("New user: %s" % user)
                 for user in the_userlist:
                     self.scan_a_user_for_public_keys_etc(user)  # Scan the REALNAME (from /whois output) for public keys; then, exchange fernet keys & IP addresses
-
-    def __crypto_tx_loop(self):
-        while True:
-            sleep(.1)
-            try:
-                (user, byteblock) = self.__crypto_tx_queue.get_nowait()
-            except Empty:
-                pass
-            else:
-                if self.homies[user].keyless:
-                    print("I cannot crypto_put() to %s: he is keyless" % user)
-                elif self.homies[user].pubkey is None:
-                    print("I cannot crypto_put() to %s: idk his pubkey" % user)
-                elif self.homies[user].fernetkey is None:
-                    print("I cannot crypto_put() to %s: idk his fernetkey" % user)
-                elif self.homies[user].ipaddr is None:
-                    print("I cannot crypto_put() to %s: idk his ipaddr" % user)
-                else:
-                    self.crypto_put(user, byteblock)
 
     def scan_a_user_for_public_keys_etc(self, channel=None):
         with self.__scan_a_user_mutex:
