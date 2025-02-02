@@ -344,13 +344,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         elif cmd == "RQIPAD":
             self._rqipad(sender, stem)
         elif cmd == "TXIPAD":
-            try:
-                self._receiving_his_IP_address(sender, stem)
-            except InvalidToken:
-                print("Bad %s fernet key. We'll need to call RQFERN to regenerate it." % sender)
-                self.homies[sender].remotely_supplied_fernetkey = None
-                self.homies[sender].pubkey = None
-                self.privmsg(sender, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
+            self._txipad(sender, stem)
         elif cmd == 'TXTXTX':  # This means that some data was TX'd to us.
             self._txtxtx(sender, stem)
         else:
@@ -363,7 +357,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if self.homies[sender].keyless is True or self.homies[sender].pubkey is None:
             print("I can't send RQFERN to %s: he's keyless" % sender)
         else:
-            print("rqfern received from %s. REPLYING..." % sender)
+            print("%s has initiated fernet key exchange." % sender)
             self.privmsg(sender, "TXFERN%s" % self.encrypt_fernetkey(sender, self.homies[sender].locally_generated_fernetkey))
 
     def _txfern(self, user, stem):
@@ -396,6 +390,16 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         else:
             print("%s requests my IP address, and I'm sending it." % sender)
             self.privmsg(sender, "TXIPAD%s" % self.my_encrypted_ipaddr(sender))
+
+    def _txipad(self, sender, stem):
+        try:
+            self._receiving_his_IP_address(sender, stem)
+            print("%s sent his IP address. Yay!" % sender)
+        except InvalidToken:
+            print("%s used the wrong fernet key to encrypt a message. To rectify, I'll initiate a new fernet key exchange." % sender)
+            self.homies[sender].remotely_supplied_fernetkey = None
+            self.homies[sender].pubkey = None
+            self.privmsg(sender, "RQFERN%s" % squeeze_da_keez(MY_RSAKEY))
 
     def _txtxtx(self, sender, stem):
 #            print("TXTXTX incoming")
