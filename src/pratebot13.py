@@ -27,50 +27,47 @@ Example:
 
 s = 'm&4c;;B32a?eKNjw~g*;$0{=kLOVcOcgu2HzbjBk98m2hvhGq~'
 desired_nickname = 'mac1'
-desired_fullname = squeeze_da_keez(MY_RSAKEY.public_key())
+desired_realname = squeeze_da_keez(MY_RSAKEY.public_key())
 irc_server = 'cinqcent.local'
 from pratebot13 import *
 rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
-svr = PrateBot(channel='#prate', nickname=desired_nickname, realname=desired_fullname,
-                irc_server=irc_server, port=6667, crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+svr = PrateBot(channel=my_channel, nickname=desired_nickname,pubkey=MY_RSAKEY.public_key(),
+                irc_server=my_irc_server, port=6667, crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
-assert(svr.nickname == desired_nickname)
-assert(svr.fullname == desired_fullname)
-
-
-
-TESTPORPOISES__MAXIMUM_REALNAME_LENGTH_SUPPORTED_BY_SERVER = 20
 """
 
 import sys
 import queue
 from time import sleep
-from threading import Thread, Lock
+from threading import Thread
 
-from cryptography.fernet import Fernet, InvalidToken
-import base64
-from my.globals import MY_IP_ADDRESS, MY_RSAKEY
+from my.globals import MY_RSAKEY
 from my.classes.readwritelock import ReadWriteLock
-from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez, squeeze_da_keez
+from my.irctools.cryptoish import squeeze_da_keez
 from _queue import Empty
 from random import randint, choice
-from my.classes.homies import HomiesDct
 from my.classes.exceptions import MyIrcRealnameTruncationError
 from my.irctools.jaracorocks.miniircd import CryptoOrientedSingleServerIRCBotWithWhoisSupport
 
 
 class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
-    """A background-threaded CryptoOrientedSingleServerIRCBotWithWhoisSupport.
+    """A background-threaded RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport.
 
-    This is a subclass of CryptoOrientedSingleServerIRCBotWithWhoisSupport. Its
-    primary purpose is to instantiate that class as a background thread. (Do I mean
+    This is a subclass of RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport.
+    Its primary purpose is to instantiate that class as a background thread. (Do I mean
     'instantiate'?)
+
+    FYI, RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport is unlike
+    CryptoOrientedSingleServerIRCBotWithWhoisSupport in one major aspect: the latter
+    sets each user's realname to the user's RSA public key. What does the former use?
+    I haven't decided yet.
 
     Attributes:
         channel (str): IRC channel to be joined.
         nickname (str): Initial nickname. The real nickname will be changed
             if the IRC server reports a nickname collision.
+        pubkey (RSA.RsaKey): Public key.
         irc_server (str): The IRC server URL.
         port (int): The port number of the IRC server.
         crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
@@ -78,20 +75,31 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
 
     """
 
-    def __init__(self, channel, nickname, irc_server, port, crypto_rx_queue, crypto_tx_queue):
-        super().__init__(channel, nickname, irc_server, port, crypto_rx_queue, crypto_tx_queue)
+    def __init__(self, channel, nickname, pubkey, irc_server, port, crypto_rx_queue, crypto_tx_queue):
+        super().__init__(channel=channel,
+                         nickname=nickname,
+                         fingerprintfunc=squeeze_da_keez,
+                         pubkey=pubkey,
+                         irc_server=irc_server,
+                         port=port,
+                         crypto_rx_queue=crypto_rx_queue,
+                         crypto_tx_queue=crypto_tx_queue)
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
-        while not self.ready:
-            sleep(.1)
-        if self.realname != self.desired_realname:
-            raise MyIrcRealnameTruncationError("Realname was truncated from %d chars to only %d chars by server." %
-                                           (len(self.desired_realname), len(self.realname)))
 
     def _start(self):
         self.__bot_thread.start()
+        while not self.ready:
+            sleep(.1)
+        if self.realname != self.intended_realname:
+            raise MyIrcRealnameTruncationError("""
+Realname was truncated from %d chars to only %d chars by server. This means
+the server likes to trancate realnames. This, in turn, means you're better off
+switching from CryptoOrientedSingleServerIRCBotWithWhoisSupport to
+RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport as
+the class that PrateBot uses.""" % (len(self.intended_realname), len(self.realname)))
 
     @property
     def time_to_quit(self):
@@ -131,8 +139,9 @@ if __name__ == "__main__":
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
-                                       irc_server=my_irc_server, port=my_port,
-                                       crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+                                        pubkey=MY_RSAKEY.public_key(),
+                                        irc_server=my_irc_server, port=my_port,
+                                        crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
     print("*** MY NICK SHOULD BE %s ***" % desired_nickname)
     old_nick = desired_nickname

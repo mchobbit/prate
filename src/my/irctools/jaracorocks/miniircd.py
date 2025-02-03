@@ -77,6 +77,10 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         channel (str): IRC channel to be joined.
         nickname (str): Initial nickname. The real nickname will be changed
             if the IRC server reports a nickname collision.
+        fingerprintfunc (function): The one-parameter function that turns the
+            supplied parameter into a string that can be used as a realname
+            for fingerprinting porpoises.
+        pubkey (RSA.RsaKey): Our public key.
         irc_server (str): The IRC server URL.
         port (int): The port number of the IRC server.
         crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
@@ -84,13 +88,16 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     """
 
-    def __init__(self, channel, nickname, irc_server, port, crypto_rx_queue, crypto_tx_queue):
-        self.desired_realname = squeeze_da_keez(MY_RSAKEY.public_key())
+    def __init__(self, channel, nickname, fingerprintfunc, pubkey, irc_server, port, crypto_rx_queue, crypto_tx_queue):
+        self.__intended_realname = fingerprintfunc(pubkey)
         super().__init__(channel=channel, nickname=nickname,
-                         realname=self.desired_realname,
+                         realname=self.__intended_realname,
                          server=irc_server, port=port)
+        self.__fingerprintfunc = fingerprintfunc
+        self.__pubkey = pubkey
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
+        self.__intended_realname_lock = ReadWriteLock()
         self.__crypto_rx_queue = crypto_rx_queue
         self.__crypto_tx_queue = crypto_tx_queue
         self.__repop_mutex = Lock()
@@ -118,6 +125,24 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             self.__homies = value
         finally:
             self.__homies_lock.release_write()
+
+    @property
+    def intended_realname(self):
+        """Intended realname."""
+        self.__intended_realname_lock.acquire_read()
+        try:
+            retval = self.__intended_realname
+            return retval
+        finally:
+            self.__intended_realname_lock.release_read()
+
+    @intended_realname.setter
+    def intended_realname(self, value):
+        self.__intended_realname_lock.acquire_write()
+        try:
+            self.__intended_realname = value
+        finally:
+            self.__intended_realname_lock.release_write()
 
     def __crypto_tx_loop(self):
         """Pull from the queue. Encrypt each item. Send it."""

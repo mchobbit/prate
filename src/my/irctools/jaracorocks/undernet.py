@@ -7,21 +7,18 @@ Created on Jan 30, 2025
 
 s = 'm&4c;;B32a?eKNjw~g*;$0{=kLOVcOcgu2HzbjBk98m2hvhGq~'
 desired_nickname = 'mac1'
-desired_fullname = squeeze_da_keez(MY_RSAKEY.public_key())
+desired_realname = squeeze_da_keez(MY_RSAKEY.public_key())
 irc_server = 'cinqcent.local'
 from pratebot13 import *
 rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
-svr = PrateBot(channel='#prate', nickname=desired_nickname, realname=desired_fullname,
+svr = PrateBot(channel='#prate', nickname=desired_nickname, realname=desired_realname,
                 irc_server=irc_server, port=6667, crypto_rx_queue=rx_q, crypto_tx_queue=tx_q,
                 max_realname_len=50)
 
 assert(svr.nickname == desired_nickname)
-assert(svr.fullname == desired_fullname)
+assert(svr.realname == desired_realname)
 
-
-
-TESTPORPOISES__MAXIMUM_REALNAME_LENGTH_SUPPORTED_BY_SERVER = 20
 """
 
 import sys
@@ -41,6 +38,8 @@ from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
 from my.irctools.jaracorocks.miniircd import CryptoOrientedSingleServerIRCBotWithWhoisSupport
 
 
-class FullnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
+class RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
     raise AttributeError("NOT WRITTEN YET QQQ")
+
+# Uses fingerprints, instead of RSA key, in realname
 
