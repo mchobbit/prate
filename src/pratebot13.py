@@ -53,10 +53,9 @@ from time import sleep
 from threading import Thread
 
 from my.classes.readwritelock import ReadWriteLock
-from my.irctools.cryptoish import squeeze_da_keez
 from _queue import Empty
 from random import randint, choice
-from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError, MyIrcFingerprintMismatchCausedByServer, MyIrcNicknameChangedByServer
+from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcFingerprintMismatchCausedByServer, MyIrcNicknameChangedByServer
 from Crypto.PublicKey import RSA
 from my.irctools.jaracorocks import CryptoOrientedSingleServerIRCBotWithWhoisSupport
 
