@@ -150,7 +150,7 @@ if __name__ == "__main__":
     my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
-    put_pubkey_in_realname_field = True
+    put_pubkey_in_realname_field = False
     svr = None
     old_nick = desired_nickname
     nick = old_nick
