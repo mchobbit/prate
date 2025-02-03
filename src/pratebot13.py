@@ -164,10 +164,10 @@ if __name__ == "__main__":
     my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
-    is_pubkey_in_realname = True
+    is_server_stingy_with_realname_maxlen = True
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
                                         rsa_key=my_rsa_key,
-                                        is_pubkey_in_realname=is_pubkey_in_realname,
+                                        is_pubkey_in_realname=not is_server_stingy_with_realname_maxlen,
                                         irc_server=my_irc_server, port=my_port,
                                         crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
