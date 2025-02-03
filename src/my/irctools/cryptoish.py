@@ -24,7 +24,7 @@ import hashlib
 
 
 def sha1(nickname):
-    return base64.b85encode(hashlib.sha1(nickname.encode()).digest())
+    return base64.b85encode(hashlib.sha1(nickname.encode()).digest()).decode()
 
 
 def skinny_key(k:RSA.RsaKey) -> str:

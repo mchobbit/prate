@@ -76,6 +76,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def __init__(self, channel, nickname, realname, irc_server, port):
         irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
+        if type(realname) is not str:
+            raise ValueError("Realname should be a string, not", type(realname))
         self.__initial_nickname = nickname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
         self.__whois_dct = {}  # Results of /whois will be stored here

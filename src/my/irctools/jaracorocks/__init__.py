@@ -89,7 +89,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__is_pubkey_in_realname = is_pubkey_in_realname
         self.__homies = HomiesDct()
         self.__rsa_key = rsa_key
-        super().__init__(channel, nickname, self.fingerprint, irc_server, port)
+        super().__init__(channel, nickname, self.generate_fingerprint(nickname), irc_server, port)
         self.__scanusers_thread = Thread(target=self.__scanusers_worker_loop, daemon=True)
         self.__crypto_tx_thread = Thread(target=self.__crypto_tx_loop, daemon=True)
         self.__scanusers_thread.start()
@@ -104,15 +104,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 user = self.nickname
             return sha1(user)
 
-    @property
-    def fingerprint(self):
-        if self.is_pubkey_in_realname:
-            return self.generate_fingerprint()
-        else:
-            try:
-                return self.generate_fingerprint(self.nickname)
-            except (MyIrcStillConnectingError, AttributeError, ValueError):
-                return None
+    # @property
+    # def fingerprint(self):
+    #     if self.is_pubkey_in_realname:
+    #         return self.generate_fingerprint()
+    #     else:
+    #         try:
+    #             return self.generate_fingerprint(self.nickname)
+    #         except (MyIrcStillConnectingError, AttributeError, ValueError):
+    #             return None
 
     @property
     def is_pubkey_in_realname(self):
@@ -233,7 +233,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def __load_homie_pubkey(self, user, pubkey=None):
         if pubkey is not None:
-            self.__load_homie_pubkey_from_parameter(user, pubkey)
+            self.__load_homie_pubkey_from_parameter(user, unsqueeze_da_keez(pubkey))
         if self.is_pubkey_in_realname:
             self.__load_homie_pubkey_from_whois_record(user)
         else:
@@ -243,8 +243,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if type(user) is not str:
             raise ValueError(user, "should be type str")
         self.homies[user].didwelook = True
-        self.homies[user].pubkey = pubkey
         self.homies[user].keyless = False  # He's GONE. He is neither keyful nor keyless. Keyless means "He's here & he has no key."
+        self.homies[user].pubkey = pubkey
 
     @property
     def realname(self):
@@ -277,15 +277,24 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.homies[user].didwelook = True
 
     def __load_homie_pubkey_from_negotiation_via_whois_fingerprint(self, user):
-        his_fprint = self.call_whois_and_wait_for_response(user).split(' ', 4)[-1]
+        try:
+            his_fprint = self.call_whois_and_wait_for_response(user).split(' ', 4)[-1]
+        except AttributeError:
+            his_fprint = None
+            print("Unable to load %s's /whois record. This means I don't know their fingerprint." % user)
+            print("I am therefore assuming that %s is not a homie." % user)
+            print("Let's try again later.")
+            return
         shouldbe_fprint = self.generate_fingerprint(user)
 #        print("%s has a fingerprint of %s; if he's a homie, it would be %s" % (user, his_fprint, shouldbe_fprint))
         if his_fprint == shouldbe_fprint:
-            print("I do believe that %s is a homie" % user)
-            print("I'll initiate a public key exchange now.")
+#            print("I do believe that %s is a homie" % user)
+#            print("I'll initiate a public key exchange now.")
+            print("I am requesting %s's public key" % user)
             self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
         else:
-            print("%s is not a homie." % user)
+#            print("%s is not a homie." % user)
+            pass
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
@@ -351,7 +360,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("Saving %s's new pubkey from incoming msg (not from whois)" % sender)
             self.homies[sender].ipaddr = None
             self.homies[sender].keyless = False
-            self.homies[sender].yesilooked = True
+            self.homies[sender].didwelook = True
             self.homies[sender].pubkey = stemkey
 
     def on_privmsg(self, c, e):  # @UnusedVariable
@@ -368,11 +377,20 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if sender == self.nickname:
             raise ValueError("WHY AM I TALKING TO MYSELF?")
         elif cmd == _RQPK_:
-            print("We received %s's request for our public key" % sender)
+            if stem != '':
+                print("We received %s's public key and a request for a copy of ours." % sender)
+                self.homies[sender].pubkey = unsqueeze_da_keez(stem)  # self.load_homie_pubhey etc.
+                self.homies[sender].keyless = False
+                self.homies[sender].didwelook = True
+                self.homies[sender].ipaddr = None
+            print("We are sending %s a copy of our public key." % sender)
             self.privmsg(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
         elif cmd == _TXPK_:
             print("We received a public key from %s" % sender)
-            self.load_homie_pubkey(sender, stem)
+            self.homies[sender].pubkey = unsqueeze_da_keez(stem)
+            self.homies[sender].keyless = False
+            self.homies[sender].didwelook = True
+            self.homies[sender].ipaddr = None
         elif cmd == _RQFE_:  # Sender requested a copy of my fernet key
             self._request_fernet_key_exchange(sender, stem)
 #            self.reactor.process_once()  # Is this necessary?

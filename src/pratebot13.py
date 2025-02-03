@@ -97,6 +97,7 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
         self.__intended_fingerprint = self.generate_fingerprint(self.initial_nickname)
+        print
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
         sleep(1)
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
-    is_server_stingy_with_realname_maxlen = False
+    is_server_stingy_with_realname_maxlen = True
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
                                         rsa_key=my_rsa_key,
                                         is_pubkey_in_realname=not is_server_stingy_with_realname_maxlen,
@@ -187,7 +188,7 @@ if __name__ == "__main__":
         if old_nick != nick:
             print("*** MY NICK CHANGED FROM %s TO %s ***" % (old_nick, nick))
             old_nick = nick
-            if svr.fingerprint != svr.generate_fingerprint(nick):
+            if svr.realname != svr.generate_fingerprint(nick):
                 raise ValueError("FINGERPRINT SNAFU")
         try:
             u = choice(list(svr.homies.keys()))
