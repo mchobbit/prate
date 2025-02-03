@@ -189,6 +189,8 @@ if __name__ == "__main__":
             old_nick = nick
             if svr.realname != svr.generate_fingerprint(nick):
                 raise ValueError("FINGERPRINT SNAFU")
+            else:
+                print("...and our fingerprint is still golden.")
         try:
             u = choice(list(svr.homies.keys()))
         except IndexError:
