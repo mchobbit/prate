@@ -32,6 +32,9 @@ import irc.bot
 from time import sleep
 import string
 from my.classes.exceptions import MyIrcStillConnectingError
+from my.classes import MyTTLCache
+from threading import Thread, Lock
+
 try:
     from my.stringtools import generate_irc_handle  # @UnusedImport
 except ImportError:
@@ -78,9 +81,12 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
         if type(realname) is not str:
             raise ValueError("Realname should be a string, not", type(realname))
+        self.__whois_request_cache = MyTTLCache(5)
+        self.__whois_request_c_hits_v_misses = [0, 0]
+        self.__whois_request_cache_mutex = Lock()
         self.__initial_nickname = nickname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
-        self.__whois_dct = {}  # Results of /whois will be stored here
+        self.__whois_results_dct = {}  # Messages incoming from reactor, re: /whois, will be stored here
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
 
@@ -136,11 +142,11 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def _on_whoisuser(self, _c=None, e=None):
         """Triggered when the event-handler receives RPL_WHOISUSER."""
         nick = e.arguments[0]  # Also, channel = e.target
-        self.__whois_dct[nick] = ' '.join([r for r in e.arguments])
+        self.__whois_results_dct[nick] = ' '.join([r for r in e.arguments])
 
     def _on_nosuchnick(self, _c, e):
         """Triggered when the event-handler receives ERR_NOSUCHNICK."""
-        self.__whois_dct[e.arguments[0]] = None
+        self.__whois_results_dct[e.arguments[0]] = None
 
     def on_nicknameinuse(self, _c, _e):
         """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
@@ -172,18 +178,28 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         else:
             c.notice(nick, "Unknown command => " + cmd)
 
-    def call_whois_and_wait_for_response(self, user, timeout=5):
+    def call_whois_and_wait_for_response(self, user, timeout=5):  # FIXME: not threadsafe
+        if self.__whois_request_cache.get(user) is None:
+            self.__whois_request_c_hits_v_misses[1] += 1
+            self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
+            print("whois cache --- %d hits vs %d misses" % (self.__whois_request_c_hits_v_misses[0], self.__whois_request_c_hits_v_misses[1]))
+        else:
+            self.__whois_request_c_hits_v_misses[0] += 1
+        return self.__whois_request_cache.get(user)
+
+    def __call_whois_and_wait_for_response(self, user, timeout):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
-        if not self.connected:
-            raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
-        self.connection.whois(user)  # Send request to the IRC server
-        for _ in range(0, timeout * 10):
-            self.reactor.process_once()  # Process incoming & outgoing events w/ IRC server
-            try:
-                return self.__whois_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
-            except KeyError:
-                sleep(.1)  # Still waiting for answer
-        raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
+        with self.__whois_request_cache_mutex:
+            if not self.connected:
+                raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
+            self.connection.whois(user)  # Send request to the IRC server
+            for _ in range(0, timeout * 10):
+                self.reactor.process_once()  # Process incoming & outgoing events w/ IRC server
+                try:
+                    return self.__whois_results_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
+                except KeyError:
+                    sleep(.1)  # Still waiting for answer
+            raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
 
 ####################################################################################
 
