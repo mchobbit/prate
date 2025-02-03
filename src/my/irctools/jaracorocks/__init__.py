@@ -89,12 +89,18 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__is_pubkey_in_realname = is_pubkey_in_realname
         self.__homies = HomiesDct()
         self.__rsa_key = rsa_key
+        self.__stopstopstop = False
         super().__init__(channel, nickname, self.generate_fingerprint(nickname), irc_server, port)
         self.__scanusers_thread = Thread(target=self.__scanusers_worker_loop, daemon=True)
         self.__crypto_tx_thread = Thread(target=self.__crypto_tx_loop, daemon=True)
         self.__scanusers_thread.start()
         self.__crypto_tx_thread.start()
         self.paused = False
+
+    def shutitdown(self):
+        self.__stopstopstop = True
+        self.__scanusers_thread.join()
+        self.__crypto_tx_thread.join()
 
     def generate_fingerprint(self, user=None):
         if self.is_pubkey_in_realname:
@@ -151,7 +157,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def __crypto_tx_loop(self):
         """Pull from the queue. Encrypt each item. Send it."""
-        while True:
+        while not self.__stopstopstop:
             sleep(.1)
             try:
                 (user, byteblock) = self.__crypto_tx_queue.get_nowait()
@@ -172,7 +178,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def __scanusers_worker_loop(self):
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         the_userlist = []
-        while True:
+        while not self.__stopstopstop:
             if not self.ready:
                 print("Waiting for the bot to be ready...")
                 while not self.ready:
@@ -194,7 +200,10 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 shuffle(new_users)
                 for user in [str(u) for u in the_userlist if str(u) != self.nickname]:
                     self.scan_a_user_for_fingerprints_publickeys_etc(user)
-                sleep(randint(4, 6))
+                for _ in range(randint(40, 60)):
+                    sleep(.1)
+                    if self.__stopstopstop:
+                        break
 
     def scan_a_user_for_fingerprints_publickeys_etc(self, user):
         with self.__scan_a_user_mutex:
