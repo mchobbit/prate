@@ -73,8 +73,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     """
 
-    def __init__(self, channel, nickname, realname, server, port=6667):
-        irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname, realname)
+    def __init__(self, channel, nickname, realname, irc_server, port):
+        irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
         self.__initial_nickname = nickname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
         self.__whois_dct = {}  # Results of /whois will be stored here
@@ -186,6 +186,6 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
 if __name__ == "__main__":
 
-    ircbot = SingleServerIRCBotWithWhoisSupport(channel="#prate", nickname='clyde', realname='ccllyyddee', server='cinqcent.local', port=6667)
+    ircbot = SingleServerIRCBotWithWhoisSupport(channel="#prate", nickname='clyde', realname='ccllyyddee', irc_server='cinqcent.local', port=6667)
     ircbot.connect("cinqcent.local", 6667, "clyde")
     ircbot.start()

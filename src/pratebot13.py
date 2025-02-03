@@ -25,16 +25,22 @@ Todo:
 
 Example:
 
+from Crypto.PublicKey import RSA
+from pratebot13 import *
 s = 'm&4c;;B32a?eKNjw~g*;$0{=kLOVcOcgu2HzbjBk98m2hvhGq~'
 desired_nickname = 'mac1'
-desired_realname = squeeze_da_keez(MY_RSAKEY.public_key())
-irc_server = 'cinqcent.local'
+my_irc_server = 'cinqcent.local'
+my_channel = '#prate'
 from pratebot13 import *
 rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
-svr = PrateBot(channel=my_channel, nickname=desired_nickname,pubkey=MY_RSAKEY.public_key(),
-                irc_server=my_irc_server, port=6667, crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
+svr = PrateBot(channel=my_channel, nickname=desired_nickname,rsa_key=my_rsa_key,
+                store_pubkey_in_realname=True,
+                irc_server=my_irc_server, port=6667,
+                crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
+svr.paused = True
 """
 
 import sys
@@ -42,13 +48,13 @@ import queue
 from time import sleep
 from threading import Thread
 
-from my.globals import MY_RSAKEY
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import squeeze_da_keez
 from _queue import Empty
 from random import randint, choice
 from my.classes.exceptions import MyIrcRealnameTruncationError
-from my.irctools.jaracorocks.miniircd import CryptoOrientedSingleServerIRCBotWithWhoisSupport
+from Crypto.PublicKey import RSA
+from my.irctools.jaracorocks import CryptoOrientedSingleServerIRCBotWithWhoisSupport
 
 
 class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
@@ -67,7 +73,7 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         channel (str): IRC channel to be joined.
         nickname (str): Initial nickname. The real nickname will be changed
             if the IRC server reports a nickname collision.
-        pubkey (RSA.RsaKey): Public key.
+        rsa_key (RSA.RsaKey): RSA key.
         irc_server (str): The IRC server URL.
         port (int): The port number of the IRC server.
         crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
@@ -75,17 +81,19 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
 
     """
 
-    def __init__(self, channel, nickname, pubkey, irc_server, port, crypto_rx_queue, crypto_tx_queue):
-        super().__init__(channel=channel,
-                         nickname=nickname,
-                         fingerprintfunc=squeeze_da_keez,
-                         pubkey=pubkey,
-                         irc_server=irc_server,
-                         port=port,
-                         crypto_rx_queue=crypto_rx_queue,
-                         crypto_tx_queue=crypto_tx_queue)
+    def __init__(self, channel, nickname, rsa_key, store_pubkey_in_realname,
+                 irc_server, port, crypto_rx_queue, crypto_tx_queue):
+        super().__init__(channel,
+                         nickname,
+                         rsa_key,
+                         store_pubkey_in_realname,
+                         irc_server,
+                         port,
+                         crypto_rx_queue,
+                         crypto_tx_queue)
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
+        self.__intended_fingerprint = super().fingerprint
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
 
@@ -93,13 +101,13 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__bot_thread.start()
         while not self.ready:
             sleep(.1)
-        if self.realname != self.intended_realname:
+        if self.__intended_fingerprint != self.fingerprint:
             raise MyIrcRealnameTruncationError("""
 Realname was truncated from %d chars to only %d chars by server. This means
 the server likes to trancate realnames. This, in turn, means you're better off
-switching from CryptoOrientedSingleServerIRCBotWithWhoisSupport to
-RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport as
-the class that PrateBot uses.""" % (len(self.intended_realname), len(self.realname)))
+switching from PubkeyInFullnameCryptoOrientedSingleServerIRCBotWithWhoisSupport to
+FingerprintInFullnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport as
+the class that PrateBot uses.""" % (len(self.fingerprint), len(self.realname)))
 
     @property
     def time_to_quit(self):
@@ -128,22 +136,27 @@ the class that PrateBot uses.""" % (len(self.intended_realname), len(self.realna
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
-        print("Usage: %s <URL> <port> <channel> <nickname>" % sys.argv[0])
-        sys.exit(1)
+#        print("Usage: %s <URL> <port> <channel> <nickname>" % sys.argv[0])
+#        sys.exit(1)
+        my_irc_server = 'cinqcent.local'
+        my_port = 6667
+        my_channel = '#prate'
+        desired_nickname = 'PennyIvy'
     else:
         my_irc_server = sys.argv[1]
         my_port = int(sys.argv[2])
         my_channel = sys.argv[3]
         desired_nickname = sys.argv[4]
 
+    my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
-                                        pubkey=MY_RSAKEY.public_key(),
+                                        rsa_key=my_rsa_key,
+                                        store_pubkey_in_realname=True,
                                         irc_server=my_irc_server, port=my_port,
                                         crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
-    print("*** MY NICK SHOULD BE %s ***" % desired_nickname)
     old_nick = desired_nickname
     while True:
         sleep(randint(5, 10))
@@ -152,7 +165,7 @@ if __name__ == "__main__":
             svr.connection.join(my_channel)
         nick = svr.nickname
         if old_nick != nick:
-            print("*** MY NICK CHANGED TO %s ***" % nick)
+            print("*** MY NICK CHANGED FROM %s TO %s ***" % (old_nick, nick))
             old_nick = nick
         try:
             u = choice(list(svr.homies.keys()))

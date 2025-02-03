@@ -19,7 +19,6 @@ import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO  # + ". " + HAMLET + ". "
-MY_RSAKEY = RSA.generate(1024)
 
 
 def get_my_public_ip_address():

@@ -2,6 +2,15 @@
 Created on Jan 30, 2025
 
 @author: mchobbit
+
+
+from my.irctools.cryptoish import *
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+nickname = 'mac1'
+k = RSA.generate(2048)
+sha1_of_nickname(nickname)
+base64.b85encode(hashlib.sha1(nickname.encode()).digest())
 '''
 
 from random import choice
@@ -11,6 +20,11 @@ from Crypto.Cipher import PKCS1_OAEP
 import base64
 from my.globals.poetry import CICERO
 # from my.classes.readwritelock import ReadWriteLock
+import hashlib
+
+
+def sha1(nickname):
+    return base64.b85encode(hashlib.sha1(nickname.encode()).digest())
 
 
 def skinny_key(k:RSA.RsaKey) -> str:
@@ -90,33 +104,6 @@ def pubkey_to_b64(pubkey):
 def b64_to_pubkey(b64slim):
     return bXX_to_pubkey(b64slim, base64.b64decode)
 
-# def pubkey_to_b85(pubkey):
-#     assert(type(pubkey) is RSA.RsaKey)  # e.g.
-#     hex_key_n = hex(pubkey.n)[2:]
-#     hex_key_e = hex(pubkey.e)[2:]
-#     if len(hex_key_n) % 2 == 1:
-#         hex_key_n = '0' + hex_key_n
-#     if len(hex_key_e) % 2 == 1:
-#         hex_key_e = '0' + hex_key_e
-#     bytekey_n = bytearray.fromhex(hex_key_n)
-#     bytekey_e = bytearray.fromhex(hex_key_e)
-#     b85key_n = base64.b85encode(bytekey_n)
-#     b85key_e = base64.b85encode(bytekey_e)
-#     b85slim = "%s %s" % (b85key_n.decode(), b85key_e.decode())
-#     return b85slim
-#
-#
-# def b85_to_pubkey(b85slim):
-#     _b85key_n, _b85key_e = [r.encode() for r in  b85slim.split(' ')]
-#     _bytekey_n = base64.b85decode(_b85key_n)
-#     _bytekey_e = base64.b85decode(_b85key_e)
-#     _hex_key_n = ''.join('{:02x}'.format(x) for x in _bytekey_n)
-#     _hex_key_e = ''.join('{:02x}'.format(x) for x in _bytekey_e)
-#     _n = int("0x%s" % _hex_key_n, 16)
-#     _e = int("0x%s" % _hex_key_e, 16)
-#     pubkey = RSA.RsaKey(n=_n, e=_e)
-#     return pubkey
-
 
 def rsa_encrypt(message:bytes, public_key) -> bytes:
     """Encrypt a binary block, using a public key.
@@ -132,18 +119,18 @@ def rsa_encrypt(message:bytes, public_key) -> bytes:
     return cipher_rsa.encrypt(message)
 
 
-def rsa_decrypt(cipher_text:bytes) -> bytes:
+def rsa_decrypt(cipher_text:bytes, rsakey) -> bytes:
     """Decrypt a binary block, using a public key.
 
     Args:
         cipher_text: The ciphertext.
+        rsakey: My private RSA key.
 
     Returns:
         The plaintext.
 
     """
-    from my.globals import MY_RSAKEY
-    private_key = MY_RSAKEY.export_key()
+    private_key = rsakey.export_key()
     cipher_rsa = PKCS1_OAEP.new(RSA.import_key(private_key))
     plain_text = cipher_rsa.decrypt(cipher_text)
     return plain_text  # .decode()  # print(f"Decrypted: {plain_text.decode()}")

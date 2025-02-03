@@ -4,7 +4,7 @@ Created on Jan 22, 2025
 
 @author: mchobbit
 
-IRC Tools for testig porpoises
+IRC Tools for test purposes
 
 Todo:
     * Finish docs
@@ -36,7 +36,7 @@ Todo:
 # from my.irctools.jaracorocks import SingleServerIRCBotWithWhoisSupport
 
 
-def simple_irc_client_for_testing_porpoises():
+def superduper_simple_irc_client():
     import socket
     my_input = """cinqcent.local:6667
     clyde
