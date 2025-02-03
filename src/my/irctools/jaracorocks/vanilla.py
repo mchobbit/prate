@@ -142,8 +142,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def on_nicknameinuse(self, _c, _e):
         """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
-        new_nick = generate_irc_handle() + str(randint(11, 99))
-        self.nickname = new_nick
+        self.nickname = generate_irc_handle() + str(randint(11, 99))
 
     def on_welcome(self, c, _e):
         """Triggered when the event-handler receives RPL_WELCOME."""

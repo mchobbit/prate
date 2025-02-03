@@ -100,6 +100,7 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__intended_fingerprint = self._generate_fingerprint(self.initial_nickname)
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
+        sleep(1)
 
     def _start(self):
         self.__bot_thread.start()
@@ -171,28 +172,23 @@ if __name__ == "__main__":
                                         irc_server=my_irc_server, port=my_port,
                                         crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
-    sleep(5)
+    sleep(5)  # Why?
     old_nick = desired_nickname
     while True:
-        sleep(randint(5, 10))
+        if not svr.connected:
+            print("Waiting for server to be ready")
+            sleep(1)
+            continue
         if my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
+            continue
         nick = svr.nickname
         if old_nick != nick:
             print("*** MY NICK CHANGED FROM %s TO %s ***" % (old_nick, nick))
             old_nick = nick
-            print("OUR NICKNAME HAS CHANGED FROM %s TO %s. WE MUST DISCONNECT, RECONNECT, AND THUS SPECIFY A NEW FINGERPRINT." % (old_nick, nick))
-            svr.disconnect()
-            del svr
-            svr = PrateBot(channel=my_channel, nickname=nick,
-                                                rsa_key=my_rsa_key,
-                                                is_pubkey_in_realname=is_pubkey_in_realname,
-                                                irc_server=my_irc_server, port=my_port,
-                                                crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
-            sleep(5)
-            if svr.nickname != nick:
-                raise MyIrcConnectionError("Well, that was a bust.")
+            if svr.fingerprint != svr._generate_fingerprint(nick):
+                raise ValueError("FINGERPRINT SNAFU")
         try:
             u = choice(list(svr.homies.keys()))
         except IndexError:
@@ -208,5 +204,4 @@ if __name__ == "__main__":
                     print(the_user, "==>", the_blk)
             except Empty:
                 pass
-
         sleep(randint(5, 10))

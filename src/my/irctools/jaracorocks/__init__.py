@@ -140,6 +140,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         finally:
             self.__homies_lock.release_write()
 
+    def on_nicknameinuse(self, _c, _e):
+        """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
+        new_nick = self.nickname + str(randint(11, 99))  # new_nick = generate_irc_handle() + str(randint(11, 99))
+        old_fprint = self._realname
+        new_fprint = self._generate_fingerprint(new_nick)
+        print("Fingerprint was %s; soon, it'll be %s" % (old_fprint, new_fprint))
+        self._realname = new_fprint
+        self.nickname = new_nick
+
     def __crypto_tx_loop(self):
         """Pull from the queue. Encrypt each item. Send it."""
         while True:
