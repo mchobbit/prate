@@ -31,6 +31,7 @@ from random import randint, choice
 import irc.bot
 from time import sleep
 import string
+from my.classes.exceptions import MyIrcStillConnectingError
 try:
     from my.stringtools import generate_irc_handle  # @UnusedImport
 except ImportError:
@@ -104,8 +105,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     @property
     def nickname(self):
         """The nickname that the server currently uses for me."""
-        while not hasattr(self.connection, 'real_nickname'):
-            sleep(.1)
+        if not hasattr(self, 'connection'):
+            raise MyIrcStillConnectingError("There's no connection yet: I'm still connecting.")
+        if not hasattr(self.connection, 'real_nickname'):
+            raise MyIrcStillConnectingError("I don't know my nickname yet: I'm still connecting.")
         return self.connection.get_nickname()
 
     @nickname.setter

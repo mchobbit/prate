@@ -24,7 +24,10 @@ Error
         StillAwaitingCachedValue
     MyIrcError
         MyIrcConnectionError
+            MyIrcStillConnectingError
             MyIrcRealnameTruncationError
+            MyIrcFingerprintMismatchCausedByServer
+            MyIrcNicknameChangedByServer
 
 
 Example:
@@ -203,8 +206,32 @@ class MyIrcConnectionError(MyIrcError):
         super().__init__(message)
 
 
+class MyIrcStillConnectingError(MyIrcConnectionError):
+    """Still connecting (wait a few seconds, please)"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
 class MyIrcRealnameTruncationError(MyIrcConnectionError):
     """If the realname is truncated by the server"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcFingerprintMismatchCausedByServer(MyIrcConnectionError):
+    """My local fingerprint and the server's copy of my fingerprint do not match, perhaps because my nickname changed somewhere"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcNicknameChangedByServer(MyIrcConnectionError):
+    """If the nickname is CHANGED by the server, probably because of a nickname collision"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 

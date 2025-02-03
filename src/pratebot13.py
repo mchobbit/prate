@@ -36,11 +36,15 @@ rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
 my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
 svr = PrateBot(channel=my_channel, nickname=desired_nickname,rsa_key=my_rsa_key,
-                store_pubkey_in_realname=True,
+                is_pubkey_in_realname=True,
                 irc_server=my_irc_server, port=6667,
                 crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
 svr.paused = True
+user = 'mac2'
+svr.homies[user].keyless = False
+svr.homies[user].didwelook = False
+svr.scan_a_user_for_fingerprints_publickeys_etc('mac2')
 """
 
 import sys
@@ -52,7 +56,7 @@ from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import squeeze_da_keez
 from _queue import Empty
 from random import randint, choice
-from my.classes.exceptions import MyIrcRealnameTruncationError
+from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError, MyIrcFingerprintMismatchCausedByServer, MyIrcNicknameChangedByServer
 from Crypto.PublicKey import RSA
 from my.irctools.jaracorocks import CryptoOrientedSingleServerIRCBotWithWhoisSupport
 
@@ -81,19 +85,19 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
 
     """
 
-    def __init__(self, channel, nickname, rsa_key, store_pubkey_in_realname,
+    def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
                  irc_server, port, crypto_rx_queue, crypto_tx_queue):
         super().__init__(channel,
                          nickname,
                          rsa_key,
-                         store_pubkey_in_realname,
+                         is_pubkey_in_realname,
                          irc_server,
                          port,
                          crypto_rx_queue,
                          crypto_tx_queue)
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
-        self.__intended_fingerprint = super().fingerprint
+        self.__intended_fingerprint = self._generate_fingerprint(self.initial_nickname)
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
 
@@ -101,13 +105,22 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__bot_thread.start()
         while not self.ready:
             sleep(.1)
-        if self.__intended_fingerprint != self.fingerprint:
+        current_fprint = self.fingerprint
+        shouldbe_fprint = self.__intended_fingerprint
+        if len(current_fprint) < len(shouldbe_fprint):
             raise MyIrcRealnameTruncationError("""
 Realname was truncated from %d chars to only %d chars by server. This means
 the server likes to trancate realnames. This, in turn, means you're better off
 switching from PubkeyInFullnameCryptoOrientedSingleServerIRCBotWithWhoisSupport to
 FingerprintInFullnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport as
-the class that PrateBot uses.""" % (len(self.fingerprint), len(self.realname)))
+the class that PrateBot uses.""" % (len(shouldbe_fprint), len(current_fprint)))
+        if current_fprint != shouldbe_fprint:
+            print("Current fingerprint:", current_fprint)
+            print("Should be:          ", shouldbe_fprint)
+            if self.is_pubkey_in_realname is True:
+                raise MyIrcFingerprintMismatchCausedByServer("There's a mismatch between my intended public key and my intended public key. THAT MAKES NO SENSE.")
+            else:
+                raise MyIrcNicknameChangedByServer("There's a mismatch between my intended public key and my intended public key. THAT MAKES NO SENSE.")
 
     @property
     def time_to_quit(self):
@@ -141,7 +154,7 @@ if __name__ == "__main__":
         my_irc_server = 'cinqcent.local'
         my_port = 6667
         my_channel = '#prate'
-        desired_nickname = 'PennyIvy'
+        desired_nickname = 'mac1'
     else:
         my_irc_server = sys.argv[1]
         my_port = int(sys.argv[2])
@@ -151,15 +164,17 @@ if __name__ == "__main__":
     my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
+    is_pubkey_in_realname = True
     svr = PrateBot(channel=my_channel, nickname=desired_nickname,
                                         rsa_key=my_rsa_key,
-                                        store_pubkey_in_realname=True,
+                                        is_pubkey_in_realname=is_pubkey_in_realname,
                                         irc_server=my_irc_server, port=my_port,
                                         crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
+    sleep(5)
     old_nick = desired_nickname
     while True:
-        sleep(randint(15, 20))
+        sleep(randint(5, 10))
         if my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
@@ -167,6 +182,17 @@ if __name__ == "__main__":
         if old_nick != nick:
             print("*** MY NICK CHANGED FROM %s TO %s ***" % (old_nick, nick))
             old_nick = nick
+            print("OUR NICKNAME HAS CHANGED FROM %s TO %s. WE MUST DISCONNECT, RECONNECT, AND THUS SPECIFY A NEW FINGERPRINT." % (old_nick, nick))
+            svr.disconnect()
+            del svr
+            svr = PrateBot(channel=my_channel, nickname=nick,
+                                                rsa_key=my_rsa_key,
+                                                is_pubkey_in_realname=is_pubkey_in_realname,
+                                                irc_server=my_irc_server, port=my_port,
+                                                crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+            sleep(5)
+            if svr.nickname != nick:
+                raise MyIrcConnectionError("Well, that was a bust.")
         try:
             u = choice(list(svr.homies.keys()))
         except IndexError:
@@ -181,5 +207,6 @@ if __name__ == "__main__":
                     assert("HELLO from" in the_blk.decode())
                     print(the_user, "==>", the_blk)
             except Empty:
-                continue
+                pass
 
+        sleep(randint(5, 10))
