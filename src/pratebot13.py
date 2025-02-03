@@ -97,7 +97,6 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
         self.__intended_fingerprint = self.generate_fingerprint(self.initial_nickname)
-        print
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
         sleep(1)
