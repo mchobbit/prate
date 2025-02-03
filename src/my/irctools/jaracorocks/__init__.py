@@ -41,7 +41,7 @@ from my.globals import MY_IP_ADDRESS
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez
 from _queue import Empty
-from random import randint, choice
+from random import randint, choice, shuffle
 from my.classes.homies import HomiesDct
 from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError, MyIrcStillConnectingError
 from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
@@ -182,7 +182,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 sleep(.2)
             else:
                 irc_channel_members = list(self.channels[self.initial_channel].users())
-                irc_channel_members.sort()
                 new_users = [str(u) for u in irc_channel_members if u not in the_userlist and str(u) != self.nickname]
                 dead_users = [str(u) for u in the_userlist if u not in irc_channel_members and str(u) != self.nickname]
                 for user in dead_users:
@@ -192,8 +191,9 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 for user in new_users:
                     the_userlist += [user]
                     print("New user: %s" % user)
+                shuffle(new_users)
                 for user in [str(u) for u in the_userlist if str(u) != self.nickname]:
-                    self.scan_a_user_for_fingerprints_publickeys_etc(user)  #
+                    self.scan_a_user_for_fingerprints_publickeys_etc(user)
                 sleep(randint(4, 6))
 
     def scan_a_user_for_fingerprints_publickeys_etc(self, user):
