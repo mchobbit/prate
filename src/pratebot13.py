@@ -55,9 +55,10 @@ from threading import Thread
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
 from random import randint, choice
-from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcFingerprintMismatchCausedByServer, MyIrcNicknameChangedByServer
+from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcFingerprintMismatchCausedByServer
 from Crypto.PublicKey import RSA
 from my.irctools.jaracorocks import CryptoOrientedSingleServerIRCBotWithWhoisSupport
+from my.stringtools import generate_irc_handle
 
 
 class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
@@ -96,32 +97,16 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
                          crypto_tx_queue)
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
-        self.__intended_fingerprint = self.generate_fingerprint(self.initial_nickname)
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
         self._start()
         sleep(1)
 
     def _start(self):
+#        shouldbe_fprint = self.generate_fingerprint(self.initial_nickname)
         print("Starting our connection to server")
         self.__bot_thread.start()
         while not self.ready:
             sleep(.1)
-        current_fprint = self.generate_fingerprint(self.nickname)
-        shouldbe_fprint = self.__intended_fingerprint
-        if len(current_fprint) < len(shouldbe_fprint):
-            raise MyIrcRealnameTruncationError("""
-Realname was truncated from %d chars to only %d chars by server. This means
-the server likes to trancate realnames. This, in turn, means you're better off
-switching from PubkeyInFullnameCryptoOrientedSingleServerIRCBotWithWhoisSupport to
-FingerprintInFullnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport as
-the class that PrateBot uses.""" % (len(shouldbe_fprint), len(current_fprint)))
-        if current_fprint != shouldbe_fprint:
-            print("Current fingerprint:", current_fprint)
-            print("Should be:          ", shouldbe_fprint)
-            if self.is_pubkey_in_realname is True:
-                raise MyIrcFingerprintMismatchCausedByServer("There's a mismatch between my intended public key and my intended public key. THAT MAKES NO SENSE.")
-            else:
-                raise MyIrcNicknameChangedByServer("There's a mismatch between my intended public key and my intended public key. THAT MAKES NO SENSE.")
 
     @property
     def time_to_quit(self):
@@ -165,45 +150,48 @@ if __name__ == "__main__":
     my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
-    put_pubkey_in_realname_field = False
-    svr = PrateBot(channel=my_channel, nickname=desired_nickname,
-                                        rsa_key=my_rsa_key,
-                                        is_pubkey_in_realname=put_pubkey_in_realname_field,
-                                        irc_server=my_irc_server, port=my_port,
-                                        crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
-
-    sleep(5)  # Why?
+    put_pubkey_in_realname_field = True
+    svr = None
     old_nick = desired_nickname
+    nick = old_nick
     while True:
-        if not svr.connected:
+        if svr is None:
+            try:
+                print("*** CONNECTING AS %s ***" % nick)
+                svr = PrateBot(channel=my_channel, nickname=nick,
+                                            rsa_key=my_rsa_key,
+                                            is_pubkey_in_realname=put_pubkey_in_realname_field,
+                                            irc_server=my_irc_server, port=my_port,
+                                            crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+            except MyIrcFingerprintMismatchCausedByServer:
+                print("Server changed my nickname, thus making my fingerprint out of date. Reconnecting...")
+                svr = None
+        elif svr.generate_fingerprint(svr.nickname) != svr.realname:
+            print("FINGERPRINT STAFU. It's time to disconnect and reconnected.")
+            svr.shutitdown()
+            print("Please ignore those error messages.")
+            svr = None
+            nick = nick + str(randint(0, 9))
+        elif not svr.connected:
             print("Waiting for server to be ready")
             sleep(1)
-            continue
-        if my_channel not in svr.channels:
+        elif my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
-            continue
-        nick = svr.nickname
-        if old_nick != nick:
-            print("*** MY NICK CHANGED FROM %s TO %s ***" % (old_nick, nick))
-            old_nick = nick
-            if svr.realname != svr.generate_fingerprint(nick):
-                raise ValueError("FINGERPRINT SNAFU")
-            else:
-                print("...and our fingerprint is still golden.")
-        try:
-            u = choice(list(svr.homies.keys()))
-        except IndexError:
-            pass
         else:
-            svr.show_users_dct_info()
-            if svr.homies[u].ipaddr is not None:
-                tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
             try:
-                while True:
-                    the_user, the_blk = rx_q.get_nowait()
-                    assert("HELLO from" in the_blk.decode())
-                    print(the_user, "==>", the_blk)
-            except Empty:
+                u = choice(list(svr.homies.keys()))
+            except IndexError:
                 pass
-        sleep(randint(5, 10))
+            else:
+                svr.show_users_dct_info()
+                if svr.homies[u].ipaddr is not None:
+                    tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
+                try:
+                    while True:
+                        the_user, the_blk = rx_q.get_nowait()
+                        assert("HELLO from" in the_blk.decode())
+                        print(the_user, "==>", the_blk)
+                except Empty:
+                    pass
+            sleep(randint(20, 50) / 10.)
