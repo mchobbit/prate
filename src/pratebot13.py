@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     old_nick = desired_nickname
     while True:
-        sleep(randint(5, 10))
+        sleep(randint(15, 20))
         if my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
