@@ -96,7 +96,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__crypto_tx_thread.start()
         self.paused = False
 
-    def _generate_fingerprint(self, user=None):
+    def generate_fingerprint(self, user=None):
         if self.is_pubkey_in_realname:
             return squeeze_da_keez(self.rsa_key.public_key())
         else:
@@ -107,10 +107,10 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     @property
     def fingerprint(self):
         if self.is_pubkey_in_realname:
-            return self._generate_fingerprint()
+            return self.generate_fingerprint()
         else:
             try:
-                return self._generate_fingerprint(self.nickname)
+                return self.generate_fingerprint(self.nickname)
             except (MyIrcStillConnectingError, AttributeError, ValueError):
                 return None
 
@@ -144,7 +144,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
         new_nick = self.nickname + str(randint(11, 99))  # new_nick = generate_irc_handle() + str(randint(11, 99))
         old_fprint = self._realname
-        new_fprint = self._generate_fingerprint(new_nick)
+        new_fprint = self.generate_fingerprint(new_nick)
         print("Fingerprint was %s; soon, it'll be %s" % (old_fprint, new_fprint))
         self._realname = new_fprint
         self.nickname = new_nick
@@ -277,13 +277,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.homies[user].didwelook = True
 
     def __load_homie_pubkey_from_negotiation_via_whois_fingerprint(self, user):
-        his_fprint = self.fingerprint
-        shouldbe_fprint = self._generate_fingerprint(user)
-        print("%s has a fingerprint of %s; if he's a homie, it would be %s" % (user, his_fprint, shouldbe_fprint))
+        his_fprint = self.call_whois_and_wait_for_response(user).split(' ', 4)[-1]
+        shouldbe_fprint = self.generate_fingerprint(user)
+#        print("%s has a fingerprint of %s; if he's a homie, it would be %s" % (user, his_fprint, shouldbe_fprint))
         if his_fprint == shouldbe_fprint:
             print("I do believe that %s is a homie" % user)
             print("I'll initiate a public key exchange now.")
             self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
+        else:
+            print("%s is not a homie." % user)
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
