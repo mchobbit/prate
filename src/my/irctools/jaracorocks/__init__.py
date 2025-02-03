@@ -373,7 +373,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             print("_txfern %s Failed to decode the encrypted fernet key in the stem. Is his copy of my public key out of date?" % user)
             print("Requesting a public key from %s" % user)
             self.homies[user].remotely_supplied_fernetkey = None
-            self.privmsg(user, "%s%s" % (_TXFE_, squeeze_da_keez(self.rsa_key)))
+            self.privmsg(user, "%s%s" % (_TXFE_, squeeze_da_keez(self.rsa_key.public_key())))
         else:
             try:
                 self.homies[user].remotely_supplied_fernetkey = decrypted_remote_fernetkey
@@ -404,7 +404,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             print("%s used the wrong fernet key to encrypt a message. To rectify, I'll initiate a new fernet key exchange." % sender)
             self.homies[sender].remotely_supplied_fernetkey = None
             self.homies[sender].pubkey = None
-            self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key)))
+            self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
 
     def _receive_and_decrypt_message(self, sender, stem):
         if self.homies[sender].fernetkey is None:
@@ -418,7 +418,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("Warning - txtxtx - failed to decode %s's message (key bad? ciphertext bad?)." % sender)
             except KeyError:
                 print("Warning - txtxtx - failed to decode %s's message (fernet key not found?). Is his copy of my public key out of date?" % sender)
-                self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key)))
+                self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
             else:
                 self.__crypto_rx_queue.put([sender, decoded_msg.encode()])
 
