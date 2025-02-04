@@ -41,7 +41,7 @@ except ImportError:
     print("generate_irc_handle() is missing. Fine. We'll do it the hard way.")
     generate_irc_handle = lambda: ''.join(choice(string.ascii_lowercase) for _ in range(16))
 
-WHOIS_TIMEOUT = 15
+ANTIOVERLOAD_CACHE_TIME = 15
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -83,10 +83,12 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
         if type(realname) is not str:
             raise ValueError("Realname should be a string, not", type(realname))
-        self.__whois_request_cache = MyTTLCache(WHOIS_TIMEOUT)
+        self.__privmsg_cache = MyTTLCache(ANTIOVERLOAD_CACHE_TIME)  # Don't send the same private message to the same person more than once every ten seconds
+        self.__whois_request_cache = MyTTLCache(ANTIOVERLOAD_CACHE_TIME)
         self.__whois_request_c_hits_v_misses = [0, 0]
         self.__whois_request_cache_mutex = Lock()
         self.__initial_nickname = nickname
+        self.__initial_realname = realname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
         self.__whois_results_dct = {}  # Messages incoming from reactor, re: /whois, will be stored here
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
@@ -180,17 +182,16 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         else:
             c.notice(nick, "Unknown command => " + cmd)
 
-    def call_whois_and_wait_for_response(self, user, timeout=WHOIS_TIMEOUT):
+    def call_whois_and_wait_for_response(self, user, timeout=10):
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
             self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
         else:
             self.__whois_request_c_hits_v_misses[0] += 1
             if self.__whois_request_c_hits_v_misses[0] % 50 == 0:
-                hits = self.__whois_request_c_hits_v_misses[0]
-                misses = self.__whois_request_c_hits_v_misses[1]
+                hits, misses = self.__whois_request_c_hits_v_misses
                 percentage = hits * 100 / (hits + misses)
-                print("Our whois cache has a %d%% hit rate" % percentage)
+#                print("Our whois cache has a %d%% hit rate" % percentage)
         return self.__whois_request_cache.get(user)
 
     def __call_whois_and_wait_for_response(self, user, timeout):
@@ -206,6 +207,17 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
                 except KeyError:
                     sleep(.1)  # Still waiting for answer
             raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
+
+    def privmsg(self, user, msg):
+        """Send a private message on IRC. Then, pause; don't overload the server."""
+
+        cached_data = (user, msg)
+        if self.__privmsg_cache.get(cached_data) is None:
+            self.__privmsg_cache.set(cached_data, cached_data)
+            self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
+            sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
+#        else:
+#            print("You tried to send the same message to %s twice in quick succession. I choose to send it only once." % user)
 
 ####################################################################################
 
