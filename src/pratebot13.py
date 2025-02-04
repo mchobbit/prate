@@ -194,4 +194,4 @@ if __name__ == "__main__":
                         print(the_user, "==>", the_blk)
                 except Empty:
                     pass
-            sleep(randint(20, 50) / 10.)
+            sleep(randint(2, 5) / 10.)
