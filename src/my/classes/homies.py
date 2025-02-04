@@ -213,6 +213,13 @@ class Homie:
 
 
 class HomiesDct(dict):
+    """Dictionary of Homies
+
+    This is a barely threadsafe, badly written subclass of dictionary class.
+    Its one redeeming feature is its lazy attitude to new keys: if the user
+    tries to use a nonexistent key to read/write a nonexistent item, the
+    key entry is automatically created first.
+    """
 
     def __setitem__(self, key, item):
         if type(key) is not str:

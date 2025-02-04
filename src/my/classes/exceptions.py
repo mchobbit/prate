@@ -29,7 +29,6 @@ Error
             MyIrcFingerprintMismatchCausedByServer
             MyIrcNicknameChangedByServer
 
-
 Example:
     n/a
 
