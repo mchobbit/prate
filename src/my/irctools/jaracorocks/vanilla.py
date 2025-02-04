@@ -110,6 +110,11 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         return self.__initial_nickname
 
     @property
+    def initial_realname(self):
+        """The realname that the server was meant to use for me."""
+        return self.__initial_realname
+
+    @property
     def initial_channel(self):
         """The channel that the server was meant to join for me."""
         return self.__initial_channel
@@ -130,8 +135,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     @property
     def realname(self):
-        """The realname that was specified by me for the server."""
-        return self._realname
+        """The realname that the server currently has for me."""
+        return self.call_whois_and_wait_for_response(self.nickname).split(' ', 4)[-1]
 
     @property
     def connected(self):
