@@ -45,6 +45,9 @@ from random import randint, choice, shuffle
 from my.classes.homies import HomiesDct
 from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError, MyIrcStillConnectingError
 from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
+import datetime
+from my.classes import MyTTLCache
+import time
 
 _RQPK_ = "RQPK"
 _TXPK_ = "TXPK"
@@ -456,9 +459,14 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
 
     def _receive_and_decrypt_message(self, sender, stem):
+        success = False
         if self.homies[sender].fernetkey is None:
             print("Cannot decipher message from %s: we have no fernet key." % sender)
             print("This might mean I'm using someone's ex-nickname & %s doesn't realize that." % sender)
+            print("To calm him down a bit, I'm sending him a request for his public key.")
+            if self.is_pubkey_in_realname:
+                print("Granted, we store our public keys in our realnames, but my /whois entry might be out of date. Who knows? So, let's skip that & assume the worst.")
+            print("Anyhow, let's request a new public key from him & go from there.")
         else:
             try:
                 cipher_suite = Fernet(self.homies[sender].fernetkey)
@@ -467,9 +475,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("Warning - txtxtx - failed to decode %s's message (key bad? ciphertext bad?)." % sender)
             except KeyError:
                 print("Warning - txtxtx - failed to decode %s's message (fernet key not found?). Is his copy of my public key out of date?" % sender)
-                self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
             else:
                 self.__crypto_rx_queue.put([sender, decoded_msg.encode()])
+                success = True
+        # If you get here, it means we failed to decode the incoming data
+        if not success:
+            self.homies[sender].remotely_supplied_fernetkey = None
+            self.homies[sender].pubkey = None
+            self.privmsg(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
+            self.connection.reactor.process_once()
 
     @property
     def crypto_empty(self):
@@ -484,15 +498,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Get next record from crypto rx queue. Throw exception if queue is empty."""
         return self.__crypto_rx_queue.get_nowait()
 
-    def _receiving_his_IP_address(self, user, stem):
-        """Receive the user's IP address."""
-        if self.homies[user].fernetkey is None:
-            print("I do not possess %s's fernetkey. Please negotiate one" % user)
+    def _receiving_his_IP_address(self, sender, stem):
+        """Receive the sender's IP address."""
+        if self.homies[sender].fernetkey is None:
+            print("I do not possess %s's fernetkey. Please negotiate one" % sender)
             return
-        cipher_suite = Fernet(self.homies[user].fernetkey)
+        cipher_suite = Fernet(self.homies[sender].fernetkey)
         decoded_msg = cipher_suite.decrypt(stem)
         ipaddr = decoded_msg.decode()
-        self.homies[user].ipaddr = ipaddr
+        self.homies[sender].ipaddr = ipaddr
         # EXCEPTION MIGHT BE THROWN. It would be InvalidKey.
 
     def encrypt_fernetkey_for_user(self, user, fernetkey):
