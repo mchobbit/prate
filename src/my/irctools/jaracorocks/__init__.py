@@ -170,16 +170,18 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def __scanusers_worker_loop(self):
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         the_userlist = []
+        irc_channel_members = None
         while not self.__stopstopstop:
             if not self.ready:
                 print("Waiting for the bot to be ready...")
                 while not self.ready:
                     sleep(.1)
                 print("Bot is ready now. Proceeding...")
-            elif self.paused:
-                sleep(.2)
-            else:
+            elif datetime.datetime.now().second % 15 == 0:
                 irc_channel_members = list(self.channels[self.initial_channel].users())
+            elif irc_channel_members is None:
+                pass
+            else:
                 new_users = [str(u) for u in irc_channel_members if u not in the_userlist and str(u) != self.nickname]
                 dead_users = [str(u) for u in the_userlist if u not in irc_channel_members and str(u) != self.nickname]
                 for user in dead_users:
@@ -188,16 +190,19 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     the_userlist.remove(user)
                 for user in new_users:
                     the_userlist += [user]
-                    print("New user: %s" % user)
                 shuffle(new_users)
-                for user in [str(u) for u in the_userlist if str(u) != self.nickname]:
-                    self.scan_a_user_for_fingerprints_publickeys_etc(user)
-                for _ in range(randint(40, 60)):
-                    sleep(.1)
-                    if self.__stopstopstop:
-                        break
+                new_users_str = ' '.join([r for r in new_users]).strip(' ')
+                if new_users_str != '':
+                    print("New users", new_users_str)
+                the_users_we_care_about = [str(u) for u in the_userlist if str(u) != self.nickname]
+                self.__scan_these_users_for_fingerprints_publickeys_etc(the_users_we_care_about)
+
+    def __scan_these_users_for_fingerprints_publickeys_etc(self, the_users_we_care_about):
+        for user in the_users_we_care_about:
+            self.scan_a_user_for_fingerprints_publickeys_etc(user)
 
     def scan_a_user_for_fingerprints_publickeys_etc(self, user):
+        """Scan this user for a fingerprint, a public key, fernet keys, etc."""
         with self.__scan_a_user_mutex:
             self.__scan_a_user_for_fingerprints_publickeys_etc(user)
 
@@ -223,7 +228,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             assert(not self.homies[user].keyless)
             assert(self.homies[user].pubkey is not None)
             assert(self.homies[user].fernetkey is not None)
-            print("Initiating IP address exchange with %s" % user)
+#            print("Initiating IP address exchange with %s" % user)
             self.privmsg(user, "%s%s" % (_RQIP_, squeeze_da_keez(self.rsa_key.public_key())))  # Request his IP address; in due course, he'll send it via TXIPAD.
         else:
             return user  # He's kosher
