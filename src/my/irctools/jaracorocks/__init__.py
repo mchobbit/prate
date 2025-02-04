@@ -319,7 +319,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         else:
             raise ValueError("pubkey and/or fernetkey missing")
 
-    def show_users_dct_info(self):
+    def show_users_dct_info(self, force=False):
         """Write the list of our users (and their crypto info) to screen."""
         self.__homies_lock.acquire_read()
         outstr = "\n%-30s  %s   <==pubkey     vv---fernet key---vv     IP==>   %s" % (self.nickname, squeeze_da_keez(self.rsa_key.public_key())[-12:-8], MY_IP_ADDRESS)
@@ -338,7 +338,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 outstr += "\n%-30s  %s   %s   nope" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode())
             else:
                 outstr += "\n%-30s  %s   %s   %s" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode(), self.homies[user].ipaddr)
-        if outstr != self.__prev_showtxt_op:
+        if outstr != self.__prev_showtxt_op or force is True:
             self.__prev_showtxt_op = outstr
             print(outstr)
         self.__homies_lock.release_read()
