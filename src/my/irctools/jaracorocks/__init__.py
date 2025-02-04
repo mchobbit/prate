@@ -377,12 +377,12 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         txt = e.arguments[0]
         cmd = txt[:4]
         stem = txt[4:]
-        codes_and_calls = {_RQPK_: self._request_public_key_exchange,
-                           _TXPK_: self._transmit_my_public_key,
-                           _RQFE_: self._request_fernet_key_exchange,
-                           _TXFE_: self._transmit_my_fernet_key,
-                           _RQIP_: self._request_his_ip_address,
-                           _TXIP_: self._transmit_my_ip_address,
+        codes_and_calls = {_RQPK_: self._he_initiated_a_public_key_exchange,
+                           _TXPK_: self._he_sent_me_his_public_key_in_response,
+                           _RQFE_: self._he_initiated_a_fernet_key_negotiation,
+                           _TXFE_: self._he_sent_me_a_fernet_key_accordingly,
+                           _RQIP_: self._he_requested_my_ip_address_and_enclosed_his_own,
+                           _TXIP_: self._he_sent_me_his_ip_address_because_i_asked,
                            _TXTX_: self._receive_and_decrypt_message}
         if sender == self.nickname:
             raise ValueError("WHY AM I TALKING TO MYSELF?")
@@ -391,20 +391,20 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         else:
             print("What does this mean? => >>>%s<<<" % txt)
 
-    def _request_public_key_exchange(self, sender, stem):  # print("We received %s's public key and a request for a copy of ours." % sender)
+    def _he_initiated_a_public_key_exchange(self, sender, stem):  # print("We received %s's public key and a request for a copy of ours." % sender)
         self.homies[sender].pubkey = unsqueeze_da_keez(stem)  # self.load_homie_pubhey etc.
         self.homies[sender].keyless = False
         self.homies[sender].didwelook = True
         self.homies[sender].ipaddr = None
         self.privmsg(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))  # print("We are sending %s a copy of our public key." % sender)
 
-    def _transmit_my_public_key(self, sender, stem):  # print("We received a public key from %s" % sender)
+    def _he_sent_me_his_public_key_in_response(self, sender, stem):  # print("We received a public key from %s" % sender)
         self.homies[sender].pubkey = unsqueeze_da_keez(stem)
         self.homies[sender].keyless = False
         self.homies[sender].didwelook = True
         self.homies[sender].ipaddr = None
 
-    def _request_fernet_key_exchange(self, sender, stem):  # print("We received %s's fernet key and a request for a copy of ours." % sender)
+    def _he_initiated_a_fernet_key_negotiation(self, sender, stem):  # print("We received %s's fernet key and a request for a copy of ours." % sender)
         self.save_pubkey_from_stem(sender, stem)
         if self.homies[sender].keyless is True or self.homies[sender].pubkey is None:
             print("I can't send %s to %s: he's keyless" % (_RQFE_, sender))
@@ -412,36 +412,40 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 #            print("%s has initiated fernet key exchange." % sender)
             self.privmsg(sender, "%s%s" % (_TXFE_, self.encrypt_fernetkey_for_user(sender, self.homies[sender].locally_generated_fernetkey)))
 
-    def _transmit_my_fernet_key(self, user, stem):
-        """If cmd==TXFERN is received, receive the user's fernet key & save it to our homie database."""
+    def _he_sent_me_a_fernet_key_accordingly(self, sender, stem):
+        """If cmd==TXFERN is received, receive the sender's fernet key & save it to our homie database."""
         try:
             decrypted_remote_fernetkey = rsa_decrypt(base64.b64decode(stem), self.rsa_key)
         except ValueError:
-            print("_txfern %s Failed to decode the encrypted fernet key in the stem. Is his copy of my public key out of date?" % user)
-            print("Requesting a public key from %s" % user)
-            self.homies[user].remotely_supplied_fernetkey = None
-            self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
+            print("_txfern %s Failed to decode the encrypted fernet key in the stem. Is his copy of my public key out of date?" % sender)
+            print("Requesting a public key from %s" % sender)
+            self.homies[sender].remotely_supplied_fernetkey = None
+            self.privmsg(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
         else:
             try:
-                self.homies[user].remotely_supplied_fernetkey = decrypted_remote_fernetkey
+                self.homies[sender].remotely_supplied_fernetkey = decrypted_remote_fernetkey
             except AttributeError:
-                print("I cannot update %s's remotely supplied fernetkey: I already have one." % user)
+                print("I cannot update %s's remotely supplied fernetkey: I already have one." % sender)
             else:
-                if self.homies[user].fernetkey is not None:
-                    pass  # print("YAY! I have %s's fernetkey!" % user)
+                if self.homies[sender].fernetkey is not None:
+                    pass  # print("YAY! I have %s's fernetkey!" % sender)
 
-    def _request_his_ip_address(self, sender, stem):
+    def _he_requested_my_ip_address_and_enclosed_his_own(self, sender, stem):
         self.save_pubkey_from_stem(sender, stem)  # He also sends us his public key, just in case our copy is outdated
         if self.homies[sender].keyless is True:
             print("%s requests my IP address, but he's keyless." % sender)
         elif self.homies[sender].pubkey is None:
-            print("%s requests my IP address, but I don't have his public key." % sender)
+            print("%s requests my IP address, but I don't have his public key. I'll ask for it." % sender)
+            self.homies[sender].remotely_supplied_fernetkey = None
+            self.privmsg(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
         elif self.homies[sender].fernetkey is None:
-            print("%s requests my IP address, but we don't have a fernet key yet." % sender)
+            print("%s requests my IP address, but we don't have a fernet key yet. I'll ask for his." % sender)
+            self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
         else:
-            self.privmsg(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))  # print("%s requests my IP address, and I'm sending it." % sender)
+            print("%s requests my IP address, and I'm sending it." % sender)
+            self.privmsg(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
 
-    def _transmit_my_ip_address(self, sender, stem):
+    def _he_sent_me_his_ip_address_because_i_asked(self, sender, stem):
         try:
             self._receiving_his_IP_address(sender, stem)
             print("%s sent me his IP address. Yay." % sender)
