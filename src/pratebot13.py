@@ -155,6 +155,7 @@ if __name__ == "__main__":
     old_nick = desired_nickname
     nick = old_nick
     while True:
+        sleep(randint(1, 20) / 10.)
         if svr is None:
             try:
                 print("*** CONNECTING AS %s ***" % nick)
@@ -194,4 +195,3 @@ if __name__ == "__main__":
                         print(the_user, "==>", the_blk)
                 except Empty:
                     pass
-            sleep(randint(2, 5) / 10.)
