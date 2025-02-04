@@ -59,7 +59,7 @@ _TXTX_ = "TXTX"
 
 
 def groovylsttotxt(lst):
-    return ('%d items' % len(lst)) if len(lst) > 5 else ' '.join(lst)
+    return ('%3d users' % len(lst)) if len(lst) > 5 else ' '.join(lst)
 
 
 class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSupport):
@@ -324,11 +324,11 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             else:
                 kosher_homies += [user]
         outstr += """
-Nope   : %s
-Unknown: %s
-PK only: %s
-PK+Fern: %s
-Kosher : %s
+Nope   :%s
+Unknown:%s
+PK only:%s
+PK+Fern:%s
+Kosher :%s
 """ % (groovylsttotxt(nope), groovylsttotxt(unknown),
        groovylsttotxt(pubkey_only), groovylsttotxt(PK_plus_fern),
        groovylsttotxt(kosher_homies))
@@ -502,7 +502,7 @@ Kosher : %s
         self.homies[user].keyless = False
         self.homies[user].pubkey = None
         print("%-20s appears to be a homie. I am requesting his public key" % user)
-        self.connection.reactor.process_once()  # FIXME: Is this necessary?
+        self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
 
     def encrypt_fernetkey_for_user(self, user, fernetkey):
         """Encrypt the user's fernet key with the user's public key."""
