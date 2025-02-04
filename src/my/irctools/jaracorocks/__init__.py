@@ -102,11 +102,13 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.paused = False
 
     def shutitdown(self):
+        """Trigger the shutdown of all our processes."""
         self.__stopstopstop = True
         self.__scanusers_thread.join()
         self.__crypto_tx_thread.join()
 
     def generate_fingerprint(self, user=None):
+        """Generate a fingerprint for the specified user."""
         if self.is_pubkey_in_realname:
             return squeeze_da_keez(self.rsa_key.public_key())
         else:
@@ -114,22 +116,18 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 user = self.nickname
             return sha1(user)
 
-    # @property
-    # def fingerprint(self):
-    #     if self.is_pubkey_in_realname:
-    #         return self.generate_fingerprint()
-    #     else:
-    #         try:
-    #             return self.generate_fingerprint(self.nickname)
-    #         except (MyIrcStillConnectingError, AttributeError, ValueError):
-    #             return None
+    @property
+    def fingerprint(self):
+        return self.generate_fingerprint(self.nickname)
 
     @property
     def is_pubkey_in_realname(self):
+        """Should users keep their public keys in their /whois realname fields?"""
         return self.__is_pubkey_in_realname
 
     @property
     def rsa_key(self):
+        """Our public key."""
         return self.__rsa_key
 
     @property
@@ -232,6 +230,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             return user  # He's kosher
 
     def load_homie_pubkey(self, user, pubkey=None):
+        """Obtain the specified user's public key, if there is one."""
         with self.__repop_mutex:
             self.__load_homie_pubkey(user, pubkey)
 
