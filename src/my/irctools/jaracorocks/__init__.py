@@ -117,6 +117,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     @property
     def fingerprint(self):
+        """Returns the fingerprint for my current nickname."""
         return self.generate_fingerprint(self.nickname)
 
     @property
