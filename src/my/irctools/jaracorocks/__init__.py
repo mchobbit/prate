@@ -81,6 +81,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
                  irc_server, port, crypto_rx_queue, crypto_tx_queue):
+        self.__prev_showtxt_op = None
         self.__crypto_rx_queue = crypto_rx_queue
         self.__crypto_tx_queue = crypto_tx_queue
         self.__homies_lock = ReadWriteLock()
@@ -215,7 +216,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             assert(self.homies[user].didwelook)
             assert(not self.homies[user].keyless)
             assert(self.homies[user].pubkey is not None)
-            print("Initiating fernet key exchange with %s" % user)
+#            print("Initiating fernet key exchange with %s" % user)
             self.privmsg(user, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
         elif self.homies[user].ipaddr is None:
             assert(self.homies[user].didwelook)
@@ -335,7 +336,9 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 outstr += "\n%-30s  %s   %s   nope" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode())
             else:
                 outstr += "\n%-30s  %s   %s   %s" % (user, squeeze_da_keez(self.homies[user].pubkey)[-12:-8], self.homies[user].fernetkey.decode(), self.homies[user].ipaddr)
-        print(outstr)
+        if outstr != self.__prev_showtxt_op:
+            self.__prev_showtxt_op = outstr
+            print(outstr)
         self.__homies_lock.release_read()
 
     def my_encrypted_ipaddr(self, user):
