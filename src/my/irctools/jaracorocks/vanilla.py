@@ -84,6 +84,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         if type(realname) is not str:
             raise ValueError("Realname should be a string, not", type(realname))
         self.__privmsg_cache = MyTTLCache(ANTIOVERLOAD_CACHE_TIME)  # Don't send the same private message to the same person more than once every ten seconds
+        self.__privmsg_c_hits_dct = {}
         self.__whois_request_cache = MyTTLCache(ANTIOVERLOAD_CACHE_TIME)
         self.__whois_request_c_hits_v_misses = [0, 0]
         self.__whois_request_cache_mutex = Lock()
@@ -182,10 +183,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
         else:
             self.__whois_request_c_hits_v_misses[0] += 1
-            if self.__whois_request_c_hits_v_misses[0] % 50 == 0:
+            if self.__whois_request_c_hits_v_misses[0] % 100 == 0:
                 hits, misses = self.__whois_request_c_hits_v_misses
-                percentage = hits * 100 / (hits + misses)
-#                print("Our whois cache has a %d%% hit rate" % percentage)
+                percentage = hits * 1000 / (hits + misses)
+                print("Our whois cache has a %d%% hit rate" % percentage)
         return self.__whois_request_cache.get(user)
 
     def __call_whois_and_wait_for_response(self, user, timeout):
@@ -204,14 +205,21 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
-
-        cached_data = (user, msg)
+        cached_data = user + '///' + msg
+        if user not in self.__privmsg_c_hits_dct:
+            self.__privmsg_c_hits_dct[user] = 0
         if self.__privmsg_cache.get(cached_data) is None:
             self.__privmsg_cache.set(cached_data, cached_data)
+            if self.__privmsg_c_hits_dct[user] > 5:
+                print("I just saved %s from being sent the same message %d times by you" % (user, self.__privmsg_c_hits_dct[user]))
+            self.__privmsg_c_hits_dct[user] = 0
             self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
-#        else:
-#            print("You tried to send the same message to %s twice in quick succession. I choose to send it only once." % user)
+        else:
+            self.__privmsg_c_hits_dct[user] += 1
+            if self.__privmsg_c_hits_dct[user] % 100 == 0:
+                print("WOAH!... %d times, for %s? Really?" % (self.__privmsg_c_hits_dct[user], user))
+                pass
 
 ####################################################################################
 
