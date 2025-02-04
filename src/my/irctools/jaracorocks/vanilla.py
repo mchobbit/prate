@@ -33,13 +33,15 @@ from time import sleep
 import string
 from my.classes.exceptions import MyIrcStillConnectingError
 from my.classes import MyTTLCache
-from threading import Thread, Lock
+from threading import Lock
 
 try:
     from my.stringtools import generate_irc_handle  # @UnusedImport
 except ImportError:
     print("generate_irc_handle() is missing. Fine. We'll do it the hard way.")
     generate_irc_handle = lambda: ''.join(choice(string.ascii_lowercase) for _ in range(16))
+
+WHOIS_TIMEOUT = 15
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -81,7 +83,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
         if type(realname) is not str:
             raise ValueError("Realname should be a string, not", type(realname))
-        self.__whois_request_cache = MyTTLCache(5)
+        self.__whois_request_cache = MyTTLCache(WHOIS_TIMEOUT)
         self.__whois_request_c_hits_v_misses = [0, 0]
         self.__whois_request_cache_mutex = Lock()
         self.__initial_nickname = nickname
@@ -178,14 +180,17 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         else:
             c.notice(nick, "Unknown command => " + cmd)
 
-    def call_whois_and_wait_for_response(self, user, timeout=5):  # FIXME: not threadsafe
+    def call_whois_and_wait_for_response(self, user, timeout=WHOIS_TIMEOUT):
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
             self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
         else:
             self.__whois_request_c_hits_v_misses[0] += 1
-            if self.__whois_request_c_hits_v_misses[0] % 10 == 0:
-                print("whois cache --- %d hits vs %d misses" % (self.__whois_request_c_hits_v_misses[0], self.__whois_request_c_hits_v_misses[1]))
+            if self.__whois_request_c_hits_v_misses[0] % 50 == 0:
+                hits = self.__whois_request_c_hits_v_misses[0]
+                misses = self.__whois_request_c_hits_v_misses[1]
+                percentage = hits * 100 / (hits + misses)
+                print("Our whois cache has a %d%% hit rate" % percentage)
         return self.__whois_request_cache.get(user)
 
     def __call_whois_and_wait_for_response(self, user, timeout):
