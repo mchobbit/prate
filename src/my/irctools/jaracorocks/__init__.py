@@ -285,15 +285,11 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         except AttributeError:
             his_fprint = None
             print("Unable to load %s's /whois record. This means I don't know their fingerprint." % user)
-            print("I am therefore assuming that %s is not a homie." % user)
             print("Let's try again later.")
             return
         shouldbe_fprint = self.generate_fingerprint(user)
-#        print("%s has a fingerprint of %s; if he's a homie, it would be %s" % (user, his_fprint, shouldbe_fprint))
         if his_fprint == shouldbe_fprint:
-#            print("I do believe that %s is a homie" % user)
-#            print("I'll initiate a public key exchange now.")
-            print("I am requesting %s's public key" % user)
+            print("%s appears to be a homie. I am requesting his public key" % user)
             self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
         else:
             pass  # print("%s is not a homie." % user)
