@@ -65,6 +65,9 @@ class MyTTLCache:
     """
 
     def __init__(self, ttl):
+        if type(ttl) is not int or ttl < 1:
+            raise ValueError("Supply a positive integer for ttl, please")
+
         self.ttl = ttl
         self.cache = {}
 
