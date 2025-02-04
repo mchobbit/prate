@@ -5,6 +5,7 @@ encoding//src/my/classes/__init__.py=utf-8
 encoding//src/my/classes/exceptions.py=utf-8
 encoding//src/my/classes/homies.py=utf-8
 encoding//src/my/classes/readwritelock.py=utf-8
+encoding//src/my/classes/selfcachingcall.py=utf-8
 encoding//src/my/globals/__init__.py=utf-8
 encoding//src/my/irctools/__init__.py=utf-8
 encoding//src/my/irctools/jaracorocks/vanilla.py=utf-8
