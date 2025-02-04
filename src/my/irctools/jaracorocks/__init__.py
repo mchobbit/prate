@@ -99,7 +99,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__crypto_tx_thread = Thread(target=self.__crypto_tx_loop, daemon=True)
         self.__scanusers_thread.start()
         self.__crypto_tx_thread.start()
-        self.paused = False
 
     def shutitdown(self):
         """Trigger the shutdown of all our processes."""

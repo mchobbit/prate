@@ -40,7 +40,6 @@ svr = PrateBot(channel=my_channel, nickname=desired_nickname,rsa_key=my_rsa_key,
                 irc_server=my_irc_server, port=6667,
                 crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
-svr.paused = True
 user = 'mac2'
 svr.homies[user].keyless = False
 svr.homies[user].didwelook = False
