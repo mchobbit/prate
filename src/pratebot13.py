@@ -55,10 +55,9 @@ import datetime
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
 from random import randint, choice
-from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcFingerprintMismatchCausedByServer
+from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer
 from Crypto.PublicKey import RSA
 from my.irctools.jaracorocks import CryptoOrientedSingleServerIRCBotWithWhoisSupport
-from my.stringtools import generate_irc_handle
 
 
 class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
