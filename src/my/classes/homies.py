@@ -55,8 +55,7 @@ class Homie:
         self.__pubkey = pubkey
         self.__remotely_supplied_fernetkey = remotely_supplied_fernetkey
         self.__remotely_supplied_fernetkey_lock = ReadWriteLock()
-        k = Fernet.generate_key()
-        self.__locally_generated_fernetkey = k
+        self.__locally_generated_fernetkey = Fernet.generate_key()
         self.__locally_generated_fernetkey_lock = ReadWriteLock()
         self.__ipaddr = ipaddr
         super().__init__()
