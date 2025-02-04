@@ -182,9 +182,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
             self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
-            print("whois cache --- %d hits vs %d misses" % (self.__whois_request_c_hits_v_misses[0], self.__whois_request_c_hits_v_misses[1]))
         else:
             self.__whois_request_c_hits_v_misses[0] += 1
+            if self.__whois_request_c_hits_v_misses[0] % 10 == 0:
+                print("whois cache --- %d hits vs %d misses" % (self.__whois_request_c_hits_v_misses[0], self.__whois_request_c_hits_v_misses[1]))
         return self.__whois_request_cache.get(user)
 
     def __call_whois_and_wait_for_response(self, user, timeout):
