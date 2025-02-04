@@ -183,9 +183,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
         else:
             self.__whois_request_c_hits_v_misses[0] += 1
-            if self.__whois_request_c_hits_v_misses[0] % 100 == 0:
+            if self.__whois_request_c_hits_v_misses[0] % 2000 == 0:
                 hits, misses = self.__whois_request_c_hits_v_misses
-                percentage = hits * 1000 / (hits + misses)
+                percentage = hits * 100 / (hits + misses)
                 print("Our whois cache has a %d%% hit rate" % percentage)
         return self.__whois_request_cache.get(user)
 
@@ -210,8 +210,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             self.__privmsg_c_hits_dct[user] = 0
         if self.__privmsg_cache.get(cached_data) is None:
             self.__privmsg_cache.set(cached_data, cached_data)
-            if self.__privmsg_c_hits_dct[user] > 5:
-                print("I just saved %s from being sent the same message %d times by you" % (user, self.__privmsg_c_hits_dct[user]))
+            if self.__privmsg_c_hits_dct[user] > 3:
+                print("I just saved %s from being bombarded with the same message %d times by you" % (user, self.__privmsg_c_hits_dct[user]))
             self.__privmsg_c_hits_dct[user] = 0
             self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
