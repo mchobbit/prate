@@ -173,17 +173,6 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             self.disconnect()
         elif cmd == "die":
             self.die()
-        elif cmd.startswith("whois"):
-            i = cmd.find(' ')
-            if i < 0:
-                found = None
-            else:
-                user = cmd[i + 1:]
-                found = self.call_whois_and_wait_for_response(user)
-                if found:
-                    c.notice(nick, found)
-                else:
-                    c.notice(nick, "The server does not recognize the user %s" % user)
         else:
             c.notice(nick, "Unknown command => " + cmd)
 
