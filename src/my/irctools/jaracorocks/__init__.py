@@ -197,9 +197,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 for user in new_users:
                     the_userlist += [user]
                 shuffle(new_users)
-                new_users_str = ' '.join([r for r in new_users]).strip(' ')
-#                if new_users_str != '':
-#                    print("New users:", new_users_str)
                 the_users_we_care_about = [str(u) for u in the_userlist if str(u) != self.nickname]
                 self.__scan_these_users_for_fingerprints_publickeys_etc(the_users_we_care_about)
 
