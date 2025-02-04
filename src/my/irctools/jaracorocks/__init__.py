@@ -260,7 +260,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         new_pk = None
         for i in range(0, 3):
             try:
-                whois_res = self.call_whois_and_wait_for_response(user, timeout=3 + i)
+                whois_res = self.call_whois_and_wait_for_response(user, timeout=6 + i*3)
                 try:
                     squozed_key = whois_res.split(' ', 4)[-1]
                     unsqueezed_key = unsqueeze_da_keez(squozed_key)

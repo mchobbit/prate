@@ -47,6 +47,7 @@ Todo:
 """
 
 import time
+from my.classes.readwritelock import ReadWriteLock
 
 
 class MyTTLCache:
@@ -69,7 +70,25 @@ class MyTTLCache:
             raise ValueError("Supply a positive integer for ttl, please")
 
         self.ttl = ttl
-        self.cache = {}
+        self.__cache = {}
+        self.__cache_lock = ReadWriteLock()
+
+    @property
+    def cache(self):
+        self.__cache_lock.acquire_read()
+        try:
+            retval = self.__cache
+            return retval
+        finally:
+            self.__cache_lock.release_read()
+
+    @cache.setter
+    def cache(self, value):
+        self.__cache_lock.acquire_write()
+        try:
+            self.__cache = value
+        finally:
+            self.__cache_lock.release_write()
 
     def set(self, key, value):
         """Set cache value."""
