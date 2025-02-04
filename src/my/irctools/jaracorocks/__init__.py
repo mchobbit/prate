@@ -253,10 +253,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.homies[user].keyless = False  # He's GONE. He is neither keyful nor keyless. Keyless means "He's here & he has no key."
         self.homies[user].pubkey = pubkey
 
-    @property
-    def realname(self):
-        return self.call_whois_and_wait_for_response(self.nickname).split(' ', 4)[-1]
-
     def __load_homie_pubkey_from_whois_record(self, user):
         if type(user) is not str:
             raise ValueError(user, "should be type str")
