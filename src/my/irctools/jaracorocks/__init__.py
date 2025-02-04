@@ -296,13 +296,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             print("I am requesting %s's public key" % user)
             self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
         else:
-#            print("%s is not a homie." % user)
-            pass
-
-    def privmsg(self, user, msg):
-        """Send a private message on IRC. Then, pause; don't overload the server."""
-        self.connection.privmsg(user, msg)
-        sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
+            pass  # print("%s is not a homie." % user)
 
     def crypto_put(self, user, byteblock):
         """Write an encrypted message to this user via a private message on IRC."""
