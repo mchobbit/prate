@@ -36,7 +36,7 @@ rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
 my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
 svr = PrateBot(channel=my_channel, nickname=desired_nickname,rsa_key=my_rsa_key,
-                is_pubkey_in_realname=True,
+                is_pubkey_in_realname=False,
                 irc_server=my_irc_server, port=6667,
                 crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
@@ -50,6 +50,7 @@ import sys
 import queue
 from time import sleep
 from threading import Thread
+import datetime
 
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
-    put_pubkey_in_realname_field = False
+    put_pubkey_in_realname_field = True
     svr = None
     old_nick = desired_nickname
     nick = old_nick
@@ -167,9 +168,9 @@ if __name__ == "__main__":
                 print("Server changed my nickname, thus making my fingerprint out of date. Reconnecting...")
                 svr = None
         elif svr.generate_fingerprint(svr.nickname) != svr.realname:
-            print("FINGERPRINT STAFU. It's time to disconnect and reconnected.")
+            print("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint.")
             svr.shutitdown()
-            print("Please ignore those error messages.")
+            del svr  # Is this necessary?
             svr = None
             nick = nick + str(randint(0, 9))
         elif not svr.connected:
@@ -179,13 +180,13 @@ if __name__ == "__main__":
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
         else:
+            svr.show_users_dct_info(force=True if datetime.datetime.now().second == 0 else False)
             try:
                 u = choice(list(svr.homies.keys()))
             except IndexError:
                 pass
             else:
-                svr.show_users_dct_info()
-                if svr.homies[u].ipaddr is not None:
+                if svr.homies[u].ipaddr is not None and randint(0, 10) == 0:
                     tx_q.put((u, ('HELLO from %s to %s' % (svr.nickname, u)).encode()))
                 try:
                     while True:
