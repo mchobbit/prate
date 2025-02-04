@@ -1,6 +1,7 @@
 eclipse.preferences.version=1
 encoding//src/main.py=utf-8
 encoding//src/my/__init__.py=utf-8
+encoding//src/my/classes/__init__.py=utf-8
 encoding//src/my/classes/exceptions.py=utf-8
 encoding//src/my/classes/homies.py=utf-8
 encoding//src/my/classes/readwritelock.py=utf-8
