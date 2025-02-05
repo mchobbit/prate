@@ -27,23 +27,18 @@ Example:
 
 from Crypto.PublicKey import RSA
 from pratebot13 import *
-s = 'm&4c;;B32a?eKNjw~g*;$0{=kLOVcOcgu2HzbjBk98m2hvhGq~'
 desired_nickname = 'mac1'
 my_irc_server = 'cinqcent.local'
 my_channel = '#prate'
 from pratebot13 import *
 rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
-my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
+my_rsa_key = RSA.generate(2048)
 svr = PrateBot(channel=my_channel, nickname=desired_nickname,rsa_key=my_rsa_key,
                 is_pubkey_in_realname=False,
                 irc_server=my_irc_server, port=6667,
                 crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
 
-user = 'mac2'
-svr.homies[user].keyless = False
-svr.homies[user].didwelook = False
-svr.scan_a_user_for_fingerprints_publickeys_etc('mac2')
 """
 
 import sys
@@ -101,7 +96,6 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         sleep(1)
 
     def _start(self):
-#        shouldbe_fprint = self.generate_fingerprint(self.initial_nickname)
         print("Starting our connection to server")
         self.__bot_thread.start()
         while not self.ready:
