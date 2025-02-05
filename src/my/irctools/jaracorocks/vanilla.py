@@ -136,7 +136,11 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     @property
     def realname(self):
         """The realname that the server currently has for me."""
-        return self.call_whois_and_wait_for_response(self.nickname).split(' ', 4)[-1]
+        try:
+            return self.call_whois_and_wait_for_response(self.nickname).split(' ', 4)[-1]
+        except TimeoutError:
+            print("There is no realname: I'm offline.")
+            return None
 
     @property
     def connected(self):
