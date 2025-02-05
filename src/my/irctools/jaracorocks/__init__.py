@@ -187,6 +187,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             elif irc_channel_members is None:
                 pass
             else:
+                sleep(.9)  # Let's wait at least one second between each mass ping :)
                 new_users = [str(u) for u in irc_channel_members if u not in the_userlist and str(u) != self.nickname]
                 dead_users = [str(u) for u in the_userlist if u not in irc_channel_members and str(u) != self.nickname]
                 for user in dead_users:
@@ -199,9 +200,9 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                     the_userlist += [user]
                 shuffle(new_users)
                 the_users_we_care_about = [str(u) for u in the_userlist if str(u) != self.nickname]
-                self.__scan_these_users_for_fingerprints_publickeys_etc(the_users_we_care_about)
+                self.scan_these_users_for_fingerprints_publickeys_etc(the_users_we_care_about)
 
-    def __scan_these_users_for_fingerprints_publickeys_etc(self, the_users_we_care_about):
+    def scan_these_users_for_fingerprints_publickeys_etc(self, the_users_we_care_about):
         for user in the_users_we_care_about:
             self.scan_a_user_for_fingerprints_publickeys_etc(user)
 
@@ -256,7 +257,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             squozed_key = whois_res.split(' ', 4)[-1]
             unsqueezed_key = unsqueeze_da_keez(squozed_key)
         except (ValueError, AttributeError):
-            print(user, "sent me >>>", whois_res, "<<< and this is not a public key.")
+#            print(user, "sent me >>>", whois_res, "<<< and this is not a public key.")
             self.homies[user].noof_fingerprinting_failures += 1
         except TimeoutError:
             pass
@@ -276,7 +277,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if his_fprint == shouldbe_fprint:
             self.initiate_public_key_negotiation(user)
         else:
-            print("Fingerprint doesn't match and/or unable to load %s's /whois record. Let's try again later." % user)
+#            print("Fingerprint doesn't match and/or unable to load %s's /whois record. Let's try again later." % user)
             self.homies[user].noof_fingerprinting_failures += 1
 
     def crypto_put(self, user, byteblock):
@@ -415,8 +416,8 @@ Kosher :%s
             else:
                 if self.homies[sender].fernetkey is None:
                     print("I'm still trying to pair up the fernet keys for talking with %s" % sender)
-                # else:
-                #     print("YAY! I have %s's fernetkey. We can talk to one another now." % sender)
+                else:
+                    print("YAY! I have %s's fernetkey. We can talk to one another now." % sender)
 
     def _he_requested_my_ip_address_and_enclosed_his_own(self, sender, stem):
         self.save_pubkey_from_stem(sender, stem)  # He also sends us his public key, just in case our copy is outdated
@@ -431,6 +432,7 @@ Kosher :%s
         else:
             print("%-20s requests my IP address, and I'm sending it." % sender)
             self.privmsg(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
+            self.homies[sender].noof_fingerprinting_failures = 0  # Who cares about the past? WE ARE TALKING.
 
     def _he_sent_me_his_ip_address_because_i_asked(self, sender, stem):
         try:
