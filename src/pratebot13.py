@@ -153,7 +153,7 @@ if __name__ == "__main__":
     old_nick = desired_nickname
     nick = old_nick
     while True:
-        sleep(2)
+        sleep(1)
         if svr is None:
             try:
                 print("*** CONNECTING AS %s ***" % nick)
@@ -181,7 +181,7 @@ if __name__ == "__main__":
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
         else:
-            svr.show_users_dct_info(True)
+            svr.show_users_dct_info(True if randint(0, 10) == 0 else False)
             try:
                 u = choice(list(svr.homies.keys()))
             except IndexError:
