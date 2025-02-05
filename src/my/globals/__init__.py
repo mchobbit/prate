@@ -19,6 +19,8 @@ import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO  # + ". " + HAMLET + ". "
+ANTIOVERLOAD_CACHE_TIME = 20
+MAX_NOOF_FINGERPRINTING_FAILURES = 6 * ANTIOVERLOAD_CACHE_TIME  # maximum number of attempts to negotiate fingerprint
 
 
 def get_my_public_ip_address():
@@ -52,7 +54,7 @@ def get_my_public_ip_address():
 
 
 steg_dct_CLUMPS = {'a':
-                   {'а':'0', 'ạ':'1', 'ą':'00', 'ä':'01', 'à':'10', 'á':'11', 'ą':'000'},
+                   {'а':'0', 'ạ':'1', 'ą':'00', 'ä':'01', 'à':'10', 'á':'11'},
                    'c':
                    {'с':'0', 'ƈ':'1', 'ċ':'00'},
                    'd':

@@ -25,7 +25,7 @@ Todo:
 from Crypto.PublicKey import RSA
 from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
-MAX_NOOF_FINGERPRINTING_FAILURES = 5  # maximum number of attempts to negotiate fingerprint
+from my.globals import MAX_NOOF_FINGERPRINTING_FAILURES
 
 
 class Homie:

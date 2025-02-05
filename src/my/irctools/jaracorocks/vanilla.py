@@ -34,14 +34,13 @@ import string
 from my.classes.exceptions import MyIrcStillConnectingError
 from my.classes import MyTTLCache
 from threading import Lock
+from my.globals import ANTIOVERLOAD_CACHE_TIME
 
 try:
     from my.stringtools import generate_irc_handle  # @UnusedImport
 except ImportError:
     print("generate_irc_handle() is missing. Fine. We'll do it the hard way.")
     generate_irc_handle = lambda: ''.join(choice(string.ascii_lowercase) for _ in range(16))
-
-ANTIOVERLOAD_CACHE_TIME = 20
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
