@@ -100,6 +100,12 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         self.__bot_thread.start()
         while not self.ready:
             sleep(.1)
+        if self.fingerprint != self.realname:
+#            self.shutitdown()
+            sleep(5)
+            # print("nickname at shutdown =", self.nickname)
+            # self.nickname_at_shutdown = self.nickname
+            raise MyIrcFingerprintMismatchCausedByServer("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. Please try again, with a different nickname.")
 
     @property
     def time_to_quit(self):
@@ -158,22 +164,25 @@ if __name__ == "__main__":
                                             irc_server=my_irc_server, port=my_port,
                                             crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
             except MyIrcFingerprintMismatchCausedByServer:
-                print("Server changed my nickname, thus making my fingerprint out of date. Reconnecting...")
-                svr = None
-        elif svr.generate_fingerprint(svr.nickname) != svr.realname:
-            print("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint.")
-            svr.shutitdown()
+                print("Server changed my nickname, thus making my fingerprint out of date.")
+        if svr is None or svr.fingerprint != svr.realname:
+            print("The server changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint.")
+            if svr:
+                svr.disconnect("Bye")
+                svr.shutitdown()
+                sleep(5)
             del svr  # Is this necessary?
             svr = None
-            nick = nick + str(randint(0, 9))
-        elif not svr.connected:
+            nick = "%s%d" % (nick, randint(0, 9))
+            old_nick = nick
+        elif not svr.ready:
             print("Waiting for server to be ready")
             sleep(1)
         elif my_channel not in svr.channels:
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
         else:
-            svr.show_users_dct_info(force=True if datetime.datetime.now().second == 0 else False)
+            svr.show_users_dct_info(force=True if datetime.datetime.now().second % 10 == 0 else False)
             try:
                 u = choice(list(svr.homies.keys()))
             except IndexError:
