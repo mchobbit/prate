@@ -392,9 +392,15 @@ Kosher :%s
 
     def _he_initiated_a_fernet_key_negotiation(self, sender, stem):
         self.save_pubkey_from_stem(sender, stem)
-        if self.homies[sender].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES \
-        or self.homies[sender].pubkey is None:
+        if self.homies[sender].pubkey is None:
+            print("That is odd. We just loaded a public key from %s ... but now, we have no public key.")
+            print("pub key before unsqueezing:", stem)
+            print("There must be something wrong, but I'm not sure what.")
+            print("As a goodwill gesture, I'll reset self.homies[sender].noof_fingerprinting_failures.")
+            self.homies[sender].noof_fingerprinting_failures = 0
+        if self.homies[sender].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
             print("I can't send request a fernet key from %s: he's without a fingerprint" % sender)
+            print()
         else:
             self.privmsg(sender, "%s%s" % (_TXFE_, self.encrypt_fernetkey_for_user(sender, self.homies[sender].locally_generated_fernetkey)))
 
