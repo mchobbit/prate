@@ -220,7 +220,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             print("%-20s has a null public key, but we looked. Perhaps we were offline at the time. I'll try again in a second or two." % user)
             sleep(randint(15, 40) / 10.)
         elif self.homies[user].fernetkey is None:
-            self.privmsg(user, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))  # Request his fernet key
+            self.initiate_fernet_key_negotiation(user)
         elif self.homies[user].ipaddr is None:
             self.privmsg(user, "%s%s" % (_RQIP_, squeeze_da_keez(self.rsa_key.public_key())))  # Request his IP address; in due course, he'll send it via TXIPAD.
         else:
@@ -401,7 +401,7 @@ Kosher :%s
     def _he_initiated_a_fernet_key_negotiation(self, sender, stem):
         self.save_pubkey_from_stem(sender, stem)
         if self.homies[sender].keyless is True or self.homies[sender].pubkey is None:
-            print("I can't send %s to %s: he's keyless" % (_RQFE_, sender))
+            print("I can't send request a fernet key from %s: he's keyless" % sender)
         else:
             self.privmsg(sender, "%s%s" % (_TXFE_, self.encrypt_fernetkey_for_user(sender, self.homies[sender].locally_generated_fernetkey)))
 
@@ -433,7 +433,7 @@ Kosher :%s
             self.wipe_our_copy_of_user_key_and_reinitiate_public_key_negotiation(sender)
         elif self.homies[sender].fernetkey is None:
             print("%-20s requests my IP address, but we don't have a fernet key yet. I'll ask for his." % sender)
-            self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
+            self.initiate_fernet_key_negotiation(sender)
         else:
             print("%-20s requests my IP address, and I'm sending it." % sender)
             self.privmsg(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
@@ -444,8 +444,7 @@ Kosher :%s
             print("%-20s sent me his IP address. Yay." % sender)
         except InvalidToken:
             print("%-20s used the wrong fernet key to encrypt a message. To rectify, I'll initiate a new fernet key exchange." % sender)
-            self.homies[sender].remotely_supplied_fernetkey = None
-            self.privmsg(sender, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))
+            self.initiate_fernet_key_negotiation(sender)
 
     def _receive_and_decrypt_message(self, sender, stem):
         success = False
@@ -501,6 +500,10 @@ Kosher :%s
         self.homies[user].pubkey = None
         print("%-20s appears to be a homie. I am requesting his public key" % user)
         self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
+
+    def initiate_fernet_key_negotiation(self, user):
+        self.homies[user].remotely_supplied_fernetkey = None
+        self.privmsg(user, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))  # Request his fernet key
 
     def encrypt_fernetkey_for_user(self, user, fernetkey):
         """Encrypt the user's fernet key with the user's public key."""
