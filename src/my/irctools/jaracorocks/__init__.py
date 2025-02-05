@@ -36,17 +36,17 @@ from threading import Thread, Lock
 
 from cryptography.fernet import Fernet, InvalidToken
 import base64
-from my.globals import MY_IP_ADDRESS
+from my.globals import MY_IP_ADDRESS, MAX_NOOF_FINGERPRINTING_FAILURES
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez
 from _queue import Empty
 from random import randint, choice, shuffle
-from my.classes.homies import HomiesDct, MAX_NOOF_FINGERPRINTING_FAILURES
 from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError
 from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
 import datetime
 from my.classes import MyTTLCache
 import time
+from my.classes.homies import HomiesDct
 
 _RQPK_ = "RQPK"
 _TXPK_ = "TXPK"
@@ -502,10 +502,12 @@ Kosher :%s
         self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
 
     def initiate_fernet_key_negotiation(self, user):
+        print("%-20s has exchanged public keys with me. I am requesting his fernet key" % user)
         self.homies[user].remotely_supplied_fernetkey = None
         self.privmsg(user, "%s%s" % (_RQFE_, squeeze_da_keez(self.rsa_key.public_key())))  # Request his fernet key
 
     def initiate_ip_address_exchange(self, user):
+        print("%-20s has exchanged public & fernet keys w/ me. I am rq'ing his IP address" % user)
         self.privmsg(user, "%s%s" % (_RQIP_, squeeze_da_keez(self.rsa_key.public_key())))  # Request his IP address; in due course, he'll send it via TXIPAD.
 
     def encrypt_fernetkey_for_user(self, user, fernetkey):
