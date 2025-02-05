@@ -33,7 +33,6 @@ from time import sleep
 import string
 from my.classes.exceptions import MyIrcStillConnectingError
 from my.classes import MyTTLCache
-from threading import Lock
 from my.globals import ANTIOVERLOAD_CACHE_TIME
 
 try:
