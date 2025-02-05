@@ -160,9 +160,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             except Empty:
                 pass
             else:
-                if self.homies[user].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
-                    print("I cannot crypto_put() to %s: he is without a fingerprint" % user)
-                elif self.homies[user].pubkey is None:
+                if self.homies[user].pubkey is None:
                     print("I cannot crypto_put() to %s: idk his pubkey" % user)
                 elif self.homies[user].fernetkey is None:
                     print("I cannot crypto_put() to %s: idk his fernetkey" % user)
