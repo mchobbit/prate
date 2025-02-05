@@ -194,17 +194,17 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def __call_whois_and_wait_for_response(self, user, timeout):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
-        with self.__whois_request_cache_mutex:
-            if not self.connected:
-                raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
-            self.connection.whois(user)  # Send request to the IRC server
-            for _ in range(0, timeout * 10):
-                self.reactor.process_once()  # Process incoming & outgoing events w/ IRC server
-                try:
-                    return self.__whois_results_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
-                except KeyError:
-                    sleep(.1)  # Still waiting for answer
-            raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
+#        with self.__whois_request_cache_mutex:
+        if not self.connected:
+            raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
+        self.connection.whois(user)  # Send request to the IRC server
+        for _ in range(0, timeout * 10):
+            self.reactor.process_once()  # Process incoming & outgoing events w/ IRC server
+            try:
+                return self.__whois_results_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
+            except KeyError:
+                sleep(.1)  # Still waiting for answer
+        raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
