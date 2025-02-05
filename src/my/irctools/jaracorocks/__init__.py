@@ -497,9 +497,9 @@ Kosher :%s
     def initiate_public_key_negotiation(self, user):
         self.homies[user].remotely_supplied_fernetkey = None
         self.homies[user].noof_fingerprinting_failures = 0
-        self.homies[user].pubkey = None
-        print("%-20s appears to be a homie. I am requesting his public key" % user)
-        self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
+        if self.homies[user].pubkey is None:
+            print("%-20s appears to be a homie. I am requesting his public key" % user)
+            self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
 
     def initiate_fernet_key_negotiation(self, user):
         print("%-20s has exchanged public keys with me. I am requesting his fernet key" % user)
