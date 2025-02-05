@@ -100,11 +100,9 @@ class PrateBot(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
         while not self.ready:
             sleep(.1)
         if self.fingerprint != self.realname:
-#            self.shutitdown()
-            sleep(5)
-            # print("nickname at shutdown =", self.nickname)
-            # self.nickname_at_shutdown = self.nickname
             raise MyIrcFingerprintMismatchCausedByServer("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. Please try again, with a different nickname.")
+        else:
+            self.start_my_threads()
 
     @property
     def time_to_quit(self):
@@ -167,9 +165,12 @@ if __name__ == "__main__":
         if svr is None or svr.fingerprint != svr.realname:
             print("The server changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint.")
             if svr:
-                svr.disconnect("Bye")
-                svr.shutitdown()
-                sleep(5)
+                try:
+                    svr.disconnect("Bye")
+                except Exception as e:
+                    print("Exception occurred (which we shall ignore):", e)
+                    pass
+                svr.shut_down_threads()
             del svr  # Is this necessary?
             svr = None
             nick = "%s%d" % (nick, randint(0, 9))
