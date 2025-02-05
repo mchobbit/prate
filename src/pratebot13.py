@@ -146,15 +146,15 @@ if __name__ == "__main__":
         my_channel = sys.argv[3]
         desired_nickname = sys.argv[4]
 
-    my_rsa_key = RSA.generate(1024)  # TODO: Change to 2048 on 3/1/2025
+    my_rsa_key = RSA.generate(2048)
     rx_q = queue.LifoQueue()
     tx_q = queue.LifoQueue()
-    put_pubkey_in_realname_field = True
+    put_pubkey_in_realname_field = False
     svr = None
     old_nick = desired_nickname
     nick = old_nick
     while True:
-        sleep(randint(1, 20) / 10.)
+        sleep(randint(11, 20) / 10.)
         if svr is None:
             try:
                 print("*** CONNECTING AS %s ***" % nick)
