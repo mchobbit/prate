@@ -86,7 +86,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.__privmsg_c_hits_dct = {}
         self.__whois_request_cache = MyTTLCache(ANTIOVERLOAD_CACHE_TIME)
         self.__whois_request_c_hits_v_misses = [0, 0]
-        self.__whois_request_cache_mutex = Lock()
+#        self.__whois_request_cache_mutex = Lock()
         self.__initial_nickname = nickname
         self.__initial_realname = realname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
@@ -183,7 +183,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def call_whois_and_wait_for_response(self, user, timeout=10):
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
-            self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
+            try:
+                self.__whois_request_cache.set(user, self.__call_whois_and_wait_for_response(user, timeout))
+            except TimeoutError:
+                return None
         else:
             self.__whois_request_c_hits_v_misses[0] += 1
             if self.__whois_request_c_hits_v_misses[0] % 2000 == 0:
