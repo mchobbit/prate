@@ -182,7 +182,7 @@ if __name__ == "__main__":
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
         else:
-            svr.show_users_dct_info(force=True if datetime.datetime.now().second % 10 == 0 else False)
+            svr.show_users_dct_info(True)
             try:
                 u = choice(list(svr.homies.keys()))
             except IndexError:

@@ -41,7 +41,7 @@ except ImportError:
     print("generate_irc_handle() is missing. Fine. We'll do it the hard way.")
     generate_irc_handle = lambda: ''.join(choice(string.ascii_lowercase) for _ in range(16))
 
-ANTIOVERLOAD_CACHE_TIME = 15
+ANTIOVERLOAD_CACHE_TIME = 20
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -217,9 +217,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
         else:
             self.__privmsg_c_hits_dct[user] += 1
-            # if self.__privmsg_c_hits_dct[user] % 100 == 0:
-            #     print("WOAH!... %d times, for %s? Really?" % (self.__privmsg_c_hits_dct[user], user))
-            #     pass
+            if self.__privmsg_c_hits_dct[user] in (2, 5, 10, 20, 50, 100, 200, 500, 1000):
+                print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg[:4], user))
+            else:
+                pass
 
 ####################################################################################
 
