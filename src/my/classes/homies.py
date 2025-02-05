@@ -25,7 +25,6 @@ Todo:
 from Crypto.PublicKey import RSA
 from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
-from my.globals import MAX_NOOF_FINGERPRINTING_FAILURES
 
 
 class Homie:
@@ -251,7 +250,7 @@ class HomiesDct(dict):
 
     def __contains__(self, item):
         if type(item) is not str:
-            print("__contains__ parameter item is", type(item), "and not a string. Is that okay? I'm not sure.")  # FIXME: Is it okay?
+            print("__contains__ parameter item is", type(item), "and not a string. Is that okay? I'm not sure.")
         return item in self.__dict__
 
     def __iter__(self):
