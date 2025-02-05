@@ -211,7 +211,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         if self.__privmsg_cache.get(cached_data) is None:
             self.__privmsg_cache.set(cached_data, cached_data)
             if self.__privmsg_c_hits_dct[user] > 3:
-                print("I just saved %s from being bombarded with the same message %d times by you" % (user, self.__privmsg_c_hits_dct[user]))
+                print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg[:4], user))
             self.__privmsg_c_hits_dct[user] = 0
             self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.

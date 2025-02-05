@@ -41,7 +41,7 @@ from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez
 from _queue import Empty
 from random import randint, choice, shuffle
-from my.classes.homies import HomiesDct
+from my.classes.homies import HomiesDct, MAX_NOOF_FINGERPRINTING_FAILURES
 from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError
 from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
 import datetime
@@ -160,8 +160,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             except Empty:
                 pass
             else:
-                if self.homies[user].keyless:
-                    print("I cannot crypto_put() to %s: he is keyless" % user)
+                if self.homies[user].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
+                    print("I cannot crypto_put() to %s: he is without a fingerprint" % user)
                 elif self.homies[user].pubkey is None:
                     print("I cannot crypto_put() to %s: idk his pubkey" % user)
                 elif self.homies[user].fernetkey is None:
@@ -213,12 +213,10 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def __scan_a_user_for_fingerprints_publickeys_etc(self, user):
         if type(user) is not str:
             raise ValueError("Supplied parameter", user, "must be a string")
-        if not self.homies[user].didwelook:
-            self.load_homie_pubkey(user)  # via fingerprint & RXPK/TXPK if necessary
-        elif self.homies[user].keyless:
-            pass  # If datetime.datetime.now().minute == 0, re-scan the 'keyless' to see if they're actually keyless
+        elif self.homies[user].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
+            pass  # He's without a fingerprint
         elif self.homies[user].pubkey is None:
-            print("%-20s has a null public key, but we looked. Perhaps we were offline at the time. I'll try again in a second or two." % user)
+            self.load_homie_pubkey(user)  # Try to fingerprint him & get his public key
         elif self.homies[user].fernetkey is None:
             self.initiate_fernet_key_negotiation(user)
         elif self.homies[user].ipaddr is None:
@@ -237,20 +235,18 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         if self.is_pubkey_in_realname:
             self.__load_homie_pubkey_from_whois_record(user)
         else:
-            self.__load_homie_pubkey_from_negotiation_via_whois_fingerprint(user)
+            self.__load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(user)
 
     def __load_homie_pubkey_from_parameter(self, user, pubkey):
         if type(user) is not str:
             raise ValueError(user, "should be type str")
-        self.homies[user].didwelook = True
-        self.homies[user].keyless = False  # He's GONE. He is neither keyful nor keyless. Keyless means "He's here & he has no key."
+#        self.homies[user].noof_fingerprinting_failures = 0
         self.homies[user].pubkey = pubkey
 
     def __load_homie_pubkey_from_whois_record(self, user):
         if type(user) is not str:
             raise ValueError(user, "should be type str")
-        self.homies[user].didwelook = False
-        self.homies[user].keyless = False
+#        self.homies[user].noof_fingerprinting_failures = 0
         old_pk = self.homies[user].pubkey
         new_pk = None
         try:
@@ -261,7 +257,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             unsqueezed_key = unsqueeze_da_keez(squozed_key)
         except (ValueError, AttributeError):
             print(user, "sent me >>>", whois_res, "<<< and this is not a public key.")
-            self.homies[user].keyless = True  # It's not a key.
+            self.homies[user].noof_fingerprinting_failures += 1
         except TimeoutError:
             pass
         else:
@@ -269,26 +265,23 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             if old_pk is not None and old_pk != new_pk:
                 print("HEY! HAS %s'S PUBLIC KEY CHANGED?!?!" % user)
             self.homies[user].pubkey = new_pk
-        self.homies[user].didwelook = True
 
-    def __load_homie_pubkey_from_negotiation_via_whois_fingerprint(self, user):
+    def __load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(self, user):
         try:
             his_fprint = self.call_whois_and_wait_for_response(user).split(' ', 4)[-1]
         except AttributeError:
             his_fprint = None
-            print("Unable to load %s's /whois record. This means I don't know their fingerprint." % user)
-            print("Let's try again later.")
-            return
-        shouldbe_fprint = self.generate_fingerprint(user)
+        else:
+            shouldbe_fprint = self.generate_fingerprint(user)
         if his_fprint == shouldbe_fprint:
             self.initiate_public_key_negotiation(user)
         else:
-            self.homies[user].keyless = True
-#            print("%-20s is not a homie." % user)
+            print("Fingerprint doesn't match and/or unable to load %s's /whois record. Let's try again later." % user)
+            self.homies[user].noof_fingerprinting_failures += 1
 
     def crypto_put(self, user, byteblock):
         """Write an encrypted message to this user via a private message on IRC."""
-        if self.homies[user].keyless is False \
+        if self.homies[user].noof_fingerprinting_failures < MAX_NOOF_FINGERPRINTING_FAILURES \
         and self.homies[user].pubkey is not None \
         and self.homies[user].fernetkey is not None:
             if type(byteblock) is not bytes:
@@ -315,7 +308,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("WARNING -- %s it not a string" % str(user))
             if user == self.nickname:
                 pass  # print("WARNING - our nickname is on a list of homies")
-            if self.homies[user].keyless is True:
+            if self.homies[user].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
                 nope += [user]
             elif self.homies[user].pubkey is None:
                 unknown += [user]
@@ -350,7 +343,6 @@ Kosher :%s
 
     def save_pubkey_from_stem(self, sender, stem):
         stemkey = unsqueeze_da_keez(stem)
-        self.homies[sender].keyless = False
         old_pubkey = self.homies[sender].pubkey
         if old_pubkey is None or old_pubkey == stemkey:
             pass  # print("%s's public key did not change. Good." % sender)
@@ -359,9 +351,8 @@ Kosher :%s
                 pass  # print("Saving %s's public key from incoming msg (not from whois)" % sender)
             else:
                 print("Saving %s's new pubkey from incoming msg (not from whois)" % sender)
+#            self.homies[sender].noof_fingerprinting_failures = 0
             self.homies[sender].ipaddr = None
-            self.homies[sender].keyless = False
-            self.homies[sender].didwelook = True
             self.homies[sender].pubkey = stemkey
 
     def on_privmsg(self, c, e):  # @UnusedVariable
@@ -391,21 +382,20 @@ Kosher :%s
 
     def _he_initiated_a_public_key_exchange(self, sender, stem):
         self.homies[sender].pubkey = unsqueeze_da_keez(stem)
-        self.homies[sender].keyless = False
-        self.homies[sender].didwelook = True
+#        self.homies[sender].noof_fingerprinting_failures = 0
         self.homies[sender].ipaddr = None
         self.privmsg(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
 
     def _he_sent_me_his_public_key_in_response(self, sender, stem):
         self.homies[sender].pubkey = unsqueeze_da_keez(stem)
-        self.homies[sender].keyless = False
-        self.homies[sender].didwelook = True
+#        self.homies[sender].noof_fingerprinting_failures = 0
         self.homies[sender].ipaddr = None
 
     def _he_initiated_a_fernet_key_negotiation(self, sender, stem):
         self.save_pubkey_from_stem(sender, stem)
-        if self.homies[sender].keyless is True or self.homies[sender].pubkey is None:
-            print("I can't send request a fernet key from %s: he's keyless" % sender)
+        if self.homies[sender].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES \
+        or self.homies[sender].pubkey is None:
+            print("I can't send request a fernet key from %s: he's without a fingerprint" % sender)
         else:
             self.privmsg(sender, "%s%s" % (_TXFE_, self.encrypt_fernetkey_for_user(sender, self.homies[sender].locally_generated_fernetkey)))
 
@@ -430,8 +420,8 @@ Kosher :%s
 
     def _he_requested_my_ip_address_and_enclosed_his_own(self, sender, stem):
         self.save_pubkey_from_stem(sender, stem)  # He also sends us his public key, just in case our copy is outdated
-        if self.homies[sender].keyless is True:
-            print("%-20s requests my IP address, but he's keyless." % sender)
+        if self.homies[sender].noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
+            print("%-20s requests my IP address, but he's without a fingerprint." % sender)
         elif self.homies[sender].pubkey is None:
             print("%-20s requests my IP address, but I don't have his public key. I'll ask for it." % sender)
             self.initiate_public_key_negotiation(sender)
@@ -500,7 +490,7 @@ Kosher :%s
 
     def initiate_public_key_negotiation(self, user):
         self.homies[user].remotely_supplied_fernetkey = None
-        self.homies[user].keyless = False
+        self.homies[user].noof_fingerprinting_failures = 0
         self.homies[user].pubkey = None
         print("%-20s appears to be a homie. I am requesting his public key" % user)
         self.privmsg(user, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
@@ -514,7 +504,7 @@ Kosher :%s
 
     def encrypt_fernetkey_for_user(self, user, fernetkey):
         """Encrypt the user's fernet key with the user's public key."""
-        if self.homies[user].keyless is False \
+        if self.homies[user].noof_fingerprinting_failures < MAX_NOOF_FINGERPRINTING_FAILURES \
         and self.homies[user].pubkey is not None:
             encrypted_fernetkey = rsa_encrypt(message=fernetkey, public_key=self.homies[user].pubkey)
             b64_encrypted_fernetkey = base64.b64encode(encrypted_fernetkey).decode()

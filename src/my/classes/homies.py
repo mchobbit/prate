@@ -25,6 +25,7 @@ Todo:
 from Crypto.PublicKey import RSA
 from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
+MAX_NOOF_FINGERPRINTING_FAILURES = 5  # maximum number of attempts to negotiate fingerprint
 
 
 class Homie:
@@ -48,10 +49,8 @@ class Homie:
         self.__fernetkey_lock = ReadWriteLock()
         self.__ipaddr_lock = ReadWriteLock()
         self.__nickname = nickname
-        self.__keyless = False
-        self.__keyless_lock = ReadWriteLock()
-        self.__didwelook = False
-        self.__didwelook_lock = ReadWriteLock()
+        self.__noof_fingerprinting_failures = 0
+        self.__noof_fingerprinting_failures_lock = ReadWriteLock()
         self.__pubkey = pubkey
         self.__remotely_supplied_fernetkey = remotely_supplied_fernetkey
         self.__remotely_supplied_fernetkey_lock = ReadWriteLock()
@@ -117,8 +116,8 @@ class Homie:
     def pubkey(self):
         """RSA.RsaKey: The public key that other computers should use when exchanging fernet keys with me."""
         self.__pubkey_lock.acquire_read()
-        if self.keyless:
-            raise AttributeError("%s is keyless" % self.nickname)
+        if self.noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
+            raise AttributeError("%s has no fingerprint" % self.nickname)
         try:
             retval = self.__pubkey
             return retval
@@ -131,7 +130,7 @@ class Homie:
         try:
             if value is not None and type(value) is not RSA.RsaKey:
                 raise ValueError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
-            self.keyless = False
+            self.noof_fingerprinting_failures = 0
             self.__pubkey = value
         finally:
             self.__pubkey_lock.release_write()
@@ -152,44 +151,21 @@ class Homie:
             self.__fernetkey_lock.release_read()
 
     @property
-    def keyless(self):
-        """keyless (bool): True if this user has no key at all. False otherwise.
-            This is useful because a pubkey set to None might indicate that
-            we haven't run /whois yet. After /whois has been run, either
-            there is no key (in which case, keyless is set to True and
-            pubkey becomes inaccessible), or there *is* a key (meaning,
-            pubkey is set to a public key and keyless is set to False)."""
-        self.__keyless_lock.acquire_read()
+    def noof_fingerprinting_failures(self):
+        """noof_fingerprinting_failures (int): The number of attempts that we've made to negotiate with this user."""
+        self.__noof_fingerprinting_failures_lock.acquire_read()
         try:
-            return self.__keyless
+            return self.__noof_fingerprinting_failures
         finally:
-            self.__keyless_lock.release_read()
+            self.__noof_fingerprinting_failures_lock.release_read()
 
-    @keyless.setter
-    def keyless(self, value):
-        self.__keyless_lock.acquire_write()
+    @noof_fingerprinting_failures.setter
+    def noof_fingerprinting_failures(self, value):
+        self.__noof_fingerprinting_failures_lock.acquire_write()
         try:
-            self.__keyless = value
+            self.__noof_fingerprinting_failures = value
         finally:
-            self.__keyless_lock.release_write()
-
-    @property
-    def didwelook(self):
-        """didwelook (bool): True if this user's /whois was searched for a
-        public key since initialization. False if it wasn't."""
-        self.__didwelook_lock.acquire_read()
-        try:
-            return self.__didwelook
-        finally:
-            self.__didwelook_lock.release_read()
-
-    @didwelook.setter
-    def didwelook(self, value):
-        self.__didwelook_lock.acquire_write()
-        try:
-            self.__didwelook = value
-        finally:
-            self.__didwelook_lock.release_write()
+            self.__noof_fingerprinting_failures_lock.release_write()
 
     @property
     def ipaddr(self):
