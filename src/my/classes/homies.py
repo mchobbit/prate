@@ -116,8 +116,8 @@ class Homie:
     def pubkey(self):
         """RSA.RsaKey: The public key that other computers should use when exchanging fernet keys with me."""
         self.__pubkey_lock.acquire_read()
-        if self.noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
-            raise AttributeError("%s has no fingerprint" % self.nickname)
+        # if self.noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
+        #     raise AttributeError("%s has no fingerprint" % self.nickname)
         try:
             retval = self.__pubkey
             return retval
