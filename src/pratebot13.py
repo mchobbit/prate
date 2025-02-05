@@ -45,7 +45,6 @@ import sys
 import queue
 from time import sleep
 from threading import Thread
-import datetime
 
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
@@ -182,7 +181,7 @@ if __name__ == "__main__":
             print("WARNING -- we dropped out of %s" % my_channel)
             svr.connection.join(my_channel)
         else:
-            svr.show_users_dct_info(True)
+            svr.show_users_dct_info()
             try:
                 u = choice(list(svr.homies.keys()))
             except IndexError:
