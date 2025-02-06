@@ -41,12 +41,12 @@ from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez
 from _queue import Empty
 from random import randint, choice, shuffle
-from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError, MyIrcFingerprintMismatchCausedByServer
 from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
 import datetime
 from my.classes import MyTTLCache
 import time
 from my.classes.homies import HomiesDct
+from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
 
 _RQPK_ = "RQPK"
 _TXPK_ = "TXPK"
@@ -86,7 +86,9 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     """
 
     def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
-                 irc_server, port, crypto_rx_queue, crypto_tx_queue):
+                 irc_server, port, crypto_rx_queue, crypto_tx_queue,
+                 startup_timeout):
+        self.__startup_timeout = startup_timeout
         self.__prev_showtxt_op = None
         self.__crypto_rx_queue = crypto_rx_queue
         self.__crypto_tx_queue = crypto_tx_queue
@@ -175,15 +177,23 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         the_userlist = []
         irc_channel_members = None
+        print("Waiting for the bot to be ready...")
         while not self.__stopstopstop:
             sleep(.1)
             if not self.ready:
-                print("Waiting for the bot to be ready...")
+                t = datetime.datetime.now()
                 while not self.ready:
                     sleep(.1)
-                print("Bot is ready now. Proceeding...")
+                    if self.__stopstopstop:
+                        print("Okay. We're quitting. I get it.")
+                        return
+                    elif (datetime.datetime.now() - t).seconds >= self.__startup_timeout:
+                        raise MyIrcInitialConnectionTimeoutError("Failed to (re)connect to server: timeout.")
+                print("Bot is ready. Proceeding...")
             elif datetime.datetime.now().second % 15 == 0:
                 irc_channel_members = list(self.channels[self.initial_channel].users())
+            elif self.__stopstopstop:
+                return
             elif irc_channel_members is None:
                 pass
             else:
@@ -547,7 +557,8 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
     """
 
     def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
-                 irc_server, port, crypto_rx_queue, crypto_tx_queue):
+                 irc_server, port, crypto_rx_queue, crypto_tx_queue,
+                 startup_timeout):
         super().__init__(channel,
                          nickname,
                          rsa_key,
@@ -555,7 +566,9 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
                          irc_server,
                          port,
                          crypto_rx_queue,
-                         crypto_tx_queue)
+                         crypto_tx_queue,
+                         startup_timeout)
+        self.__startup_timeout = startup_timeout
         self.__time_to_quit = False
         self.__time_to_quit_lock = ReadWriteLock()
         self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
@@ -564,9 +577,12 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
 
     def _start(self):
         print("Starting our connection to server")
+        starting_datetime = datetime.datetime.now()
         self.__bot_thread.start()
-        while not self.ready:
-            sleep(.1)
+        while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
+            sleep(.2)
+        if not self.ready:
+            raise MyIrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
         if self.fingerprint != self.realname:
             raise MyIrcFingerprintMismatchCausedByServer("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. Please try again, with a different nickname.")
         else:
@@ -584,13 +600,21 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
     def quit(self):  # Do we need this?
         """Quit this bot."""
         self.__time_to_quit = True
+        sleep(1)
+        try:
+            self.disconnect('Bye')
+        except MyIrcInitialConnectionTimeoutError:
+            pass
         self.__bot_thread.join()  # print("Joining server thread")
 
     def __bot_worker_loop(self):
         """Start this bot."""
         print("Starting bot thread")
-        self.start()
-        print("You should not get here.")
+        try:
+            self.start()
+        except Exception as e:
+            print("Bot worker loop encountered a fatal error:", e)
+            print("So, we'll twiddle our thumbs until it's time to quiet.")
         while not self.__time_to_quit:
             sleep(1)
-
+        print("Okay. Bot worker is quitting.")
