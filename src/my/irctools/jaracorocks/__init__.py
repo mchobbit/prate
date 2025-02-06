@@ -177,7 +177,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         the_userlist = []
         irc_channel_members = None
-        print("Waiting for the bot to be ready...")
+        print("Waiting for the bot to be ready to connect to %s..." % self.__irc_server)
         while not self.__stopstopstop:
             sleep(.1)
             if not self.ready:
@@ -576,7 +576,7 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
         sleep(1)
 
     def _start(self):
-        print("Starting our connection to server")
+#        print("Starting our connection to server")
         starting_datetime = datetime.datetime.now()
         self.__bot_thread.start()
         while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
@@ -609,7 +609,7 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
 
     def __bot_worker_loop(self):
         """Start this bot."""
-        print("Starting bot thread")
+#        print("Starting bot thread")
         try:
             self.start()
         except Exception as e:
