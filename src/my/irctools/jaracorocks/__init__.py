@@ -41,7 +41,7 @@ from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez
 from _queue import Empty
 from random import randint, choice, shuffle
-from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError
+from my.classes.exceptions import MyIrcRealnameTruncationError, MyIrcConnectionError, MyIrcFingerprintMismatchCausedByServer
 from my.irctools.jaracorocks.vanilla import SingleServerIRCBotWithWhoisSupport
 import datetime
 from my.classes import MyTTLCache
