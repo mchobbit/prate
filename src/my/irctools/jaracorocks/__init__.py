@@ -520,3 +520,77 @@ Kosher :%s
             return b64_encrypted_fernetkey
         else:
             raise ValueError("I can't the fernetkey unless I have a public key to do it with")
+
+
+class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedSingleServerIRCBotWithWhoisSupport):
+    """A background-threaded RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport.
+
+    This is a subclass of RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport.
+    Its primary purpose is to instantiate that class as a background thread. (Do I mean
+    'instantiate'?)
+
+    FYI, RealnameTruncatingCryptoOrientedSingleServerIRCBotWithWhoisSupport is unlike
+    CryptoOrientedSingleServerIRCBotWithWhoisSupport in one major aspect: the latter
+    sets each user's realname to the user's RSA public key. What does the former use?
+    I haven't decided yet.
+
+    Attributes:
+        channel (str): IRC channel to be joined.
+        nickname (str): Initial nickname. The real nickname will be changed
+            if the IRC server reports a nickname collision.
+        rsa_key (RSA.RsaKey): RSA key.
+        irc_server (str): The IRC server URL.
+        port (int): The port number of the IRC server.
+        crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
+        crypto_tx_queue (LifoQueue): User-and-msg stuff to be encrypted goes here.
+
+    """
+
+    def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
+                 irc_server, port, crypto_rx_queue, crypto_tx_queue):
+        super().__init__(channel,
+                         nickname,
+                         rsa_key,
+                         is_pubkey_in_realname,
+                         irc_server,
+                         port,
+                         crypto_rx_queue,
+                         crypto_tx_queue)
+        self.__time_to_quit = False
+        self.__time_to_quit_lock = ReadWriteLock()
+        self.__bot_thread = Thread(target=self.__bot_worker_loop, daemon=True)
+        self._start()
+        sleep(1)
+
+    def _start(self):
+        print("Starting our connection to server")
+        self.__bot_thread.start()
+        while not self.ready:
+            sleep(.1)
+        if self.fingerprint != self.realname:
+            raise MyIrcFingerprintMismatchCausedByServer("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. Please try again, with a different nickname.")
+        else:
+            self.start_my_threads()
+
+    @property
+    def time_to_quit(self):
+        self.__time_to_quit_lock.acquire_read()
+        try:
+            retval = self.__time_to_quit
+            return retval
+        finally:
+            self.__time_to_quit_lock.release_read()
+
+    def quit(self):  # Do we need this?
+        """Quit this bot."""
+        self.__time_to_quit = True
+        self.__bot_thread.join()  # print("Joining server thread")
+
+    def __bot_worker_loop(self):
+        """Start this bot."""
+        print("Starting bot thread")
+        self.start()
+        print("You should not get here.")
+        while not self.__time_to_quit:
+            sleep(1)
+
