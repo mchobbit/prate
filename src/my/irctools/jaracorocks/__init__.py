@@ -107,6 +107,14 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__scanusers_thread.start()
         self.__crypto_tx_thread.start()
 
+    @property
+    def stopstopstop(self):  # FIXME: not threadsafe
+        return self.__stopstopstop
+
+    @stopstopstop.setter
+    def stopstopstop(self, value):
+        self.__stopstopstop = value
+
     def shut_down_threads(self):
         """Trigger the shutdown of all our processes."""
         self.__stopstopstop = True
