@@ -205,6 +205,14 @@ class MyIrcConnectionError(MyIrcError):
         super().__init__(message)
 
 
+class MyIrcInitialConnectionTimeoutError(MyIrcConnectionError):
+    """Connecting took too long."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
 class MyIrcStillConnectingError(MyIrcConnectionError):
     """Still connecting (wait a few seconds, please)"""
 
