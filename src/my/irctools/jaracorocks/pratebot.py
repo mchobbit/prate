@@ -79,6 +79,10 @@ class PrateBot:
         self.__my_main_thread.start()
 
     @property
+    def startup_timeout(self):
+        return self.__startup_timeout
+
+    @property
     def crypto_rx_queue(self):
         return self.__crypto_rx_queue
 
@@ -87,12 +91,12 @@ class PrateBot:
         return self.__crypto_tx_queue
 
     def _start(self):
-        while not self.time_to_quit and (self.__maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
+        while not self.time_to_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
             sleep(1)
             if self.svr is None and self.autoreconnect:
                 self.reconnect_server_connection()  # If its fingerprint is wonky, quit&reconnect.
 #           self.process_data_input_and_output()  # if self.svr and self.svr.ready [not written yet] :)
-        if self.noof_reconnections >= self.maximum_reconnections:
+        if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
             print("We've reconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever.")
         while not self.time_to_quit:
             sleep(1)
@@ -119,7 +123,7 @@ class PrateBot:
         return self.__maximum_reconnections
 
     def reconnect_server_connection(self):
-        while self.svr is None:
+        while self.svr is None and self.autoreconnect:
             try:
                 print("*** CONNECTING TO %s AS %s ***" % (self.irc_server, self.nickname))
                 self.generate_new_svr()
@@ -152,10 +156,9 @@ class PrateBot:
     def quit(self):  # Do we need this?
         """Quit this bot."""
         self.autoreconnect = False
-        if self.svr:
-            self.svr.stopstopstop = True  #            self.svr.shut_down_threads()
         self.time_to_quit = True
-        sleep(5)
+        if self.svr:
+            self.svr.shut_down_threads()
         self.__my_main_thread.join()  # print("Joining server thread")
 
     def generate_new_svr(self):
@@ -169,7 +172,7 @@ class PrateBot:
             port=self.port,
             crypto_rx_queue=self.crypto_rx_queue,
             crypto_tx_queue=self.crypto_tx_queue,
-            startup_timeout=self.__startup_timeout)
+            startup_timeout=self.startup_timeout)
 
 
 class HaremOfBots:

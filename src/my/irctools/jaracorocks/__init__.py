@@ -166,7 +166,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def __crypto_tx_loop(self):
         """Pull from the queue. Encrypt each item. Send it."""
-        while not self.__stopstopstop:
+        while not self.stopstopstop:
             sleep(.1)
             try:
                 (user, byteblock) = self.__crypto_tx_queue.get_nowait()
@@ -187,13 +187,13 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         the_userlist = []
         irc_channel_members = None
         print("Waiting for the bot to be ready to connect to %s..." % self.__irc_server)
-        while not self.__stopstopstop:
+        while not self.stopstopstop:
             sleep(.1)
             if not self.ready:
                 t = datetime.datetime.now()
                 while not self.ready:
                     sleep(.1)
-                    if self.__stopstopstop:
+                    if self.stopstopstop:
                         print("Okay. We're quitting. I get it.")
                         return
                     elif (datetime.datetime.now() - t).seconds >= self.__startup_timeout:
@@ -201,7 +201,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                 print("Bot is ready. Proceeding...")
             elif datetime.datetime.now().second % 15 == 0:
                 irc_channel_members = list(self.channels[self.initial_channel].users())
-            elif self.__stopstopstop:
+            elif self.stopstopstop:
                 return
             elif irc_channel_members is None:
                 pass
@@ -599,16 +599,15 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
 
     @property
     def time_to_quit(self):
-        self.__time_to_quit_lock.acquire_read()
-        try:
-            retval = self.__time_to_quit
-            return retval
-        finally:
-            self.__time_to_quit_lock.release_read()
+        return self.__time_to_quit
+
+    @time_to_quit.setter
+    def time_to_quit(self, value):
+        self.__time_to_quit = value
 
     def quit(self):  # Do we need this?
         """Quit this bot."""
-        self.__time_to_quit = True
+        self.time_to_quit = True
         sleep(1)
         try:
             self.disconnect('Bye')
@@ -624,6 +623,6 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
         except Exception as e:
             print("Bot worker loop encountered a fatal error:", e)
             print("So, we'll twiddle our thumbs until it's time to quiet.")
-        while not self.__time_to_quit:
+        while not self.time_to_quit:
             sleep(1)
         print("Okay. Bot worker is quitting.")
