@@ -137,7 +137,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """The realname that the server currently has for me."""
         try:
             return self.call_whois_and_wait_for_response(self.nickname).split(' ', 4)[-1]
-        except TimeoutError:
+        except (AttributeError, TimeoutError):
             print("There is no realname: I'm offline.")
             return None
 
