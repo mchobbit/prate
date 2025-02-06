@@ -16,19 +16,21 @@ from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFinge
 from time import sleep
 from my.irctools.jaracorocks.pratebot import PrateBot
 from queue import LifoQueue
+import sys
+from threading import Thread
 
 
 class HaremOfBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channel, all_potential_servers, rsa_key, harem_rx_queue, harem_tx_queue):
+    def __init__(self, channel, desired_nickname, all_potential_servers, rsa_key, harem_rx_queue, harem_tx_queue):
         max_nickname_length = 9
+        self.__desired_nickname = desired_nickname  # "%s%d" % (generate_irc_handle(max_nickname_length - 3, max_nickname_length - 3), randint(111, 999))
         self.__all_potential_servers = all_potential_servers
         self.__harem_rx_queue = harem_rx_queue
         self.__harem_tx_queue = harem_tx_queue
         self.__channel = channel
         self.__rsa_key = rsa_key
-        self.__desired_nickname = "%s%d" % (generate_irc_handle(max_nickname_length - 3, max_nickname_length - 3), randint(111, 999))
         self.port = 6667
         self.bots = {}
 
@@ -68,15 +70,22 @@ class HaremOfBots:
         successes = lambda: [k for k in self.bots if self.bots[k].svr and self.bots[k].svr.joined]
         while len(failures()) + len(successes()) < len(self.bots):
             sleep(1)
+
         for k in list(failures()):
             print("Deleting", k)
             self.bots[k].autoreconnect = False
-            self.bots[k].quit()
+            if self.bots[k].svr:
+                self.bots[k].svr.shut_down_threads()
+            self.bots[k].time_to_quit = True
+            Thread(target=self.bots[k].quit, daemon=True).start()
+        for k in list(failures()):
             del self.bots[k]
+#            self.bots[k].quit()
         print("Huzzah. We are logged into %d functional IRC servers." % len(self.bots))
 
     def try_to_log_into_this_IRC_server(self, k):
         try:
+            print("Trying to log into", k)
             self.bots[k] = PrateBot(channel=self.channel,
                                    nickname=self.desired_nickname,
                                    rsa_key=self.rsa_key,
@@ -94,9 +103,11 @@ my_list_of_all_potential_servers = ['irc.foo.bar', 'irc.wtf.bruh', 'newphone.who
         [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if len(r) >= 5]
 my_rsa_key = RSA.generate(2048)
 my_channel = "#prate123"
+my_desired_nickname = 'mac1'
 my_harem_tx_q = LifoQueue()
 my_harem_rx_q = LifoQueue()
-harem = HaremOfBots(my_channel, my_list_of_all_potential_servers, my_rsa_key, my_harem_rx_q, my_harem_tx_q)
+harem = HaremOfBots(my_channel, my_desired_nickname, my_list_of_all_potential_servers, my_rsa_key, my_harem_rx_q, my_harem_tx_q)
+harem.log_into_all_functional_IRC_servers()
 
 '''
 
@@ -105,7 +116,11 @@ if __name__ == '__main__':
             [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if len(r) >= 5]
     my_rsa_key = RSA.generate(2048)
     my_channel = "#prate123"
+    my_desired_nickname = 'mac1'
     my_harem_tx_q = LifoQueue()
     my_harem_rx_q = LifoQueue()
-    harem = HaremOfBots(my_channel, my_list_of_all_potential_servers, my_rsa_key, my_harem_rx_q, my_harem_tx_q)
+    harem = HaremOfBots(my_channel, my_desired_nickname, my_list_of_all_potential_servers, my_rsa_key, my_harem_rx_q, my_harem_tx_q)
     harem.log_into_all_functional_IRC_servers()
+    print("Exiting.")
+    sys.exit(0)
+
