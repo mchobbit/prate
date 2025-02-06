@@ -272,8 +272,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
             his_fprint = self.call_whois_and_wait_for_response(user).split(' ', 4)[-1]
         except AttributeError:
             his_fprint = None
-        else:
-            shouldbe_fprint = self.generate_fingerprint(user)
+        shouldbe_fprint = self.generate_fingerprint(user)
         if his_fprint == shouldbe_fprint:
             self.initiate_public_key_negotiation(user)
         else:
