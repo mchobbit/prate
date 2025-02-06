@@ -87,14 +87,14 @@ class PrateBot:
         return self.__crypto_tx_queue
 
     def _start(self):
-        while not self.__time_to_quit and (self.__maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
+        while not self.time_to_quit and (self.__maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
             sleep(1)
             if self.svr is None and self.autoreconnect:
                 self.reconnect_server_connection()  # If its fingerprint is wonky, quit&reconnect.
 #           self.process_data_input_and_output()  # if self.svr and self.svr.ready [not written yet] :)
         if self.noof_reconnections >= self.maximum_reconnections:
             print("We've reconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever.")
-        while not self.__time_to_quit:
+        while not self.time_to_quit:
             sleep(1)
         print("Quitting. Huzzah.")
 
@@ -105,6 +105,14 @@ class PrateBot:
     @autoreconnect.setter
     def autoreconnect(self, value):  # FIXME: not threadsafe
         self.__autoreconnect = value
+
+    @property
+    def time_to_quit(self):
+        return self.__time_to_quit
+
+    @time_to_quit.setter
+    def time_to_quit(self, value):  # FIXME: not threadsafe
+        self.__time_to_quit = value
 
     @property
     def maximum_reconnections(self):
@@ -120,16 +128,18 @@ class PrateBot:
             except MyIrcInitialConnectionTimeoutError:
                 print("Timed out while trying to connect to server.")
             if self.svr is None or self.svr.fingerprint != self.svr.realname or self.svr.nickname != self.nickname:
-                print("The svr changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint.")
-                if self.svr:
+                if self.svr is None:
+                    print("%s timed out." % self.irc_server)
+                else:
+                    print("%s changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint." % self.irc_server)
                     try:
                         self.svr.disconnect("Bye")
                     except Exception as e:
                         print("Exception occurred (which we shall ignore):", e)
                     self.svr.shut_down_threads()
 #                del self.svr  # Is this necessary?
-                self.svr = None
-                self.nickname = "%s%d" % (generate_irc_handle(), randint(1000, 9999))
+                    self.svr = None
+                    self.nickname = "%s%d" % (generate_irc_handle(), randint(1000, 9999))
             elif not self.svr.ready:
                 print("Waiting for svr to be ready")
                 sleep(1)
@@ -143,8 +153,9 @@ class PrateBot:
         """Quit this bot."""
         self.autoreconnect = False
         if self.svr:
-            self.svr.shut_down_threads()
-        self.__time_to_quit = True
+            self.svr.stopstopstop = True  #            self.svr.shut_down_threads()
+        self.time_to_quit = True
+        sleep(5)
         self.__my_main_thread.join()  # print("Joining server thread")
 
     def generate_new_svr(self):
