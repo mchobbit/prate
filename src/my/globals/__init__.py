@@ -21,6 +21,7 @@ from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "
 ANTIOVERLOAD_CACHE_TIME = 20
 MAX_NOOF_FINGERPRINTING_FAILURES = 6 * ANTIOVERLOAD_CACHE_TIME  # maximum number of attempts to negotiate fingerprint
+JOINING_IRC_SERVER_TIMEOUT = 30
 
 
 def get_my_public_ip_address():
