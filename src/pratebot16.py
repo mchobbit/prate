@@ -26,18 +26,19 @@ Todo:
 Example:
 
 from Crypto.PublicKey import RSA
-from pratebot13 import *
+from pratebot16 import *
+import queue
 desired_nickname = 'mac1'
 my_irc_server = 'cinqcent.local'
 my_channel = '#prate'
-from pratebot13 import *
 rx_q = queue.LifoQueue()
 tx_q = queue.LifoQueue()
 my_rsa_key = RSA.generate(2048)
-svr = PrateBot(channel=my_channel, nickname=desired_nickname,rsa_key=my_rsa_key,
-                is_pubkey_in_realname=False,
-                irc_server=my_irc_server, port=6667,
-                crypto_rx_queue=rx_q, crypto_tx_queue=tx_q)
+bot = PrateBot(channel=my_channel, nickname=desired_nickname,
+                rsa_key=my_rsa_key,
+                irc_server=my_irc_server,
+                port=6667,
+                startup_timeout=30)
 
 """
 
@@ -48,75 +49,15 @@ from threading import Thread
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
 from random import randint, choice
-from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer
 from Crypto.PublicKey import RSA
 from my.irctools.jaracorocks import PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport
 from queue import LifoQueue
-
-
-class PrateBot:
-
-    def __init__(self, channel, nickname, rsa_key, irc_server, port):
-        self.c_rx_q = LifoQueue()
-        self.c_tx_q = LifoQueue()
-        self.channel = channel
-        self.nickname = nickname
-        self.rsa_key = rsa_key
-        self.irc_server = irc_server
-        self.port = port
-        self.svr = None
-        self.__time_to_quit = False
-        self.__my_main_thread = Thread(target=self._start, daemon=True)
-        self.__my_main_thread.start()
-
-    def _start(self):
-        old_nick = self.nickname
-        while not self.__time_to_quit:
-            sleep(.1)
-            if self.svr is None:
-                try:
-                    print("*** CONNECTING AS %s ***" % self.nickname)
-                    self.generate_new_svr()
-                except MyIrcFingerprintMismatchCausedByServer:
-                    print("svr changed my nickname, thus making my fingerprint out of date.")
-            if self.svr is None or self.svr.fingerprint != self.svr.realname or self.svr.nickname != self.nickname:
-                print("The svr changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint.")
-                if self.svr:
-                    try:
-                        self.svr.disconnect("Bye")
-                    except Exception as e:
-                        print("Exception occurred (which we shall ignore):", e)
-                    self.svr.shut_down_threads()
-                del self.svr  # Is this necessary?
-                self.svr = None
-                self.nickname = "%s%d" % (old_nick, randint(0, 9))
-                old_nick = self.nickname
-            elif not self.svr.ready:
-                print("Waiting for svr to be ready")
-                sleep(1)
-            elif self.channel not in self.svr.channels:
-                print("WARNING -- we dropped out of %s" % self.channel)
-                self.svr.connection.join(self.channel)
-            else:
-                pass
-
-    def quit(self):  # Do we need this?
-        """Quit this bot."""
-        self.__time_to_quit = True
-        self.__my_main_thread.join()  # print("Joining server thread")
-
-    def generate_new_svr(self):
-        self.svr = PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(
-            channel=self.channel,
-            nickname=self.nickname,
-            rsa_key=self.rsa_key,
-            is_pubkey_in_realname=False,
-            irc_server=self.irc_server,
-            port=self.port,
-            crypto_rx_queue=self.c_rx_q, crypto_tx_queue=self.c_tx_q)
+from my.stringtools import generate_irc_handle
+import datetime
+from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer
+from my.irctools.jaracorocks.pratebot import PrateBot
 
 ##########################################################################################################
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
@@ -133,7 +74,7 @@ if __name__ == "__main__":
         desired_nickname = sys.argv[4]
 
     my_rsa_key = RSA.generate(2048)
-    bot = PrateBot(my_channel, desired_nickname, my_rsa_key, my_irc_server, my_port)
+    bot = PrateBot(my_channel, desired_nickname, my_rsa_key, my_irc_server, my_port, startup_timeout=30)
     while True:
         sleep(1)
         if bot.svr is None:
@@ -145,10 +86,10 @@ if __name__ == "__main__":
             pass
         else:
             if bot.svr.homies[u].ipaddr is not None and randint(0, 10) == 0:
-                bot.c_tx_q.put((u, ('HELLO from %s to %s' % (bot.svr.nickname, u)).encode()))
+                bot.crypto_tx_queue.put((u, ('HELLO from %s to %s' % (bot.svr.nickname, u)).encode()))
             try:
                 while True:
-                    the_user, the_blk = bot.c_rx_q.get_nowait()
+                    the_user, the_blk = bot.crypto_rx_queue.get_nowait()
                     assert("HELLO from" in the_blk.decode())
                     print(the_user, "==>", the_blk)
             except Empty:
