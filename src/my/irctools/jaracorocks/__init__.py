@@ -89,6 +89,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
                  irc_server, port, crypto_rx_queue, crypto_tx_queue,
                  startup_timeout):
         self.__startup_timeout = startup_timeout
+        self.__irc_server = irc_server
         self.__prev_showtxt_op = None
         self.__crypto_rx_queue = crypto_rx_queue
         self.__crypto_tx_queue = crypto_tx_queue
