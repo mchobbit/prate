@@ -6,6 +6,29 @@ Created on Jan 21, 2025
 
 # print(key.get_base64())  # print public key
 # key.write_private_key(sys.stdout)
+
+
+from random import shuffle, randint
+from my.stringtools import generate_irc_handle
+from Crypto.PublicKey import RSA
+from my.globals import PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES, JOINING_IRC_SERVER_TIMEOUT
+from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
+from time import sleep
+from my.irctools.jaracorocks.pratebot import PrateBot
+from queue import LifoQueue
+from sheepdip import HaremOfBots
+import sys
+from threading import Thread
+my_list_of_all_potential_servers = ['irc.foo.bar', 'irc.wtf.bruh', 'newphone.who.dis'] + [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if len(r) >= 5]
+my_rsa_key = RSA.generate(2048)
+my_channel = "#prate123"
+my_harem_tx_q = LifoQueue()
+my_harem_rx_q = LifoQueue()
+my_desired_nickname = 'mac1'
+harem = HaremOfBots(my_channel, my_desired_nickname, my_list_of_all_potential_servers, my_rsa_key, my_harem_rx_q, my_harem_tx_q)
+harem.log_into_all_functional_IRC_servers()
+harem.bots
+sys.exit(0)
 '''
 
 from random import shuffle, randint
@@ -96,30 +119,6 @@ class HaremOfBots:
 
 ################################################################################################
 
-'''
-from random import shuffle, randint
-from my.stringtools import generate_irc_handle
-from Crypto.PublicKey import RSA
-from my.globals import PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES, JOINING_IRC_SERVER_TIMEOUT
-from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
-from time import sleep
-from my.irctools.jaracorocks.pratebot import PrateBot
-from queue import LifoQueue
-from sheepdip import HaremOfBots
-import sys
-from threading import Thread
-my_list_of_all_potential_servers = ['irc.foo.bar', 'irc.wtf.bruh', 'newphone.who.dis'] + [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if len(r) >= 5]
-my_rsa_key = RSA.generate(2048)
-my_channel = "#prate123"
-my_harem_tx_q = LifoQueue()
-my_harem_rx_q = LifoQueue()
-my_desired_nickname = 'mac1'
-harem = HaremOfBots(my_channel, my_desired_nickname, my_list_of_all_potential_servers, my_rsa_key, my_harem_rx_q, my_harem_tx_q)
-harem.log_into_all_functional_IRC_servers()
-harem.bots
-sys.exit(0)
-
-'''
 
 if __name__ == '__main__':
     my_list_of_all_potential_servers = ['irc.foo.bar', 'irc.wtf.bruh', 'newphone.who.dis'] + \
