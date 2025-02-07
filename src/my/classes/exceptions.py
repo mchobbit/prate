@@ -24,6 +24,7 @@ Error
         StillAwaitingCachedValue
     MyIrcError
         MyIrcConnectionError
+            MyIrcInitialConnectionTimeoutError
             MyIrcStillConnectingError
             MyIrcRealnameTruncationError
             MyIrcFingerprintMismatchCausedByServer

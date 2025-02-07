@@ -148,10 +148,12 @@ def get_random_Cicero_line() -> str:
 
 
 def squeeze_da_keez(i):
+    """Compress the supplied RSA public key. Spit out b85 ascii."""
 #    return skinny_key(i)
     return pubkey_to_b85(i)
 
 
 def unsqueeze_da_keez(i):
+    """Decompress the supplied b85 ascii. Spit out RSA public key."""
 #    return unskin_key(i)
     return b85_to_pubkey(i)
