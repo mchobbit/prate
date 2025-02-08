@@ -88,3 +88,60 @@ if __name__ == "__main__":
                     print(the_user, "==>", the_blk)
             except Empty:
                 pass
+
+
+def hacky_fracky_fruitcake():
+    from queue import LifoQueue
+    from random import randint
+    from Crypto.PublicKey import RSA
+    # crypto_rx_queue = LifoQueue()
+    # crypto_tx_queue = LifoQueue()
+    my_startup_timeout = 20
+    my_channel = '#prate'
+    my_nickname = 'mac%d' % randint(111, 999)
+    my_rsa_key = RSA.generate(2048)
+    my_irc_server = 'cinqcent.local'
+    my_port = 6667
+    bot = PrateBot(my_channel, my_nickname, my_rsa_key, my_irc_server, my_port, startup_timeout=my_startup_timeout)
+    while bot.svr is None:
+        sleep(1)
+    print("PLEASE LAUNCH ME IN BOTH SHELL WINDOWS! I'm waiting.")
+    while len(bot.svr.channels[bot.svr.initial_channel].users()) < 3:
+        sleep(1)
+    irc_channel_members = list(bot.svr.channels[bot.svr.initial_channel].users())
+    the_userlist = []
+    new_users = [str(u) for u in irc_channel_members if u not in the_userlist and str(u) != bot.svr.nickname]
+    dead_users = [str(u) for u in the_userlist if u not in irc_channel_members and str(u) != bot.svr.nickname]
+    for user in dead_users:
+        print("%-20s has died. Removing him from our list." % user)
+        bot.svr.homies[user].pubkey_fragments_lst = None
+        the_userlist.remove(user)
+        if user in new_users:
+            new_users.remove(user)
+    for user in new_users:
+        the_userlist += [user]
+    shuffle(new_users)
+    the_users_we_care_about = list(set([str(u) for u in the_userlist if str(u) != bot.svr.nickname]))
+    user = the_users_we_care_about[0]
+    print("Great! We are both present. I am %s, and I plan to talk to %s." % (bot.svr.nickname, user))
+    return (bot, user)
+
+
+def hi_my_names_Doechii_with_two_Is(bot, user):
+    bot.svr.scan_a_user_for_fingerprints_publickeys_etc(user)
+    lst = [bot.nickname, user]
+    lst.sort()
+    pitcher, catcher = lst
+    if pitcher == bot.nickname:
+        print("My name is %s and I am the pitcher" % bot.nickname)
+    else:
+        print("My name is %s and I am the catcher" % bot.nickname)
+    return(pitcher, catcher)
+'''
+from pratebot16 import *
+bot, user = hacky_fracky_fruitcake()
+pitcher, catcher = hi_my_names_Doechii_with_two_Is(bot, user)
+
+
+'''
+
