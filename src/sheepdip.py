@@ -98,8 +98,8 @@ class HaremOfBots:
             sleep(1)
         q = [Thread(target=self.bots[k].quit, daemon=True) for k in failures()]
         print("Quitting the bad servers")
-        [r.start() for r in q]
-        [r.join() for r in q]
+        _ = [r.start() for r in q]
+        _ = [r.join() for r in q]
         for k in list(failures()):
             del self.bots[k]
         print("Huzzah. We are logged into %d functional IRC servers." % len(self.bots))
