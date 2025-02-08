@@ -65,8 +65,8 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     """Crypto-oriended single server IRC bot with Whois Support.
 
     This is a subclass of a subclass of Jaraco's amazing IRC server class.
-    It joins the specified room, runs /whois to find the users whose public
-    keys are in their realname fields, exchanges public keys, establishes
+    It joins the specified room, runs /whois to find the users whose finger-
+    prints are in their realname fields, exchanges public keys, establishes
     a secure (symmetric) encoded channel, and exchanges IP addresses. Then,
     it presents an easy way for programmers to tell the two (or more) users
     to talk to one another programmatically and privately.
@@ -94,7 +94,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__homies_lock = ReadWriteLock()
         self.__scan_a_user_mutex = Lock()
         self.__repop_mutex = Lock()
-        self.__is_pubkey_in_realname = False
         self.__homies = HomiesDct()
         self.__rsa_key = rsa_key
         self.__stopstopstop = False
@@ -132,22 +131,14 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     def generate_fingerprint(self, user=None):
         """Generate a fingerprint for the specified user."""
-        if self.is_pubkey_in_realname:
-            return squeeze_da_keez(self.rsa_key.public_key())
-        else:
-            if user is None:
-                user = self.nickname
-            return sha1(user)
+        if user is None:
+            user = self.nickname
+        return sha1(user)
 
     @property
     def fingerprint(self):
         """Returns the fingerprint for my current nickname."""
         return self.generate_fingerprint(self.nickname)
-
-    @property
-    def is_pubkey_in_realname(self):
-        """Should users keep their public keys in their /whois realname fields?"""
-        return self.__is_pubkey_in_realname
 
     @property
     def rsa_key(self):
@@ -260,39 +251,13 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
     def __load_homie_pubkey(self, user, pubkey=None):
         if pubkey is not None:
             self.__load_homie_pubkey_from_parameter(user, unsqueeze_da_keez(pubkey))
-        if self.is_pubkey_in_realname:
-            self.__load_homie_pubkey_from_whois_record(user)
-        else:
-            self.__load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(user)
+        self.__load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(user)
 
     def __load_homie_pubkey_from_parameter(self, user, pubkey):
         if type(user) is not str:
             raise ValueError(user, "should be type str")
 #        self.homies[user].noof_fingerprinting_failures = 0
         self.homies[user].pubkey = pubkey
-
-    def __load_homie_pubkey_from_whois_record(self, user):
-        if type(user) is not str:
-            raise ValueError(user, "should be type str")
-#        self.homies[user].noof_fingerprinting_failures = 0
-        old_pk = self.homies[user].pubkey
-        new_pk = None
-        try:
-            whois_res = self.call_whois_and_wait_for_response(user, timeout=30)
-            if whois_res is None:
-                raise TimeoutError("If whois returns None, that might mean a Timeout. It's hella strange. So, let's assume it's a timeout.")
-            squozed_key = whois_res.split(' ', 4)[-1]
-            unsqueezed_key = unsqueeze_da_keez(squozed_key)
-        except (ValueError, AttributeError):
-#            print(user, "sent me >>>", whois_res, "<<< and this is not a public key.")
-            self.homies[user].noof_fingerprinting_failures += 1
-        except TimeoutError:
-            pass
-        else:
-            new_pk = unsqueezed_key
-            if old_pk is not None and old_pk != new_pk:
-                print("HEY! HAS %s'S PUBLIC KEY CHANGED?!?!" % user)
-            self.homies[user].pubkey = new_pk
 
     def __load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(self, user):
         try:
@@ -480,8 +445,7 @@ Kosher :%s
             print("Cannot decipher message from %s: we have no fernet key." % sender)
             print("This might mean I'm using someone's ex-nickname & %s doesn't realize that." % sender)
             print("To calm him down a bit, I'm sending him a request for his public key.")
-            if self.is_pubkey_in_realname:
-                print("Granted, we store our public keys in our realnames, but my /whois entry might be out of date. Who knows? So, let's skip that & assume the worst.")
+            print("Granted, we store our public keys in our realnames, but my /whois entry might be out of date. Who knows? So, let's skip that & assume the worst.")
             print("Anyhow, let's request a new public key from him & go from there.")
         else:
             try:
