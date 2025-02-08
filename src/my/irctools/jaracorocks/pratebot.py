@@ -53,9 +53,9 @@ from Crypto.PublicKey import RSA
 from my.irctools.jaracorocks import PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport
 from queue import LifoQueue
 from my.stringtools import generate_irc_handle
-import datetime
 from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer, MyIrcInitialConnectionTimeoutError
-from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
+from my.globals import JOINING_IRC_SERVER_TIMEOUT
+# from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
 
 
 class PrateBot:
