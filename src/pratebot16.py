@@ -44,17 +44,11 @@ bot = PrateBot(channel=my_channel, nickname=desired_nickname,
 
 import sys
 from time import sleep
-from threading import Thread
+# from threading import Thread
 
-from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
-from random import randint, choice
+from random import randint, choice, shuffle
 from Crypto.PublicKey import RSA
-from my.irctools.jaracorocks import PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport
-from queue import LifoQueue
-from my.stringtools import generate_irc_handle
-import datetime
-from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer
 from my.irctools.jaracorocks.pratebot import PrateBot
 
 ##########################################################################################################
