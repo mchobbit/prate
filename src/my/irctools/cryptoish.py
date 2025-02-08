@@ -157,3 +157,7 @@ def unsqueeze_da_keez(i):
     """Decompress the supplied b85 ascii. Spit out RSA public key."""
 #    return unskin_key(i)
     return b85_to_pubkey(i)
+
+
+def generate_fingerprint(s):
+    return sha1(s)
