@@ -34,6 +34,12 @@ import string
 from my.classes.exceptions import MyIrcStillConnectingError
 from my.classes import MyTTLCache
 from my.globals import ANTIOVERLOAD_CACHE_TIME
+from irc.client import ServerNotConnectedError
+from queue import LifoQueue
+from my.classes.readwritelock import ReadWriteLock
+from threading import Thread
+from my.irctools.cryptoish import generate_fingerprint
+from _queue import Empty
 
 try:
     from my.stringtools import generate_irc_handle  # @UnusedImport
@@ -85,7 +91,6 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.__privmsg_c_hits_dct = {}
         self.__whois_request_cache = MyTTLCache(ANTIOVERLOAD_CACHE_TIME)
         self.__whois_request_c_hits_v_misses = [0, 0]
-#        self.__whois_request_cache_mutex = Lock()
         self.__initial_nickname = nickname
         self.__initial_realname = realname
         self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
@@ -180,6 +185,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             c.notice(nick, "Unknown command => " + cmd)
 
     def call_whois_and_wait_for_response(self, user, timeout=10):
+        """Call /whois, and use __whois_request_cache to get answer."""
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
             try:
@@ -210,6 +216,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
+        retval = None
         cached_data = user + '///' + msg
         if user not in self.__privmsg_c_hits_dct:
             self.__privmsg_c_hits_dct[user] = 0
@@ -218,14 +225,114 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             if self.__privmsg_c_hits_dct[user] > 3:
                 print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg[:4], user))
             self.__privmsg_c_hits_dct[user] = 0
-            self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
+            try:
+                self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
+                retval = len(msg)
+            except ServerNotConnectedError:
+                print("WARNING --- unable to send %s to %s: server is no connected" % (msg, user))
+                retval = -1
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
         else:
             self.__privmsg_c_hits_dct[user] += 1
+            retval = 0
             if self.__privmsg_c_hits_dct[user] in (2, 5, 10, 20, 50, 100, 200, 500, 1000):
                 print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg[:4], user))
             else:
                 pass
+        return retval
+
+
+class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSupport):
+    """Dual-queued IRC server with Whois support.
+
+    This class lets the programmer connect, join, etc. to an IRC server and
+    send&receive messages via LIFO queues. The processes run in the background.
+    The goal is to make it easy to send and receive private messages. At
+    present, only private messages and /whois are supported.
+
+    Note:
+        Don't park on railroad tracks.
+
+    Args:
+        channel (str): Channel to join, beginning with '#'.
+        nickname (str): Nickname to use when joining.
+        irc_server (str): URL of IRC server.
+        port (int): Port# to use.
+
+    """
+
+    def __init__(self, channel, nickname, irc_server, port):
+        self.__received_queue = LifoQueue()
+        self.__transmit_queue = LifoQueue()
+        self.__wannaquit = False
+        self.__wannaquit_lock = ReadWriteLock()
+        super().__init__(channel, nickname, generate_fingerprint(nickname), irc_server, port)
+        self.__my_tx_thread = Thread(target=self._tx_start, daemon=True)
+        self.__my_tx_thread.start()
+
+    def _tx_start(self):
+        """Start the transmission buffer thread."""
+        while not self.wannaquit:
+            try:
+                user, msg = self.transmit_queue.get_nowait()
+                self.privmsg(user, msg)
+            except Empty:
+                sleep(.1)
+        try:
+            self.disconnect('Bye')
+        except Exception as e:
+            print("Quitting =>", e)
+        print("Quitting. Huzzah.")
+
+    def quit(self):  # Do we need this?
+        """Quit this bot."""
+        self.wannaquit = True
+        self.__my_tx_thread.join()
+
+    @property
+    def wannaquit(self):
+        self.__wannaquit_lock.acquire_read()
+        try:
+            retval = self.__wannaquit
+            return retval
+        finally:
+            self.__wannaquit_lock.release_read()
+
+    @wannaquit.setter
+    def wannaquit(self, value):
+        self.__wannaquit_lock.acquire_write()
+        try:
+            self.__wannaquit = value
+        finally:
+            self.__wannaquit_lock.release_write()
+
+    @property
+    def received_queue(self):
+        return self.__received_queue
+
+    @property
+    def transmit_queue(self):
+        return self.__transmit_queue
+
+    def on_privmsg(self, c, e):  # @UnusedVariable
+        """Process on_privmsg event from the bot's reactor IRC thread."""
+        if e is None:  # e is event
+            raise AttributeError("act_on_msg_from_irc() has an e of None")
+        if e.source:
+            sender = e.source.split('@')[0].split('!')[0]
+        else:
+            sender = None
+        txt = e.arguments[0]
+        self.received_queue.put((sender, txt))
+
+    def get(self):
+        return self.received_queue.get()
+
+    def get_nowait(self):
+        return self.received_queue.get_nowait()
+
+    def put(self, user, msg):
+        self.transmit_queue.put((user, msg))
 
 ####################################################################################
 
