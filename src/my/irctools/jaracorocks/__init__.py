@@ -75,8 +75,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         channel (str): IRC channel to be joined.
         nickname (str): Initial nickname. The real nickname will be changed
             if the IRC server reports a nickname collision.
-        is_pubkey_in_realname (bool): If True, use realname to store the
-            public key. If False, create a fingerprint w/ sha1 instead.
         rsa_key (RSA.RsaKey): Our rsa key.
         irc_server (str): The IRC server URL.
         port (int): The port number of the IRC server.
@@ -85,7 +83,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
 
     """
 
-    def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
+    def __init__(self, channel, nickname, rsa_key,
                  irc_server, port, crypto_rx_queue, crypto_tx_queue,
                  startup_timeout):
         self.__startup_timeout = startup_timeout
@@ -96,7 +94,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__homies_lock = ReadWriteLock()
         self.__scan_a_user_mutex = Lock()
         self.__repop_mutex = Lock()
-        self.__is_pubkey_in_realname = is_pubkey_in_realname
+        self.__is_pubkey_in_realname = False
         self.__homies = HomiesDct()
         self.__rsa_key = rsa_key
         self.__stopstopstop = False
@@ -575,13 +573,12 @@ class PersistentCryptoOrientedSingleServerIRCBotWithWhoisSupport(CryptoOrientedS
 
     """
 
-    def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
+    def __init__(self, channel, nickname, rsa_key,
                  irc_server, port, crypto_rx_queue, crypto_tx_queue,
                  startup_timeout):
         super().__init__(channel,
                          nickname,
                          rsa_key,
-                         is_pubkey_in_realname,
                          irc_server,
                          port,
                          crypto_rx_queue,
