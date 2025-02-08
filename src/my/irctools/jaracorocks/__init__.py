@@ -100,6 +100,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__homies = HomiesDct()
         self.__rsa_key = rsa_key
         self.__stopstopstop = False
+        self.__stopstopstop_lock = ReadWriteLock()
         super().__init__(channel, nickname, self.generate_fingerprint(nickname), irc_server, port)
         self.__scanusers_thread = Thread(target=self.__scanusers_worker_loop, daemon=True)
         self.__crypto_tx_thread = Thread(target=self.__crypto_tx_loop, daemon=True)
@@ -109,12 +110,21 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__crypto_tx_thread.start()
 
     @property
-    def stopstopstop(self):  # FIXME: not threadsafe
-        return self.__stopstopstop
+    def stopstopstop(self):
+        self.__stopstopstop_lock.acquire_read()
+        try:
+            retval = self.__stopstopstop
+            return retval
+        finally:
+            self.__stopstopstop_lock.release_read()
 
     @stopstopstop.setter
     def stopstopstop(self, value):
-        self.__stopstopstop = value
+        self.__stopstopstop_lock.acquire_write()
+        try:
+            self.__stopstopstop = value
+        finally:
+            self.__stopstopstop_lock.release_write()
 
     def shut_down_threads(self):
         """Trigger the shutdown of all our processes."""
