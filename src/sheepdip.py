@@ -46,7 +46,7 @@ class HaremOfBots:
 # Eventually, make it threaded!
 
     def __init__(self, channel, desired_nickname, all_potential_servers, rsa_key, harem_rx_queue, harem_tx_queue, port=6667):
-        max_nickname_length = 9
+#        max_nickname_length = 9
         self.__desired_nickname = desired_nickname  # "%s%d" % (generate_irc_handle(max_nickname_length - 3, max_nickname_length - 3), randint(111, 999))
         self.__all_potential_servers = all_potential_servers
         self.__harem_rx_queue = harem_rx_queue
