@@ -29,6 +29,19 @@ Error
             MyIrcRealnameTruncationError
             MyIrcFingerprintMismatchCausedByServer
             MyIrcNicknameChangedByServer
+        MyIrcMessagingError
+            MyIrcUnknownIncomingCommandError
+    MyEncryptionError
+        MyKeyError
+            MyPublicKeyError
+                MyPublicKeyUnknownError
+                MyPublicKeyIncompleteError
+                MyPublicKeyTooBigError
+            MyFernetKeyError
+                MyFernetKeyUnknownError
+        MyFailedToEncryptError
+        MyFailedToDecryptError
+
 
 Example:
     n/a
@@ -238,8 +251,112 @@ class MyIrcFingerprintMismatchCausedByServer(MyIrcConnectionError):
         super().__init__(message)
 
 
+class MyIrcMessagingError(MyIrcError):
+    """Class for all MyIrcMessagingError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcUnknownIncomingCommandError(MyIrcMessagingError):
+    """Unknown incoming command."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyIrcIncomingCommandFromMyselfError(MyIrcMessagingError):
+    """Why am I talking to myself?"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
 class MyIrcNicknameChangedByServer(MyIrcConnectionError):
     """If the nickname is CHANGED by the server, probably because of a nickname collision"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyEncryptionError(Error):
+    """Class for all MyKeyError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyKeyError(MyEncryptionError):
+    """Class for all MyKeyError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyPublicKeyError(MyKeyError):
+    """Class for all MyPublicKeyError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyPublicKeyUnknownError(MyPublicKeyError):
+    """I don't know his public key yet."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyPublicKeyIncompleteError(MyPublicKeyError):
+    """Public key is incomplete."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyPublicKeyTooBigError(MyPublicKeyError):
+    """Public key is too big for /whois."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyFernetKeyError(MyKeyError):
+    """Class for all MyPublicKeyError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyFernetKeyUnknownError(MyPublicKeyError):
+    """I don't know his fernet key yet."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyFailedtoEncryptError(MyEncryptionError):
+    """Failed to encrypt"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class MyFailedtoDecryptError(MyEncryptionError):
+    """Failed to decrypt"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
