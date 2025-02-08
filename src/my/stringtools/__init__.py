@@ -393,3 +393,7 @@ def multiline_encode_via_steg(plaintext, salad_txt=VANILLA_WORD_SALAD, random_of
         i = j + 1
     return outlines
 
+
+def chop_up_string_into_substrings_of_N_characters(s, n):
+    return [(s[i:i + n]) for i in range(0, len(s), n)]
+
