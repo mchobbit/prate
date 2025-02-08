@@ -65,6 +65,8 @@ class PrateBot:
         self.__startup_timeout = startup_timeout
         self.__crypto_rx_queue = LifoQueue()
         self.__crypto_tx_queue = LifoQueue()
+        self.__should_we_quit = False
+        self.__should_we_quit_lock = ReadWriteLock()
         self.channel = channel
         self.nickname = nickname
         self.rsa_key = rsa_key
@@ -72,11 +74,30 @@ class PrateBot:
         self.port = port
         self.svr = None  # Set by self.maintain_server_connection()
         self.__maximum_reconnections = maximum_reconnections
-        self.__time_to_quit = False
+        self.__should_we_quit = False
         self.__autoreconnect = True  # Set to False to suspend autoreconnection. Set to True to resume autoreconnecting.
-        self.noof_reconnections = 0  # FIXME: not threadsafe
+        self.__autoreconnect_lock = ReadWriteLock()
+        self.__noof_reconnections = 0
+        self.__noof_reconnections_lock = ReadWriteLock()
         self.__my_main_thread = Thread(target=self._start, daemon=True)
         self.__my_main_thread.start()
+
+    @property
+    def noof_reconnections(self):
+        self.__noof_reconnections_lock.acquire_read()
+        try:
+            retval = self.__noof_reconnections
+            return retval
+        finally:
+            self.__noof_reconnections_lock.release_read()
+
+    @noof_reconnections.setter
+    def noof_reconnections(self, value):
+        self.__noof_reconnections_lock.acquire_write()
+        try:
+            self.__noof_reconnections = value
+        finally:
+            self.__noof_reconnections_lock.release_write()
 
     @property
     def startup_timeout(self):
@@ -91,32 +112,50 @@ class PrateBot:
         return self.__crypto_tx_queue
 
     def _start(self):
-        while not self.time_to_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
+        while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
             sleep(1)
             if self.svr is None and self.autoreconnect:
                 self.reconnect_server_connection()  # If its fingerprint is wonky, quit&reconnect.
 #           self.process_data_input_and_output()  # if self.svr and self.svr.ready [not written yet] :)
         if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
             print("We've reconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever.")
-        while not self.time_to_quit:
+        while not self.should_we_quit:
             sleep(1)
         print("Quitting. Huzzah.")
 
     @property
     def autoreconnect(self):
-        return self.__autoreconnect
+        self.__autoreconnect_lock.acquire_read()
+        try:
+            retval = self.__autoreconnect
+            return retval
+        finally:
+            self.__autoreconnect_lock.release_read()
 
     @autoreconnect.setter
-    def autoreconnect(self, value):  # FIXME: not threadsafe
-        self.__autoreconnect = value
+    def autoreconnect(self, value):
+        self.__autoreconnect_lock.acquire_write()
+        try:
+            self.__autoreconnect = value
+        finally:
+            self.__autoreconnect_lock.release_write()
 
     @property
-    def time_to_quit(self):
-        return self.__time_to_quit
+    def should_we_quit(self):
+        self.__should_we_quit_lock.acquire_read()
+        try:
+            retval = self.__should_we_quit
+            return retval
+        finally:
+            self.__should_we_quit_lock.release_read()
 
-    @time_to_quit.setter
-    def time_to_quit(self, value):  # FIXME: not threadsafe
-        self.__time_to_quit = value
+    @should_we_quit.setter
+    def should_we_quit(self, value):
+        self.__should_we_quit_lock.acquire_write()
+        try:
+            self.__should_we_quit = value
+        finally:
+            self.__should_we_quit_lock.release_write()
 
     @property
     def maximum_reconnections(self):
@@ -128,35 +167,29 @@ class PrateBot:
                 print("*** CONNECTING TO %s AS %s ***" % (self.irc_server, self.nickname))
                 self.generate_new_svr()
             except MyIrcFingerprintMismatchCausedByServer:
-                print("svr changed my nickname, thus making my fingerprint out of date.")
+                print("%s changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint." % self.irc_server)
+                try:
+                    self.svr.disconnect("Bye")
+                except Exception as e:
+                    print("Exception occurred (which we shall ignore):", e)
+                if self.svr:
+                    self.svr.shut_down_threads()
+                self.svr = None
+                self.nickname = "%s%d" % (generate_irc_handle(), randint(1000, 9999))
             except MyIrcInitialConnectionTimeoutError:
                 print("Timed out while trying to connect to server.")
-            if self.svr is None or self.svr.fingerprint != self.svr.realname or self.svr.nickname != self.nickname:
-                if self.svr is None:
-                    print("%s timed out." % self.irc_server)
-                else:
-                    print("%s changed my nickname and didn't tell me. I must disconnect and reconnect, so as to refresh my fingerprint." % self.irc_server)
-                    try:
-                        self.svr.disconnect("Bye")
-                    except Exception as e:
-                        print("Exception occurred (which we shall ignore):", e)
-                    self.svr.shut_down_threads()
-#                del self.svr  # Is this necessary?
-                    self.svr = None
-                    self.nickname = "%s%d" % (generate_irc_handle(), randint(1000, 9999))
-            elif not self.svr.ready:
-                print("Waiting for svr to be ready")
-                sleep(1)
-            elif self.channel not in self.svr.channels:
-                print("WARNING -- we dropped out of %s" % self.channel)
-                self.svr.connection.join(self.channel)
             else:
-                pass
+                if self.channel not in self.svr.channels:
+                    print("WARNING -- we dropped out of %s" % self.channel)
+                    self.svr.connection.join(self.channel)
+                else:
+                    print("YAY")
+#                    pass
 
     def quit(self):  # Do we need this?
         """Quit this bot."""
         self.autoreconnect = False
-        self.time_to_quit = True
+        self.should_we_quit = True
         if self.svr:
             self.svr.shut_down_threads()
         self.__my_main_thread.join()  # print("Joining server thread")
@@ -167,7 +200,6 @@ class PrateBot:
             channel=self.channel,
             nickname=self.nickname,
             rsa_key=self.rsa_key,
-            is_pubkey_in_realname=False,
             irc_server=self.irc_server,
             port=self.port,
             crypto_rx_queue=self.crypto_rx_queue,
