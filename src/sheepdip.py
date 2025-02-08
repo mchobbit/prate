@@ -31,8 +31,6 @@ harem.bots
 sys.exit(0)
 '''
 
-from random import shuffle, randint
-from my.stringtools import generate_irc_handle
 from Crypto.PublicKey import RSA
 from my.globals import PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES, JOINING_IRC_SERVER_TIMEOUT
 from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
@@ -41,6 +39,7 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from queue import LifoQueue
 import sys
 from threading import Thread
+from random import shuffle
 
 
 class HaremOfBots:
