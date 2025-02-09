@@ -31,8 +31,8 @@ import queue
 desired_nickname = 'mac1'
 my_irc_server = 'cinqcent.local'
 my_channel = '#prate'
-rx_q = queue.LifoQueue()
-tx_q = queue.LifoQueue()
+rx_q = queue.Queue()
+tx_q = queue.Queue()
 my_rsa_key = RSA.generate(2048)
 bot = PrateBot(channel=my_channel, nickname=desired_nickname,
                 rsa_key=my_rsa_key,
@@ -91,11 +91,11 @@ if __name__ == "__main__":
 
 
 def hacky_fracky_fruitcake():
-    from queue import LifoQueue
+    from queue import Queue
     from random import randint
     from Crypto.PublicKey import RSA
-    # crypto_rx_queue = LifoQueue()
-    # crypto_tx_queue = LifoQueue()
+    # crypto_rx_queue = Queue()
+    # crypto_tx_queue = Queue()
     my_startup_timeout = 20
     my_channel = '#prate'
     my_nickname = 'mac%d' % randint(111, 999)
