@@ -296,7 +296,7 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
                 sleep(.1)
         try:
             self.disconnect('Bye')
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print("Exception occurred while disconnecting:", e)
         print("DualQueuedSingleServerIRCBotWithWhoisSupport is quitting.")
 
@@ -460,7 +460,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
                 sleep(.1)
             try:
                 self.client.start()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 print("_client_strt ==>", e)
         print("SingleServerIRCBotWithWhoisSupport is quitting.")
 
@@ -489,7 +489,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             print("WARNING -- we dropped out of %s" % self.channel)
             try:
                 self.client.connection.join(self.channel)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 print("I tried and failed to rejoin the room. ==>", e)
         if self.client is not None and self.desired_nickname != self.client.nickname:  # This means we RECONNECTED after fixing our nickname.
             self.desired_nickname = self.client.nickname
