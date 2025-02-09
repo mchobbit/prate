@@ -604,7 +604,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             raise ValueError("I cannot send this message: it contains characters that IRC wouldn't like. =>", msg)
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
             raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
-        if msg == '':
+        if msg in (None, ''):
             raise ValueError("I cannot send an empty message: the IRC server would throw a fit.")
         return self.client.put(user, msg)
 
