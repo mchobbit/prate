@@ -26,16 +26,16 @@ Todo:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 """
-
+import os
 from random import randint, choice
 import irc.bot
 from time import sleep
 import string
 from my.classes.exceptions import MyIrcStillConnectingError, MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
 from my.classes import MyTTLCache
-from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT
+from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH
 from irc.client import ServerNotConnectedError
-from queue import LifoQueue
+from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
 from threading import Thread
 from my.irctools.cryptoish import generate_fingerprint
@@ -43,11 +43,7 @@ from _queue import Empty
 import datetime
 import validators
 
-try:
-    from my.stringtools import generate_irc_handle  # @UnusedImport
-except ImportError:
-    print("generate_irc_handle() is missing. Fine. We'll do it the hard way.")
-    generate_irc_handle = lambda: ''.join(choice(string.ascii_lowercase) for _ in range(16))
+from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -149,7 +145,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def realname(self):
         """The realname that the server currently has for me."""
         try:
-            return self.call_whois_and_wait_for_response(self.nickname).split(' ', 4)[-1]
+            sn = self.nickname
+            if len(sn) > MAX_NICKNAME_LENGTH:
+                raise ValueError("WTF")
+            return self.call_whois_and_wait_for_response(sn).split(' ', 4)[-1]
         except (AttributeError, TimeoutError):
             print("There is no realname: I'm offline.")
             return None
@@ -175,7 +174,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def on_nicknameinuse(self, _c, _e):
         """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
-        self.nickname = generate_irc_handle() + str(randint(11, 99))
+        new_nick = 'R' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
+        self.nickname = new_nick
 
     def on_welcome(self, c, _e):
         """Triggered when the event-handler receives RPL_WELCOME."""
@@ -194,6 +194,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def call_whois_and_wait_for_response(self, user, timeout=10):
         """Call /whois, and use __whois_request_cache to get answer."""
+        if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
+            raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
             try:
@@ -210,6 +212,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def __call_whois_and_wait_for_response(self, user, timeout):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
+        if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
+            raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
 #        with self.__whois_request_cache_mutex:
         if not self.connected:
             raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
@@ -224,6 +228,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
+        if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
+            raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
         if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
             raise ValueError("I'm pretty bloody sure you aren't allowed those funky-junky unreadable chars in a message:", msg)
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
@@ -274,8 +280,8 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
     """
 
     def __init__(self, channel, nickname, irc_server, port):
-        self.__received_queue = LifoQueue()
-        self.__transmit_queue = LifoQueue()
+        self.__received_queue = Queue()
+        self.__transmit_queue = Queue()
         self.__wannaquit = False
         self.__wannaquit_lock = ReadWriteLock()
         super().__init__(channel, nickname, generate_fingerprint(nickname), irc_server, port)
@@ -343,7 +349,16 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
     def get_nowait(self):
         return self.received_queue.get_nowait()
 
+    def empty(self):
+        return self.received_queue.empty()
+
+    @property
+    def not_empty(self):
+        return self.received_queue.not_empty
+
     def put(self, user, msg):
+        if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
+            raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
         if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
             raise ValueError("I cannot put this message: it contains characters that IRC wouldn't like. =>", msg)
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
@@ -398,6 +413,8 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             raise ValueError(channel, "is a defective channel name. Remove spaces, make sure the first letter is '#', don't make it insanely long, etc.")
         if len(nickname) < 2 or not nickname[0].isalpha() or ' ' in nickname:
             raise ValueError(nickname, "is a goofy nickname. Fix it.")
+        if len(nickname) > MAX_NICKNAME_LENGTH:
+            raise ValueError(nickname, "is too long. Shorten it.")
         if irc_server is None or type(irc_server) is not str or len(irc_server) < 2 or ' ' in irc_server or validators.url(irc_server) is False:
             raise ValueError(irc_server, "is a goofy IRC server URL. Fix it.")
         if port is None or type(port) is not int or port <= 0:
@@ -405,8 +422,8 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         if startup_timeout is None or type(startup_timeout) is not int or startup_timeout <= 0:
             raise ValueError(startup_timeout, "is a goofy startup_timeout. Fix it.")
         self.__startup_timeout = startup_timeout
-        self.__received_queue = LifoQueue()
-        self.__transmit_queue = LifoQueue()
+        self.__received_queue = Queue()
+        self.__transmit_queue = Queue()
         self.__should_we_quit = False
         self.__should_we_quit_lock = ReadWriteLock()
         self.channel = channel
@@ -433,6 +450,10 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
     @property
     def port(self):
         return self.__port
+
+    @property
+    def users(self):
+        return list(set(self.client.channels[self.channel].users()))
 
     def _client_start(self):
         while not self.should_we_quit:
@@ -461,7 +482,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
                 self.reconnect_server_connection()  # If its fingerprint is wonky, quit&reconnect.
                 print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, self.desired_nickname))
             except (MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer) as e:
-                print("_main_loop() -->", e)
+                print("_main_loop() -->", str(e)[:48], '...')
                 print("Let's keep looping and/or reconnecting")
             else:
                 pass
@@ -559,13 +580,24 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             self.__should_we_quit_lock.release_write()
 
     def whois(self, user, timeout=10):
+        if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
+            raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
         return self.client.call_whois_and_wait_for_response(user, timeout)
 
     @property
     def nickname(self):
         return self.client.nickname
 
+    def empty(self):
+        return self.client.empty()
+
+    @property
+    def not_empty(self):
+        return self.client.not_empty
+
     def put(self, user, msg):
+        if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
+            raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
         if self.client is None or not self.client.ready:
             raise MyIrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
