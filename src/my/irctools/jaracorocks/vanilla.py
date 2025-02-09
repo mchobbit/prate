@@ -297,8 +297,8 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
         try:
             self.disconnect('Bye')
         except Exception as e:
-            print("Quitting =>", e)
-        print("Quitting. Huzzah.")
+            print("Exception occurred while disconnecting:", e)
+        print("DualQueuedSingleServerIRCBotWithWhoisSupport is quitting.")
 
     def quit(self):  # Do we need this?
         """Quit this bot."""
@@ -462,7 +462,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
                 self.client.start()
             except Exception as e:
                 print("_client_strt ==>", e)
-        print("_client_start() --- exiting")
+        print("SingleServerIRCBotWithWhoisSupport is quitting.")
 
     def _main_loop(self):
         while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
@@ -634,8 +634,8 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             print("WARNING --- you're asking me to reconnect, but I'm already connected. That is a surprise.")
             try:
                 self.client.disconnect("Bye")
-            except Exception as e:
-                print("e =", e)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print("reconnect_server_connection() caught an exception:", e)
             self.client = None
         self.noof_reconnections += 1
         self.client = DualQueuedSingleServerIRCBotWithWhoisSupport(channel=self.channel, nickname=self.desired_nickname,
