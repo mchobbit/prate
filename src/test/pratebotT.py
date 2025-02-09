@@ -136,7 +136,8 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot(my_room, nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot(my_room, nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        sleep(2)
+        while not (bot1.ready and bot2.ready):
+            sleep(.1)
         the_message = get_word_salad()[:400]
         bot1.put(bot1.nickname, the_message)
         sleep(1)
