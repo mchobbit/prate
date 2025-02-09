@@ -10,10 +10,7 @@ from my.classes import MyTTLCache
 from time import sleep
 from random import randint, choice
 import string
-
-
-def generate_random_alphanumeric_string(length):
-    return ''.join(choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))
+from my.stringtools import generate_random_alphanumeric_string
 
 
 class Test(unittest.TestCase):
