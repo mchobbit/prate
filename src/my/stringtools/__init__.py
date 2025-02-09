@@ -151,7 +151,11 @@ def get_word_salad(the_incoming_phrase=VANILLA_WORD_SALAD):
     for d in steg_dct_CLUMPS:
         for v in steg_dct_CLUMPS[d]:
             the_incoming_phrase = the_incoming_phrase.replace(v, '_')
-    return the_incoming_phrase
+    return ''.join([c for c in the_incoming_phrase if 32 <= ord(c) <= 127])
+
+
+def generate_random_alphanumeric_string(length):
+    return ''.join(choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(length))
 
 
 def generate_irc_handle(minimum_desired_length:int=15, maximum_desired_length:int=20, salad_txt=VANILLA_WORD_SALAD) -> str:
@@ -184,6 +188,8 @@ def generate_irc_handle(minimum_desired_length:int=15, maximum_desired_length:in
         for k in substs_dct:
             this_word = this_word.replace(k, substs_dct[k])
         our_overblown_handle += this_word
+    if not our_overblown_handle[0].isalpha():
+        our_overblown_handle = 'Z' + our_overblown_handle
     return our_overblown_handle[:maximum_desired_length]
 
 
