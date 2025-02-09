@@ -128,7 +128,7 @@ class TestGroupTwo(unittest.TestCase):
         self.assertEqual(shouldbe, actuallyis)
 
     def testTwoBots(self):
-        my_room = '#' + generate_irc_handle(12, 15)
+        my_room = '#' + generate_irc_handle(7, 9)
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
@@ -242,8 +242,8 @@ class TestGroupThree(unittest.TestCase):
     def testSendingSameMessageTwice_partone(self):
         nick1 = generate_irc_handle()
         nick2 = generate_irc_handle()
-        room1 = '#' + generate_irc_handle(33, 33)
-        room2 = '#' + generate_irc_handle(33, 33)
+        room1 = '#' + generate_irc_handle(5, 9)
+        room2 = '#' + generate_irc_handle(5, 9)
         self.assertNotEqual(nick1, nick2)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
@@ -265,8 +265,8 @@ class TestGroupThree(unittest.TestCase):
     def testSendingSameMessageTwice_parttwo(self):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
-        room1 = '#' + generate_irc_handle(12, 15)
-        room2 = '#' + generate_irc_handle(12, 15)
+        room1 = '#' + generate_irc_handle(7, 9)
+        room2 = '#' + generate_irc_handle(7, 9)
         self.assertNotEqual(nick1, nick2)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
