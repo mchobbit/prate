@@ -26,11 +26,9 @@ Todo:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 """
-import os
-from random import randint, choice
+from random import randint
 import irc.bot
 from time import sleep
-import string
 from my.classes.exceptions import MyIrcStillConnectingError, MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
 from my.classes import MyTTLCache
 from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH
