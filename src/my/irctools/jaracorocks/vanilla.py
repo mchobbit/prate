@@ -41,6 +41,7 @@ from threading import Thread
 from my.irctools.cryptoish import generate_fingerprint
 from _queue import Empty
 import datetime
+import validators
 
 try:
     from my.stringtools import generate_irc_handle  # @UnusedImport
@@ -85,6 +86,12 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     """
 
     def __init__(self, channel, nickname, realname, irc_server, port):
+        if None in (channel, nickname, irc_server, port):
+            raise ValueError("Do not supply None as a parameter")
+        elif type(channel) is not str or channel[0] != '#':
+            raise ValueError("channel must begin with a '#'")
+        elif type(port) is not int:
+            raise ValueError("port must be an integer")
         irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
         if type(realname) is not str:
             raise ValueError("Realname should be a string, not", type(realname))
@@ -217,6 +224,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
+        if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
+            raise ValueError("I'm pretty bloody sure you aren't allowed those funky-junky unreadable chars in a message:", msg)
+        if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
+            raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
         retval = None
         cached_data = user + '///' + msg
         if user not in self.__privmsg_c_hits_dct:
@@ -333,6 +344,10 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
         return self.received_queue.get_nowait()
 
     def put(self, user, msg):
+        if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
+            raise ValueError("I cannot put this message: it contains characters that IRC wouldn't like. =>", msg)
+        if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
+            raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
         self.transmit_queue.put((user, msg))
 
 
@@ -374,9 +389,21 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
 """
 
-    def __init__(self, channel, nickname, irc_server, port,
+    def __init__(self, channel:str, nickname:str, irc_server:str, port:int,
                  startup_timeout=JOINING_IRC_SERVER_TIMEOUT,
                  maximum_reconnections=None):
+        if None in (channel, nickname, irc_server, port):
+            raise ValueError("Don't supply None (sounds wrong, I know)")
+        if channel is None or type(channel) is not str or len(channel) < 2 or len(channel) > 19 or ' ' in channel or channel[0] != '#':
+            raise ValueError(channel, "is a defective channel name. Remove spaces, make sure the first letter is '#', don't make it insanely long, etc.")
+        if len(nickname) < 2 or not nickname[0].isalpha() or ' ' in nickname:
+            raise ValueError(nickname, "is a goofy nickname. Fix it.")
+        if irc_server is None or type(irc_server) is not str or len(irc_server) < 2 or ' ' in irc_server or validators.url(irc_server) is False:
+            raise ValueError(irc_server, "is a goofy IRC server URL. Fix it.")
+        if port is None or type(port) is not int or port <= 0:
+            raise ValueError(port, "is a goofy port number. Fix it.")
+        if startup_timeout is None or type(startup_timeout) is not int or startup_timeout <= 0:
+            raise ValueError(startup_timeout, "is a goofy startup_timeout. Fix it.")
         self.__startup_timeout = startup_timeout
         self.__received_queue = LifoQueue()
         self.__transmit_queue = LifoQueue()
@@ -534,16 +561,29 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
     def whois(self, user, timeout=10):
         return self.client.call_whois_and_wait_for_response(user, timeout)
 
+    @property
     def nickname(self):
         return self.client.nickname
 
     def put(self, user, msg):
+        if self.client is None or not self.client.ready:
+            raise MyIrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
+        if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
+            raise ValueError("I cannot send this message: it contains characters that IRC wouldn't like. =>", msg)
+        if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
+            raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
+        if msg == '':
+            raise ValueError("I cannot send an empty message: the IRC server would throw a fit.")
         return self.client.put(user, msg)
 
     def get(self, block=True, timeout=None):
+        if self.client is None or not self.client.ready:
+            raise MyIrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         return self.client.get(block, timeout)
 
     def get_nowait(self):
+        if self.client is None or not self.client.ready:
+            raise MyIrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         return self.client.get_nowait()
 
     @property
@@ -552,10 +592,12 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
     @property
     def ready(self):
-        try:
-            return self.client.ready
-        except AttributeError:
+        if self.client is None:
             return False
+        elif not hasattr(self.client, 'ready'):
+            return False
+        else:
+            return self.client.ready
 
     def reconnect_server_connection(self):
         print("*** Connecting to %s as %s  ***" % (self.irc_server, self.desired_nickname))
