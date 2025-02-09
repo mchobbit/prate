@@ -160,4 +160,6 @@ def unsqueeze_da_keez(i):
 
 
 def generate_fingerprint(s):
+    if type(s) is not str:
+        raise ValueError("generate_fingerprint() takes a string")
     return sha1(s)
