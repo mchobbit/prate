@@ -24,18 +24,6 @@ import time
 from my.classes.homies import HomiesDct
 from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
 
-_RQPK_ = "RQPK"
-_TXPK_ = "TXPK"
-_RQFE_ = "RQFE"
-_TXFE_ = "TXFE"
-_RQIP_ = "RQIP"
-_TXIP_ = "TXIP"
-_TXTX_ = "TXTX"
-
-
-def groovylsttotxt(lst):
-    return ('%3d users' % len(lst)) if len(lst) > 5 else ' '.join(lst)
-
 
 class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSupport):
     """Crypto-oriended single server IRC bot with Whois Support.
@@ -56,14 +44,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         rsa_key (RSA.RsaKey): Our rsa key.
         irc_server (str): The IRC server URL.
         port (int): The port number of the IRC server.
-        crypto_rx_queue (LifoQueue): Decrypted user-and-msg stuff goes here.
-        crypto_tx_queue (LifoQueue): User-and-msg stuff to be encrypted goes here.
+        crypto_rx_queue (Queue): Decrypted user-and-msg stuff goes here.
+        crypto_tx_queue (Queue): User-and-msg stuff to be encrypted goes here.
 
     """
 
     def __init__(self, channel, nickname, rsa_key, is_pubkey_in_realname,
                  irc_server, port, crypto_rx_queue, crypto_tx_queue,
                  startup_timeout):
+        self.__irc_server = irc_server
         self.__startup_timeout = startup_timeout
         self.__prev_showtxt_op = None
         self.__crypto_rx_queue = crypto_rx_queue
@@ -84,11 +73,15 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         self.__crypto_tx_thread.start()
 
     @property
-    def stopstopstop(self):  # FIXME: not threadsafe
+    def irc_server(self):
+        return self.irc_server
+
+    @property
+    def stopstopstop(self):
         return self.__stopstopstop
 
     @stopstopstop.setter
-    def stopstopstop(self, value):
+    def stopstopstop(self, value):  # FIXME: not threadsafe
         self.__stopstopstop = value
 
     def shut_down_threads(self):
@@ -161,7 +154,7 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         """Indefinitely scan the current channel for any users who have public keys in their realname fields."""
         the_userlist = []
         irc_channel_members = None
-        print("Waiting for the bot to be ready to connect to %s..." % self.__irc_server)
+        print("Waiting for the bot to be ready to connect to %s..." % self.irc_server)
         while not self.__stopstopstop:
             sleep(.1)
             if not self.ready:
