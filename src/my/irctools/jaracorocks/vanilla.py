@@ -230,8 +230,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """Send a private message on IRC. Then, pause; don't overload the server."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
             raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
-        if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
-            raise ValueError("I'm pretty bloody sure you aren't allowed those funky-junky unreadable chars in a message:", msg)
+        if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
+            raise ValueError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. =>", msg)
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
             raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
         retval = None
@@ -359,10 +359,11 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
     def put(self, user, msg):
         if type(user) is not str or len(user) < 2 or not user[0].isalpha() or len(user) > MAX_NICKNAME_LENGTH:
             raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
-        if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
-            raise ValueError("I cannot put this message: it contains characters that IRC wouldn't like. =>", msg)
+        if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
+            raise ValueError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. =>", msg)
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
             raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
+
         self.transmit_queue.put((user, msg))
 
 
@@ -600,12 +601,10 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             raise ValueError("Nickname is bad (non-string, empty, starts with a digit, too short, or too long)")
         if self.client is None or not self.client.ready:
             raise MyIrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
-        if msg is None or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
-            raise ValueError("I cannot send this message: it contains characters that IRC wouldn't like. =>", msg)
+        if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
+            raise ValueError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. =>", msg)
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
             raise ValueError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
-        if msg in (None, ''):
-            raise ValueError("I cannot send an empty message: the IRC server would throw a fit.")
         return self.client.put(user, msg)
 
     def get(self, block=True, timeout=None):
