@@ -47,10 +47,14 @@ from threading import Thread
 from random import randint, shuffle
 from Crypto.PublicKey import RSA
 from my.stringtools import generate_irc_handle
-from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer, MyIrcInitialConnectionTimeoutError
+from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer, MyIrcInitialConnectionTimeoutError, MyIrcStillConnectingError
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
 # from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
+
+
+def groovylsttotxt(lst):
+    return ('%3d users' % len(lst)) if len(lst) > 5 else ' '.join(lst)
 
 
 class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
@@ -58,14 +62,23 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
     def __init__(self, channel, nickname, irc_server, port, rsa_key,
                  startup_timeout=40, maximum_reconnections=None):
         super().__init__(channel, nickname, irc_server, port, startup_timeout, maximum_reconnections)
+        if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
+            raise ValueError(rsa_key, "is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key
         assert(not hasattr(self, '_bot_start'))
         assert(not hasattr(self, '__my_main_thread'))
         self.__my_main_thread = Thread(target=self._bot_loop, daemon=True)
         self.__my_main_thread.start()
 
+    @property
+    def ready(self):
+        try:
+            return super().ready
+        except AttributeError:
+            raise MyIrcStillConnectingError("Please wait until I'm ready (self.ready==True), and then try again.")
+
     def _bot_loop(self):
-        print("_start() --- started")
+#        print("_start() --- started")
         while not self.should_we_quit:
             sleep(.1)
             # Process incoming/outgoing messages, for interfacing with our homies
