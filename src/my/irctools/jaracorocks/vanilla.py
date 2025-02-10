@@ -42,7 +42,8 @@ import validators
 
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
 from my.classes.exceptions import IrcStillConnectingError, IrcNicknameTooLongError, IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
-    IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError
+    IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
+    IrcIAmNotInTheChannelError
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -461,7 +462,13 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
     @property
     def users(self):
-        return list(set([str(u) for u in self.client.channels[self.channel].users()]))
+        try:
+            return list(set([str(u) for u in self.client.channels[self.channel].users()]))
+        except AttributeError as e:
+            if self.channel not in self.client.channels:
+                raise IrcIAmNotInTheChannelError("I am not in %s. Therefore, I cannot obtain a list of its users." % self.channel) from e
+            else:
+                raise e
 
     def _client_start(self):
         while not self.should_we_quit:
@@ -669,9 +676,9 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
     def quit(self):  # Do we need this?
         """Quit this bot."""
         self.autoreconnect = False
+#        self.client.disconnect("Bye")
         self.should_we_quit = True
-        # if self.client:
-        #     self.client.shut_down_threads()
+        self.client.quit()
         self.__my_main_thread.join()  # print("Joining server thread")
 
 ####################################################################################

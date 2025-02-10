@@ -34,6 +34,7 @@ Error
         IrcChannelError
             IrcBadChannelNameError
             IrcChannelNameTooLongError
+            IrcIAmNotInTheChannelError
         IrcMessagingError
             IrcBadNicknameError
             IrcNicknameTooLongError
@@ -357,6 +358,14 @@ class IrcBadChannelNameError(IrcChannelError):
 
 
 class IrcChannelNameTooLongError(IrcChannelError):
+    """Class for all """
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcIAmNotInTheChannelError(IrcChannelError):
     """Class for all """
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation

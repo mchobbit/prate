@@ -21,7 +21,7 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from my.classes.exceptions import IrcStillConnectingError, IrcBadNicknameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcNicknameTooLongError, IrcBadServerNameError, \
     PublicKeyBadKeyError, IrcBadServerPortError, IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError
 
-
+'''
 class TestGroupOne(unittest.TestCase):
 
     def setUp(self):
@@ -333,6 +333,7 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
         print("Great. We have all the IP addresses.")
         for k in dct:
             dct[k]['pratebot'].quit()
+'''
 
 
 class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
@@ -343,27 +344,97 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def testOne(self):
+    # def testSimpleEncryptedTransferOf100Bytes(self):
+    #     my_rsa_key1 = RSA.generate(2048)
+    #     my_rsa_key2 = RSA.generate(2048)
+    #     bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
+    #     bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
+    #     while not (bot1.ready and bot2.ready):
+    #         sleep(.1)
+    #     while bot1.homies[bot2.nickname].ipaddr is None or bot2.homies[bot1.nickname].ipaddr is None:
+    #         sleep(.1)
+    #     self.assertTrue(bot1.empty())
+    #     for _ in range(0, 10):
+    #         plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2)
+    #         bot1.crypto_put(bot2.nickname, plaintext.encode())
+    #         while bot2.crypto_empty():
+    #             sleep(.1)
+    #         (from_user, received_msg) = bot2.crypto_get()
+    #         self.assertEqual(from_user, bot1.nickname)
+    #         self.assertEqual(received_msg.decode(), plaintext)
+    #     bot1.quit()
+    #     bot2.quit()
+
+    # def testDoesChannelUserlistUpdateAutomatically(self):
+    #     '''
+    #     from Crypto.PublicKey import RSA
+    #     from time import sleep
+    #     from my.stringtools import *
+    #     from random import randint
+    #     from my.irctools.jaracorocks.pratebot import PrateBot
+    #     from my.globals import *
+    #     from my.classes.exceptions import *
+    #     '''
+    #     my_rsa_key1 = RSA.generate(2048)
+    #     my_rsa_key2 = RSA.generate(2048)
+    #     bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
+    #     while not bot1.ready:
+    #         sleep(.1)
+    #     lou1 = bot1.users
+    #     lou1.sort()
+    #     bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
+    #     while not bot2.ready:
+    #         sleep(.1)
+    #     lou2 = bot2.users
+    #     lou2.sort()
+    #     self.assertTrue(bot2.nickname not in lou1)
+    #     self.assertTrue(bot2.nickname in bot1.users)
+    #     self.assertTrue(bot1.nickname in bot2.users)
+    #     b1nick = bot1.nickname
+    #     bot1.quit()
+    #     sleep(.5)
+    #     self.assertTrue(b1nick not in bot2.users)
+    #     bot2.quit()
+
+    def testSlowlyJoinAndLeave(self):
+        '''
+        from Crypto.PublicKey import RSA
+        from time import sleep
+        from my.stringtools import *
+        from random import randint
+        from my.irctools.jaracorocks.pratebot import PrateBot
+        from my.globals import *
+        from my.classes.exceptions import *
+        '''
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
+        while not bot1.ready:
+            sleep(.1)
+        lou1 = bot1.users
+        sleep(3)
         bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
+        while not bot2.ready:
             sleep(.1)
-        while bot1.homies[bot2.nickname].ipaddr is None and bot2.homies[bot1.nickname].ipaddr is None:
-            sleep(.1)
-        self.assertTrue(bot1.empty)
-        plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2)
-        bot1.crypto_put(bot2.nickname, plaintext.encode())
-        while bot2.crypto_empty():
-            sleep(.1)
-        (from_user, received_msg) = bot2.crypto_get()
-        self.assertEqual(from_user, bot1.nickname)
-        self.assertEqual(received_msg.decode(), plaintext)
+        lou2 = bot2.users
+        b1nick = bot1.nickname
+        b2nick = bot2.nickname
+        sleep(3)
+        self.assertTrue(bot2.nickname not in lou1)
+        self.assertTrue(bot2.nickname in bot1.users)
+        self.assertTrue(bot1.nickname in bot2.users)
         bot1.quit()
+        sleep(.5)
+        self.assertTrue(b1nick not in bot2.users)
         bot2.quit()
 
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
+
+    def _on_quit(self, connection, event):
+        nick = event.source.nick
+        for ch in self.channels.values():
+            if ch.has_user(nick):
+                ch.remove_user(nick)

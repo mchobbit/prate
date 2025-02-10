@@ -49,19 +49,21 @@ from threading import Thread, Lock
 from random import randint, shuffle
 from Crypto.PublicKey import RSA
 from my.stringtools import generate_irc_handle, chop_up_string_into_substrings_of_N_characters
-from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, \
-                                FernetKeyIsInvalidError, FernetKeyIsUnknownError, IrcStillConnectingError, \
-                                FernetKeyIsUnknownError, IrcPrivateMessageContainsBadCharsError, PublicKeyBadKeyError, PublicKeyUnknownError, IrcPrivateMessageTooLongError
+from my.classes.exceptions import FernetKeyIsInvalidError, FernetKeyIsUnknownError, \
+                            PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
+                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError
+
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
 from my.globals import MY_IP_ADDRESS, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH
-from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt
+from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
 from cryptography.fernet import Fernet, InvalidToken
 import base64
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
 from my.classes.homies import HomiesDct
 import datetime
+from queue import Queue
 # from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
 
 _RQPK_ = "Hell"
@@ -89,6 +91,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         assert(not hasattr(self, '__my_main_thread'))
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
+        self.__crypto_rx_queue = Queue()
         self.paused = False
         self.__my_main_thread = Thread(target=self._bot_loop, daemon=True)
         self.__my_main_thread.start()
@@ -108,7 +111,13 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         sleep(3)
         while self.paused:
             sleep(.1)
-        self.trigger_handshaking_with_the_other_users()
+
+        if not self.should_we_quit:
+            try:
+                self.trigger_handshaking_with_the_other_users()
+            except IrcIAmNotInTheChannelError:
+                print("Warning -- I cannot contact other users of %s: I'm not even in there." % self.channel)
+
         while not self.should_we_quit:
             sleep(.1)
             if self.paused:
@@ -117,7 +126,10 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                 self.trigger_handshaking_with_the_other_users()
                 sleep(1)
             else:
-                self.read_messages_from_users()
+                try:
+                    self.read_messages_from_users()
+                except IrcStillConnectingError as e:
+                    print("Warning - we may be in the middle of quitting.")
         print("Quitting. Huzzah.")
 
     def read_messages_from_users(self):
@@ -133,8 +145,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
                     self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_RQFE_):
-                    if self.homies[sender].pubkey is None:
-                        print("I cannot send my fernet key to %s: I don't know his public key. That's OK! I'll ask for it again..." % sender)
+                    if self.homies[sender].pubkey is None:  # print("I cannot send my fernet key to %s: I don't know his public key. That's OK! I'll ask for it again..." % sender)
                         self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
                     else:
                         self.homies[sender].remotely_supplied_fernetkey = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
@@ -155,6 +166,8 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                     decoded_msg = cipher_suite.decrypt(msg[len(_TXIP_):])
                     self.homies[sender].ipaddr = decoded_msg.decode()
                     print("%s IS PROBABLY KOSHER" % sender)
+                elif msg.startswith(_TXTX_):
+                    self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
                 else:
                     print("??? %s: %s" % (sender, msg))
 
@@ -197,6 +210,39 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             self.__homies = value
         finally:
             self.__homies_lock.release_write()
+
+    @property
+    def crypto_rx_queue(self):
+        return self.__crypto_rx_queue
+
+    @property
+    def crypto_not_empty(self):
+        return self.crypto_rx_queue.not_empty
+
+    def crypto_empty(self):
+        return self.crypto_rx_queue.empty()
+
+    def crypto_get(self, block=True, timeout=None):
+        return self.crypto_rx_queue.get(block, timeout)
+
+    def crypto_get_nowait(self):
+        return self.crypto_rx_queue.get_nowait()
+
+    def crypto_put(self, user, byteblock):
+        """Write an encrypted message to this user via a private message on IRC."""
+        if type(byteblock) is not bytes:
+            raise ValueError("I cannot send a non-binary message to %s. The byteblock must be composed of bytes!" % user)
+        elif self.homies[user].pubkey is None:
+            raise PublicKeyUnknownError("I do not know %s's public key." % user)
+        elif self.homies[user].fernetkey is None:
+            raise FernetKeyIsUnknownError("I have not negotiated a fernet key with %s yet." % user)
+        else:
+            cipher_suite = Fernet(self.homies[user].fernetkey)
+            cipher_text = cipher_suite.encrypt(byteblock)
+            outgoing_str = "%s%s" % (_TXTX_, cipher_text.decode())
+            if len(outgoing_str) > MAX_PRIVMSG_LENGTH - len(user):
+                raise IrcPrivateMessageTooLongError("Cannot send %s to %s: message is too long" % (outgoing_str, user))
+            self.put(user, outgoing_str)
 
 
 class HaremOfBots:
@@ -264,6 +310,36 @@ class HaremOfBots:
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             self.bots[k] = None
 
+'''
+from Crypto.PublicKey import RSA
+from time import sleep
+from my.stringtools import *
+from random import randint
+from my.irctools.jaracorocks.pratebot import PrateBot
+from my.globals import *
+from my.classes.exceptions import *
+
+my_rsa_key1 = RSA.generate(2048)
+my_rsa_key2 = RSA.generate(2048)
+bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
+bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
+while not (bot1.ready and bot2.ready):
+    sleep(.1)
+
+while bot1.homies[bot2.nickname].ipaddr is None and bot2.homies[bot1.nickname].ipaddr is None:
+    sleep(.1)
+
+plaintext = generate_random_alphanumeric_string(100).encode()
+bot1.crypto_put(bot2.nickname, plaintext.encode())
+while bot2.crypto_empty():
+    sleep(.1)
+
+(from_user, received_msg) = bot2.crypto_get()
+self.assertEqual(from_user, bot1.nickname)
+self.assertEqual(received_msg.decode(), plaintext)
+bot1.quit()
+bot2.quit()
+'''
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
