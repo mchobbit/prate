@@ -21,7 +21,8 @@ import base64
 from my.globals.poetry import CICERO
 # from my.classes.readwritelock import ReadWriteLock
 import hashlib
-from my.classes.exceptions import PublicKeyBadKeyError
+from my.classes.exceptions import PublicKeyBadKeyError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
+from cryptography.fernet import Fernet, InvalidToken
 
 
 def sha1(nickname):
@@ -165,3 +166,14 @@ def generate_fingerprint(s):
         raise ValueError("generate_fingerprint() takes a string")
     return sha1(s)
 
+
+def receive_and_decrypt_message(ciphertext, fernetkey):
+    try:
+        cipher_suite = Fernet(fernetkey)
+        decoded_msg = cipher_suite.decrypt(ciphertext).decode()
+    except InvalidToken as e:
+        raise FernetKeyIsInvalidError("Warning - failed to decode %s's message (key bad? ciphertext bad?)." % str(ciphertext)) from e
+    except KeyError:
+        raise FernetKeyIsUnknownError("Warning - failed to decode %s's message (fernet key not found?). Is his copy of my public key out of date?") from e
+    else:
+        return decoded_msg.encode()
