@@ -48,8 +48,6 @@ class Homie:
         self.__fernetkey_lock = ReadWriteLock()
         self.__ipaddr_lock = ReadWriteLock()
         self.__nickname = nickname
-        self.__noof_fingerprinting_failures = 0
-        self.__noof_fingerprinting_failures_lock = ReadWriteLock()
         self.__pubkey = pubkey
         self.__remotely_supplied_fernetkey = remotely_supplied_fernetkey
         self.__remotely_supplied_fernetkey_lock = ReadWriteLock()
@@ -148,23 +146,6 @@ class Homie:
             return None if x is None or y is None else max(x, y)
         finally:
             self.__fernetkey_lock.release_read()
-
-    @property
-    def noof_fingerprinting_failures(self):
-        """noof_fingerprinting_failures (int): The number of attempts that we've made to negotiate with this user."""
-        self.__noof_fingerprinting_failures_lock.acquire_read()
-        try:
-            return self.__noof_fingerprinting_failures
-        finally:
-            self.__noof_fingerprinting_failures_lock.release_read()
-
-    @noof_fingerprinting_failures.setter
-    def noof_fingerprinting_failures(self, value):
-        self.__noof_fingerprinting_failures_lock.acquire_write()
-        try:
-            self.__noof_fingerprinting_failures = value
-        finally:
-            self.__noof_fingerprinting_failures_lock.release_write()
 
     @property
     def ipaddr(self):
