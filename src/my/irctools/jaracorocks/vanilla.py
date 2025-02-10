@@ -491,14 +491,10 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
     def _client_start(self):
         print("SingleServerIRCBotWithWhoisSupport --- entering.")
         while not self.should_we_quit:
-            while not self.should_we_quit and not self.client:
-                sleep(.1)
             try:
-                print("SingleServerIRCBotWithWhoisSupport is launching.")
                 self.client.start()
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print("_client_strt ==>", e)
-        print("SingleServerIRCBotWithWhoisSupport --- leaving.")
+            except (OSError, AttributeError):
+                sleep(.1)
 
     def _main_loop(self):
         my_nick = self.initial_nickname
@@ -700,8 +696,8 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         self.autoreconnect = False
 #        self.client.disconnect("Bye")
         self.should_we_quit = True
-        self.client.quit()
         self.__my_main_thread.join()  # print("Joining server thread")
+        self.client.quit()
 
 ####################################################################################
 

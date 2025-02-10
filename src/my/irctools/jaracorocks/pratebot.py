@@ -297,8 +297,7 @@ class HaremOfBots:
         for k in list(failures()):
             print("Deleting", k)
             self.bots[k].autoreconnect = False
-            self.bots[k].quit()
-            del self.bots[k]
+            del self.bots[k]  # Triggers quit()
         print("Huzzah. We are logged into %d functional IRC servers." % len(self.bots))
 
     def try_to_log_into_this_IRC_server(self, k):
@@ -311,36 +310,6 @@ class HaremOfBots:
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             self.bots[k] = None
 
-'''
-from Crypto.PublicKey import RSA
-from time import sleep
-from my.stringtools import *
-from random import randint
-from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import *
-from my.classes.exceptions import *
-
-my_rsa_key1 = RSA.generate(2048)
-my_rsa_key2 = RSA.generate(2048)
-bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-while not (bot1.ready and bot2.ready):
-    sleep(.1)
-
-while bot1.homies[bot2.nickname].ipaddr is None and bot2.homies[bot1.nickname].ipaddr is None:
-    sleep(.1)
-
-plaintext = generate_random_alphanumeric_string(100).encode()
-bot1.crypto_put(bot2.nickname, plaintext.encode())
-while bot2.crypto_empty():
-    sleep(.1)
-
-(from_user, received_msg) = bot2.crypto_get()
-self.assertEqual(from_user, bot1.nickname)
-self.assertEqual(received_msg.decode(), plaintext)
-bot1.quit()
-bot2.quit()
-'''
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
