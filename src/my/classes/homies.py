@@ -31,6 +31,8 @@ Todo:
 from Crypto.PublicKey import RSA
 from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
+from my.classes.exceptions import IrcBadNicknameError, PublicKeyBadKeyError, IrcNicknameTooLongError
+from my.globals import MAX_NICKNAME_LENGTH
 
 
 class Homie:
@@ -110,7 +112,9 @@ class Homie:
         self.__nickname_lock.acquire_write()
         try:
             if value is not None and type(value) is not str:
-                raise ValueError("When setting nickname, specify a string & not a {t}".format(t=str(type(value))))
+                raise IrcBadNicknameError("When setting nickname, specify a string & not a {t}".format(t=str(type(value))))
+            if len(value) > MAX_NICKNAME_LENGTH:
+                raise IrcNicknameTooLongError("Nickname is too long")
             self.__nickname = value
         finally:
             self.__nickname_lock.release_write()
@@ -119,8 +123,6 @@ class Homie:
     def pubkey(self):
         """RSA.RsaKey: The public key that other computers should use when exchanging fernet keys with me."""
         self.__pubkey_lock.acquire_read()
-        # if self.noof_fingerprinting_failures >= MAX_NOOF_FINGERPRINTING_FAILURES:
-        #     raise AttributeError("%s has no fingerprint" % self.nickname)
         try:
             retval = self.__pubkey
             return retval
@@ -132,7 +134,7 @@ class Homie:
         self.__pubkey_lock.acquire_write()
         try:
             if value is not None and type(value) is not RSA.RsaKey:
-                raise ValueError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
+                PublicKeyBadKeyError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
             self.noof_fingerprinting_failures = 0
             self.__pubkey = value
         finally:

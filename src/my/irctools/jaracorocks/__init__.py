@@ -46,5 +46,5 @@ import datetime
 from my.classes import MyTTLCache
 import time
 from my.classes.homies import HomiesDct
-from my.classes.exceptions import MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer
+from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer
 

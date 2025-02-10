@@ -4,7 +4,7 @@ Created on Jan 27, 2025
 @author: mchobbit
 '''
 import unittest
-from my.irctools import get_my_public_ip_address
+from my.globals import get_my_public_ip_address
 
 
 class Test(unittest.TestCase):

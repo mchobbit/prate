@@ -22,26 +22,35 @@ Error
     CachingError
         MissingFromCacheError
         StillAwaitingCachedValue
-    MyIrcError
-        MyIrcConnectionError
-            MyIrcInitialConnectionTimeoutError
-            MyIrcStillConnectingError
-            MyIrcRealnameTruncationError
-            MyIrcFingerprintMismatchCausedByServer
-            MyIrcNicknameChangedByServer
-        MyIrcMessagingError
-            MyIrcUnknownIncomingCommandError
-    MyEncryptionError
-        MyKeyError
-            MyPublicKeyError
-                MyPublicKeyUnknownError
-                MyPublicKeyIncompleteError
-                MyPublicKeyTooBigError
-            MyFernetKeyError
-                MyFernetKeyUnknownError
-        MyFailedToEncryptError
-        MyFailedToDecryptError
-
+    IrcError
+        IrcConnectionError
+            IrcBadServerNameError
+            IrcBadServerPortError
+            IrcInitialConnectionTimeoutError
+            IrcStillConnectingError
+            IrcRealnameTruncationError
+            IrcFingerprintMismatchCausedByServer
+            IrcNicknameChangedByServer
+        IrcChannelError
+            IrcBadChannelNameError
+            IrcChannelNameTooLongError
+        IrcMessagingError
+            IrcBadNicknameError
+            IrcNicknameTooLongError
+            IrcUnknownIncomingCommandError
+            IrcPrivateMessageTooLongError
+            IrcPrivateMessageContainsBadCharsError
+            IrcIncomingCommandFromMyselfError
+    EncryptionError
+        EncryptionKeyError
+            PublicKeyError
+                PublicKeyBadKeyError
+                PublicKeyUnknownError
+                PublicKeyIncompleteError
+                PublicKeyTooBigError
+            FernetKeyError
+                FernetKeyIsUnknownError
+                FernetKeyIsInvalidError
 
 Example:
     n/a
@@ -203,23 +212,39 @@ class StillAwaitingCachedValue(CachingError):
         super().__init__(message)
 
 
-class MyIrcError(Error):
-    """Class for all MyIrcErrors"""
+class IrcError(Error):
+    """Class for all IrcErrors"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyIrcConnectionError(MyIrcError):
-    """Class for all MyIrcConnectionError"""
+class IrcConnectionError(IrcError):
+    """Class for all IrcConnectionError"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyIrcInitialConnectionTimeoutError(MyIrcConnectionError):
+class IrcBadServerNameError(IrcConnectionError):
+    """Class for all IrcConnectionError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcBadServerPortError(IrcConnectionError):
+    """Class for all IrcConnectionError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcInitialConnectionTimeoutError(IrcConnectionError):
     """Connecting took too long."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -227,7 +252,7 @@ class MyIrcInitialConnectionTimeoutError(MyIrcConnectionError):
         super().__init__(message)
 
 
-class MyIrcStillConnectingError(MyIrcConnectionError):
+class IrcStillConnectingError(IrcConnectionError):
     """Still connecting (wait a few seconds, please)"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -235,7 +260,7 @@ class MyIrcStillConnectingError(MyIrcConnectionError):
         super().__init__(message)
 
 
-class MyIrcRealnameTruncationError(MyIrcConnectionError):
+class IrcRealnameTruncationError(IrcConnectionError):
     """If the realname is truncated by the server"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -243,7 +268,7 @@ class MyIrcRealnameTruncationError(MyIrcConnectionError):
         super().__init__(message)
 
 
-class MyIrcFingerprintMismatchCausedByServer(MyIrcConnectionError):
+class IrcFingerprintMismatchCausedByServer(IrcConnectionError):
     """My local fingerprint and the server's copy of my fingerprint do not match, perhaps because my nickname changed somewhere"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -251,15 +276,15 @@ class MyIrcFingerprintMismatchCausedByServer(MyIrcConnectionError):
         super().__init__(message)
 
 
-class MyIrcMessagingError(MyIrcError):
-    """Class for all MyIrcMessagingError"""
+class IrcMessagingError(IrcError):
+    """Class for all IrcMessagingError"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyIrcUnknownIncomingCommandError(MyIrcMessagingError):
+class IrcBadNicknameError(IrcMessagingError):
     """Unknown incoming command."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -267,7 +292,39 @@ class MyIrcUnknownIncomingCommandError(MyIrcMessagingError):
         super().__init__(message)
 
 
-class MyIrcIncomingCommandFromMyselfError(MyIrcMessagingError):
+class IrcNicknameTooLongError(IrcMessagingError):
+    """Unknown incoming command."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcUnknownIncomingCommandError(IrcMessagingError):
+    """Unknown incoming command."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcPrivateMessageTooLongError(IrcMessagingError):
+    """Message too long."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcPrivateMessageContainsBadCharsError(IrcMessagingError):
+    """Message contains bad chars."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcIncomingCommandFromMyselfError(IrcMessagingError):
     """Why am I talking to myself?"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -275,7 +332,7 @@ class MyIrcIncomingCommandFromMyselfError(MyIrcMessagingError):
         super().__init__(message)
 
 
-class MyIrcNicknameChangedByServer(MyIrcConnectionError):
+class IrcNicknameChangedByServer(IrcConnectionError):
     """If the nickname is CHANGED by the server, probably because of a nickname collision"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -283,31 +340,63 @@ class MyIrcNicknameChangedByServer(MyIrcConnectionError):
         super().__init__(message)
 
 
-class MyEncryptionError(Error):
-    """Class for all MyKeyError"""
+class IrcChannelError(IrcError):
+    """Class for all channel errors"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyKeyError(MyEncryptionError):
-    """Class for all MyKeyError"""
+class IrcBadChannelNameError(IrcChannelError):
+    """Class for all """
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyPublicKeyError(MyKeyError):
-    """Class for all MyPublicKeyError"""
+class IrcChannelNameTooLongError(IrcChannelError):
+    """Class for all """
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyPublicKeyUnknownError(MyPublicKeyError):
+class EncryptionError(Error):
+    """Class for all EncryptionKeyError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class EncryptionKeyError(EncryptionError):
+    """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class PublicKeyError(EncryptionKeyError):
+    """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class PublicKeyBadKeyError(PublicKeyError):
+    """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class PublicKeyUnknownError(PublicKeyError):
     """I don't know his public key yet."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -315,7 +404,7 @@ class MyPublicKeyUnknownError(MyPublicKeyError):
         super().__init__(message)
 
 
-class MyPublicKeyIncompleteError(MyPublicKeyError):
+class PublicKeyIncompleteError(PublicKeyError):
     """Public key is incomplete."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -323,7 +412,7 @@ class MyPublicKeyIncompleteError(MyPublicKeyError):
         super().__init__(message)
 
 
-class MyPublicKeyTooBigError(MyPublicKeyError):
+class PublicKeyTooBigError(PublicKeyError):
     """Public key is too big for /whois."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -331,15 +420,15 @@ class MyPublicKeyTooBigError(MyPublicKeyError):
         super().__init__(message)
 
 
-class MyFernetKeyError(MyKeyError):
-    """Class for all MyPublicKeyError"""
+class FernetKeyError(EncryptionKeyError):
+    """Class for all ???"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class MyFernetKeyUnknownError(MyPublicKeyError):
+class FernetKeyIsUnknownError(PublicKeyError):
     """I don't know his fernet key yet."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -347,16 +436,8 @@ class MyFernetKeyUnknownError(MyPublicKeyError):
         super().__init__(message)
 
 
-class MyFailedtoEncryptError(MyEncryptionError):
-    """Failed to encrypt"""
-
-    def __init__(self, message):  # pylint: disable=useless-parent-delegation
-
-        super().__init__(message)
-
-
-class MyFailedtoDecryptError(MyEncryptionError):
-    """Failed to decrypt"""
+class FernetKeyIsInvalidError(EncryptionError):
+    """Fernet key is invalid"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 

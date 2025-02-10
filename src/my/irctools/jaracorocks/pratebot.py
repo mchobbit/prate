@@ -49,12 +49,14 @@ from threading import Thread, Lock
 from random import randint, shuffle
 from Crypto.PublicKey import RSA
 from my.stringtools import generate_irc_handle, chop_up_string_into_substrings_of_N_characters
-from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer, MyIrcInitialConnectionTimeoutError, MyIrcStillConnectingError
+from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, \
+                                FernetKeyIsInvalidError, FernetKeyIsUnknownError, IrcStillConnectingError, \
+                                FernetKeyIsUnknownError, IrcPrivateMessageContainsBadCharsError, PublicKeyBadKeyError, PublicKeyUnknownError, IrcPrivateMessageTooLongError
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
-from my.globals import MY_IP_ADDRESS
+from my.globals import MY_IP_ADDRESS, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 import base64
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
@@ -81,7 +83,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                  startup_timeout=40, maximum_reconnections=None):
         super().__init__(channel, nickname, irc_server, port, startup_timeout, maximum_reconnections)
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
-            raise ValueError(rsa_key, "is a goofy value for an RSA key. Fix it.")
+            raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key
         assert(not hasattr(self, '_bot_start'))
         assert(not hasattr(self, '__my_main_thread'))
@@ -166,7 +168,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
     def my_encrypted_ipaddr(self, user):
         """Encrypt our IP address w/ the user's fernet key."""
         if self.homies[user].fernetkey is None:
-            raise ValueError("Please download %s's fernet key before you try to encrypt." % user)
+            raise FernetKeyIsUnknownError("Please download %s's fernet key before you try to encrypt." % user)
         cipher_suite = Fernet(self.homies[user].fernetkey)
         ipaddr_str = MY_IP_ADDRESS
         cipher_text = cipher_suite.encrypt(ipaddr_str.encode())
@@ -259,7 +261,7 @@ class HaremOfBots:
                                    irc_server=k,
                                    port=self.port,
                                    rsa_key=self.rsa_key)
-        except (MyIrcInitialConnectionTimeoutError, MyIrcFingerprintMismatchCausedByServer):
+        except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             self.bots[k] = None
 
 

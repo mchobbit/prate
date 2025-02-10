@@ -21,6 +21,7 @@ import base64
 from my.globals.poetry import CICERO
 # from my.classes.readwritelock import ReadWriteLock
 import hashlib
+from my.classes.exceptions import PublicKeyBadKeyError
 
 
 def sha1(nickname):
@@ -56,7 +57,7 @@ def unskin_key(k:str) -> RSA.RsaKey:
 
 def pubkey_to_bXX(pubkey, the_encoder):
     if type(pubkey) is not RSA.RsaKey:
-        raise ValueError("pubkey should be type RSA.RsaKey")
+        raise PublicKeyBadKeyError("pubkey should be type RSA.RsaKey")
     try:
         hex_key_n = hex(pubkey.n)[2:]
         hex_key_e = hex(pubkey.e)[2:]
@@ -71,7 +72,7 @@ def pubkey_to_bXX(pubkey, the_encoder):
         bXXslim = "%s %s" % (bXXkey_n.decode(), bXXkey_e.decode())
         return bXXslim
     except Exception as e:
-        raise ValueError("Invalid key") from e
+        raise PublicKeyBadKeyError("Invalid key") from e
 
 
 def bXX_to_pubkey(bXXslim, the_decoder):
@@ -86,7 +87,7 @@ def bXX_to_pubkey(bXXslim, the_decoder):
         pubkey = RSA.RsaKey(n=_n, e=_e)
         return pubkey
     except Exception as e:
-        raise ValueError("Invalid key") from e
+        raise PublicKeyBadKeyError("Invalid key") from e
 
 
 def pubkey_to_b85(pubkey):

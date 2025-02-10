@@ -4,7 +4,7 @@ from my.stringtools import generate_irc_handle
 generate_irc_handle()
 '''
 import requests
-from my.classes.exceptions import WebAPITimeoutError, WebAPIOutputError
+from my.classes.exceptions import WebAPITimeoutError, WebAPIOutputError, IrcBadNicknameError, IrcNicknameTooLongError
 from bs4 import BeautifulSoup as bs
 from random import randint, choice
 from my.globals import VANILLA_WORD_SALAD, steg_dct_CLUMPS, MAX_NICKNAME_LENGTH
@@ -171,7 +171,7 @@ def generate_irc_handle(minimum_desired_length:int=MAX_NICKNAME_LENGTH - 2, maxi
 
     """
     if maximum_desired_length > MAX_NICKNAME_LENGTH:
-        raise ValueError("I dare not create an IRC handle longer than %d: it might be incompatible with the IRC server." % MAX_NICKNAME_LENGTH)
+        raise IrcNicknameTooLongError("I dare not create an IRC handle longer than %d, lest it be incompatible with the IRC server." % MAX_NICKNAME_LENGTH)
     substs_dct = {'The':'D', 'Are':'R', 'Of':'', 'To':'2', 'Two':'2', 'One':'1', 'Won':'1', 'Too':'2',
                   'Three':'3', 'Four':'4', 'Five':'5', 'Six':'6', 'Seven':'7', 'Eight':'8',
                   'Nine':'9', 'Ten':'10', 'Eleven':'11', 'Twelve':'12', 'Thirteen':'13', 'Fourteen':'14',
