@@ -25,32 +25,86 @@ Todo:
 
 Example:
 
-from Crypto.PublicKey import RSA
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
-desired_nickname = 'mac2'
-my_irc_server = 'cinqcent.local'
-my_channel = '#prate'
-my_port = 6667
-bot = BotForDualQueuedSingleServerIRCBotWithWhoisSupport(my_channel, desired_nickname, my_irc_server, my_port)
-while not bot.ready:
-    sleep(1)
 
-bot.put("mac1", "WORD")
-bot.get()
+from my.irctools.jaracorocks.pratebot import PrateBot
+from Crypto.PublicKey import RSA
+from my.irctools.cryptoish import *
+from time import sleep
+my_rsa_key1 = RSA.generate(2048)
+my_rsa_key2 = RSA.generate(2048)
+bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
+bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
+#bot1.paused = True
+#bot2.paused = True
+while not (bot1.ready and bot2.ready):
+    sleep(.1)
+
+bot1.homies[bot2.nickname].fernetkey
+bot2.homies[bot1.nickname].fernetkey
+
+#bot2.read_messages_from_users()
+(sender, msg) = bot2.get_nowait()
+_RQFE_ = "RQFE"
+encrypted_key = msg[len(_RQFE_):]
+b64_key = base64.b64decode(encrypted_key)
+decrypted_key = rsa_decrypt(b64_key, bot2.rsa_key)
+bot2.homies[sender].remotely_supplied_fernetkey = decrypted_key
+
+
+bot2.read_messages_from_users() PROBLEM
+
+bot1.read_messages_from_users()
+bot2.interrogate_other_users(); bot2.read_messages_from_users()
+
+bot1.homies[bot2.nickname].pubkey
+bot2.homies[bot1.nickname].pubkey
+
+sleep(3)
+
+
+
+
+bot2.read_messages_from_users()
+# nothing. cool.
+bot1.interrogate_other_users()
+# "I would like to build a connection with mac2. Let's start by asking for their public key."
+bot2.read_messages_from_users(); bot1.read_messages_from_users(); sleep(3)
+
+
+
+
+
+bot2.interrogate_other_users()
 
 """
 
 import sys
-from threading import Thread
+from threading import Thread, Lock
 
 # from my.classes.readwritelock import ReadWriteLock
 from random import randint, shuffle
 from Crypto.PublicKey import RSA
-from my.stringtools import generate_irc_handle
+from my.stringtools import generate_irc_handle, chop_up_string_into_substrings_of_N_characters
 from my.classes.exceptions import MyIrcFingerprintMismatchCausedByServer, MyIrcInitialConnectionTimeoutError, MyIrcStillConnectingError
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
+from my.globals import MY_IP_ADDRESS
+from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt
+from cryptography.fernet import Fernet
+import base64
+from my.classes.readwritelock import ReadWriteLock
+from _queue import Empty
+from my.classes.homies import HomiesDct
+import datetime
 # from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
+
+_RQPK_ = "Hell"
+_TXPK_ = "TXPK"
+_RQFE_ = "RQFE"
+_TXFE_ = "TXFE"
+_RQIP_ = "RQIP"
+_TXIP_ = "TXIP"
+_TXTX_ = "TXTX"
 
 
 def groovylsttotxt(lst):
@@ -67,6 +121,9 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         self.rsa_key = rsa_key
         assert(not hasattr(self, '_bot_start'))
         assert(not hasattr(self, '__my_main_thread'))
+        self.__homies = HomiesDct()
+        self.__homies_lock = ReadWriteLock()
+        self.paused = False
         self.__my_main_thread = Thread(target=self._bot_loop, daemon=True)
         self.__my_main_thread.start()
 
@@ -75,15 +132,117 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         try:
             return super().ready
         except AttributeError:
-            raise MyIrcStillConnectingError("Please wait until I'm ready (self.ready==True), and then try again.")
+            return False
 
     def _bot_loop(self):
-#        print("_start() --- started")
+        print("Waiting for the bot to be ready to connect to %s..." % self.irc_server)
+        while not self.ready and not self.should_we_quit:
+            sleep(.1)
+        print("Connected. Looping...")
+        sleep(3)
+        while self.paused:
+            sleep(.1)
+        self.trigger_handshaking_with_the_other_users()
         while not self.should_we_quit:
             sleep(.1)
-            # Process incoming/outgoing messages, for interfacing with our homies
+            if self.paused:
+                pass
+            elif datetime.datetime.now().second % 20 == 0:
+                self.trigger_handshaking_with_the_other_users()
+                sleep(1)
+            else:
+                self.read_messages_from_users()
         print("Quitting. Huzzah.")
-        # self.join() # TODO: Do I need this?
+
+    def read_messages_from_users(self):
+        while True:
+            try:
+                (sender, msg) = self.get_nowait()  # t(timeout=1)
+            except Empty:
+                return
+            else:
+                print("sender:", sender)
+                print("msg:", msg)
+                if msg.startswith(_RQPK_):
+                    print("%s is asking for my public key." % sender)
+                    self.put(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
+                    print("I've sent it to him. Now, he'll send me *his* public key. Right?")
+                elif msg.startswith(_TXPK_):
+                    print("%s has sent my his public key in return." % sender)
+                    self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
+                    print("Pub key now is", self.homies[sender].pubkey)
+                    self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
+                    print("Now, I'll send him my fernet key and ask him for his fernet key.")
+                elif msg.startswith(_RQFE_):
+                    print("%s is asking for my fernet key (and has enclosed a copy of his own)." % sender)
+                    try:
+                        self.homies[sender].remotely_supplied_fernetkey = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
+                    except AttributeError as e:
+                        print("Failed to decode fernet key from %s" % sender)
+                    self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
+                    print("I'm sending %s my fernet key." % sender)
+                elif msg.startswith(_TXFE_):
+                    print("%s has sent me is fernet key in return." % sender)
+                    self.homies[sender].remotely_supplied_fernetkey = \
+                                        rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
+                    if self.homies[sender].fernetkey is not None:
+                        print("Yay! I can ask for %s's IP address now. AND I SHALL!" % sender)
+                        self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
+                elif msg.startswith(_RQIP_):
+                    print("%s is asking for my IP address (and including his own)" % sender)
+                    cipher_suite = Fernet(self.homies[sender].fernetkey)
+                    decoded_msg = cipher_suite.decrypt(msg[len(_RQIP_):])
+                    self.homies[sender].ipaddr = decoded_msg.decode()
+                    self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
+                    print("I've sent %s my IP address." % sender)
+                elif msg.startswith(_TXIP_):
+                    print("%s has sent me his IP address in return." % sender)
+                    cipher_suite = Fernet(self.homies[sender].fernetkey)
+                    decoded_msg = cipher_suite.decrypt(msg[len(_TXIP_):])
+                    self.homies[sender].ipaddr = decoded_msg.decode()
+                    print("%s IS PROBABLY KOSHER" % sender)
+                else:
+                    print("??? %s: %s" % (sender, msg))
+
+    def trigger_handshaking_with_the_other_users(self):
+        for user in self.users:
+            if user != self.nickname and self.whois(user) is not None and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1]:
+                if self.homies[user].pubkey is None:
+                    print("I, %s, am triggering a handshake with %s" % (self.nickname, user))
+                    self.put(user, "%so, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
+
+    def my_encrypted_ipaddr(self, user):
+        """Encrypt our IP address w/ the user's fernet key."""
+        if self.homies[user].fernetkey is None:
+            raise ValueError("Please download %s's fernet key before you try to encrypt." % user)
+        cipher_suite = Fernet(self.homies[user].fernetkey)
+        ipaddr_str = MY_IP_ADDRESS
+        cipher_text = cipher_suite.encrypt(ipaddr_str.encode())
+        return cipher_text.decode()
+
+    def my_encrypted_fernetkey_for_this_user(self, user):
+        """Encrypt the user's fernet key with the user's public key."""
+        encrypted_fernetkey = rsa_encrypt(message=self.homies[user].locally_generated_fernetkey, public_key=self.homies[user].pubkey)
+        b64_encrypted_fernetkey = base64.b64encode(encrypted_fernetkey).decode()
+        return b64_encrypted_fernetkey
+
+    @property
+    def homies(self):
+        """Dictionary of relevant IRC users."""
+        self.__homies_lock.acquire_read()
+        try:
+            retval = self.__homies
+            return retval
+        finally:
+            self.__homies_lock.release_read()
+
+    @homies.setter
+    def homies(self, value):
+        self.__homies_lock.acquire_write()
+        try:
+            self.__homies = value
+        finally:
+            self.__homies_lock.release_write()
 
 
 class HaremOfBots:
@@ -170,4 +329,5 @@ if __name__ == "__main__":
     bot = PrateBot(my_channel, desired_nickname, my_irc_server, my_port, my_rsa_key)
     while not bot.ready:
         sleep(1)
+    print("Hi there.")
 
