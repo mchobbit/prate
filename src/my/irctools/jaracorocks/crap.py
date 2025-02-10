@@ -217,55 +217,6 @@ class CryptoOrientedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWho
         with self.__repop_mutex:
             self.__load_homie_pubkey(user, pubkey)
 
-    def __load_homie_pubkey(self, user, pubkey=None):
-        if pubkey is not None:
-            self.__load_homie_pubkey_from_parameter(user, unsqueeze_da_keez(pubkey))
-        if self.is_pubkey_in_realname:
-            self.__load_homie_pubkey_from_whois_record(user)
-        else:
-            self.__load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(user)
-
-    def __load_homie_pubkey_from_parameter(self, user, pubkey):
-        if type(user) is not str:
-            raise ValueError(user, "should be type str")
-#        self.homies[user].noof_fingerprinting_failures = 0
-        self.homies[user].pubkey = pubkey
-
-    def __load_homie_pubkey_from_whois_record(self, user):
-        if type(user) is not str:
-            raise ValueError(user, "should be type str")
-#        self.homies[user].noof_fingerprinting_failures = 0
-        old_pk = self.homies[user].pubkey
-        new_pk = None
-        try:
-            whois_res = self.call_whois_and_wait_for_response(user, timeout=30)
-            if whois_res is None:
-                raise TimeoutError("If whois returns None, that might mean a Timeout. It's hella strange. So, let's assume it's a timeout.")
-            squozed_key = whois_res.split(' ', 4)[-1]
-            unsqueezed_key = unsqueeze_da_keez(squozed_key)
-        except (ValueError, AttributeError):
-#            print(user, "sent me >>>", whois_res, "<<< and this is not a public key.")
-            self.homies[user].noof_fingerprinting_failures += 1
-        except TimeoutError:
-            pass
-        else:
-            new_pk = unsqueezed_key
-            if old_pk is not None and old_pk != new_pk:
-                print("HEY! HAS %s'S PUBLIC KEY CHANGED?!?!" % user)
-            self.homies[user].pubkey = new_pk
-
-    def __load_homie_pubkey_from_fingerprinting_via_whois_fingerprint(self, user):
-        try:
-            his_fprint = self.call_whois_and_wait_for_response(user).split(' ', 4)[-1]
-        except AttributeError:
-            his_fprint = None
-        shouldbe_fprint = self.generate_fingerprint(user)
-        if his_fprint == shouldbe_fprint:
-            self.initiate_public_key_negotiation(user)
-        else:
-#            print("Fingerprint doesn't match and/or unable to load %s's /whois record. Let's try again later." % user)
-            self.homies[user].noof_fingerprinting_failures += 1
-
     def crypto_put(self, user, byteblock):
         """Write an encrypted message to this user via a private message on IRC."""
         if self.homies[user].noof_fingerprinting_failures < MAX_NOOF_FINGERPRINTING_FAILURES \

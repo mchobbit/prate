@@ -206,15 +206,17 @@ class TestGroupTwo(unittest.TestCase):
         bot2.quit()
 
     def testNicknameCollision(self):
-        desired_nick = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        desired_nick = 'A' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
         my_rsa_key = RSA.generate(2048)
         bot1 = PrateBot('#prate', desired_nick, 'cinqcent.local', 6667, my_rsa_key)
-        sleep(1)
-        bot2 = PrateBot('#prate', desired_nick, 'cinqcent.local', 6667, my_rsa_key)
-        sleep(2)
+        while not bot1.ready:
+            sleep(.1)
         self.assertTrue(bot1.ready)
-        self.assertTrue(bot2.ready)
         self.assertEqual(bot1.nickname, desired_nick)
+        bot2 = PrateBot('#prate', desired_nick, 'cinqcent.local', 6667, my_rsa_key)
+        while not bot2.ready:
+            sleep(.1)
+        self.assertTrue(bot2.ready)
         self.assertNotEqual(bot2.nickname, desired_nick)
         self.assertNotEqual(bot2.nickname, bot1.nickname)
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname))
@@ -308,8 +310,8 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
     def testTwo(self):
         dct = {}
         noofbots = 5
-        for botno in range(0, noofbots):
-            nick = 'mac%d' % botno
+        for _ in range(0, noofbots):
+            nick = generate_irc_handle()
             dct[nick] = {}
             dct[nick]['rsa key'] = RSA.generate(2048)
             dct[nick]['pratebot'] = PrateBot('#prate', nick, 'cinqcent.local', 6667, dct[nick]['rsa key'])
@@ -319,13 +321,12 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
         while not all_found:
             sleep(5)
             all_found = True
-            for y in range(0, noofbots):
-                for x in range(0, noofbots):
-                    nickX = 'mac%d' % x
-                    nickY = 'mac%d' % y
+            for nickY in dct:
+                for nickX in dct:
                     if nickX == nickY:
                         continue
                     if dct[nickX]['pratebot'].homies[nickY].ipaddr is None:
+                        print("%s doesn't know %s's IP address" % (nickX, nickY))
                         all_found = False
         print("Great. We have all the IP addresses.")
         for k in dct:

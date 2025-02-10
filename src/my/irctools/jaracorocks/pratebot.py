@@ -39,42 +39,6 @@ bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
 while not (bot1.ready and bot2.ready):
     sleep(.1)
 
-bot1.homies[bot2.nickname].fernetkey
-bot2.homies[bot1.nickname].fernetkey
-
-#bot2.read_messages_from_users()
-(sender, msg) = bot2.get_nowait()
-_RQFE_ = "RQFE"
-encrypted_key = msg[len(_RQFE_):]
-b64_key = base64.b64decode(encrypted_key)
-decrypted_key = rsa_decrypt(b64_key, bot2.rsa_key)
-bot2.homies[sender].remotely_supplied_fernetkey = decrypted_key
-
-
-bot2.read_messages_from_users() PROBLEM
-
-bot1.read_messages_from_users()
-bot2.interrogate_other_users(); bot2.read_messages_from_users()
-
-bot1.homies[bot2.nickname].pubkey
-bot2.homies[bot1.nickname].pubkey
-
-sleep(3)
-
-
-
-
-bot2.read_messages_from_users()
-# nothing. cool.
-bot1.interrogate_other_users()
-# "I would like to build a connection with mac2. Let's start by asking for their public key."
-bot2.read_messages_from_users(); bot1.read_messages_from_users(); sleep(3)
-
-
-
-
-
-bot2.interrogate_other_users()
 
 """
 
@@ -147,7 +111,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             sleep(.1)
             if self.paused:
                 pass
-            elif datetime.datetime.now().second % 20 == 0:
+            elif datetime.datetime.now().second % 60 == 0:
                 self.trigger_handshaking_with_the_other_users()
                 sleep(1)
             else:
@@ -161,42 +125,30 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             except Empty:
                 return
             else:
-                print("sender:", sender)
-                print("msg:", msg)
                 if msg.startswith(_RQPK_):
-                    print("%s is asking for my public key." % sender)
                     self.put(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
-                    print("I've sent it to him. Now, he'll send me *his* public key. Right?")
                 elif msg.startswith(_TXPK_):
-                    print("%s has sent my his public key in return." % sender)
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
-                    print("Pub key now is", self.homies[sender].pubkey)
                     self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
-                    print("Now, I'll send him my fernet key and ask him for his fernet key.")
                 elif msg.startswith(_RQFE_):
-                    print("%s is asking for my fernet key (and has enclosed a copy of his own)." % sender)
-                    try:
+                    if self.homies[sender].pubkey is None:
+                        print("I cannot send my fernet key to %s: I don't know his public key. That's OK! I'll ask for it again..." % sender)
+                        self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
+                    else:
                         self.homies[sender].remotely_supplied_fernetkey = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
-                    except AttributeError as e:
-                        print("Failed to decode fernet key from %s" % sender)
-                    self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
-                    print("I'm sending %s my fernet key." % sender)
+                        self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_TXFE_):
-                    print("%s has sent me is fernet key in return." % sender)
                     self.homies[sender].remotely_supplied_fernetkey = \
                                         rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
                     if self.homies[sender].fernetkey is not None:
-                        print("Yay! I can ask for %s's IP address now. AND I SHALL!" % sender)
                         self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
                 elif msg.startswith(_RQIP_):
-                    print("%s is asking for my IP address (and including his own)" % sender)
                     cipher_suite = Fernet(self.homies[sender].fernetkey)
                     decoded_msg = cipher_suite.decrypt(msg[len(_RQIP_):])
                     self.homies[sender].ipaddr = decoded_msg.decode()
                     self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
                     print("I've sent %s my IP address." % sender)
                 elif msg.startswith(_TXIP_):
-                    print("%s has sent me his IP address in return." % sender)
                     cipher_suite = Fernet(self.homies[sender].fernetkey)
                     decoded_msg = cipher_suite.decrypt(msg[len(_TXIP_):])
                     self.homies[sender].ipaddr = decoded_msg.decode()
