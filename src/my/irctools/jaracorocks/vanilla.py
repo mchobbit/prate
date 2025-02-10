@@ -81,12 +81,15 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     """
 
-    def __init__(self, channel, nickname, realname, irc_server, port):
-        if None in (channel, nickname, irc_server, port):
-            raise ValueError("Do not supply None as a parameter")
-        elif type(channel) is not str or channel[0] != '#':
-            raise ValueError("channel must begin with a '#'")
-        elif type(port) is not int:
+    def __init__(self, channels, nickname, realname, irc_server, port):
+        print("CHANNELS = >>>", channels , "<<<")
+        print("Type of CHANNELS =", type(channels))
+        if type(channels) not in (list, tuple):
+            raise IrcBadChannelNameError("channels must be a list or a tuple")
+        for ch in channels:
+            if type(ch) is not str or ch[0] != '#' or ' ' in ch:
+                raise IrcBadChannelNameError("%s is a dodgy channel name. Fix it." % str(ch))
+        if type(port) is not int:
             raise ValueError("port must be an integer")
         irc.bot.SingleServerIRCBot.__init__(self, [(irc_server, port)], nickname, realname)
         if type(realname) is not str:
@@ -97,7 +100,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.__whois_request_c_hits_v_misses = [0, 0]
         self.__initial_nickname = nickname
         self.__initial_realname = realname
-        self.__initial_channel = channel  # This channel will automatically joined at Welcome stage
+        self.__initial_channels = channels  # These channels will automatically joined at Welcome stage
         self.__whois_results_dct = {}  # Messages incoming from reactor, re: /whois, will be stored here
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
@@ -107,7 +110,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """bool: Are we connected to the IRC server *and* have we joined the room that we want?"""
         if not self.connected:
             return False
-        elif not self.joined:
+        elif not self.joined:  # Joined ALL the channels we want
             return False
         else:
             return True
@@ -123,9 +126,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         return self.__initial_realname
 
     @property
-    def initial_channel(self):
+    def initial_channels(self):
         """The channel that the server was meant to join for me."""
-        return self.__initial_channel
+        return self.__initial_channels
 
     @property
     def nickname(self):
@@ -160,8 +163,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     @property
     def joined(self):
-        """Am I a member of the channel that I wanted the server to join?"""
-        return True if self.__initial_channel in self.channels else False
+        """Am I a member of this channel?"""
+        return True if [] == [ch for ch in self.initial_channels if ch not in self.channels] \
+                    else False
 
     def _on_whoisuser(self, _c=None, e=None):
         """Triggered when the event-handler receives RPL_WHOISUSER."""
@@ -179,7 +183,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
 
     def on_welcome(self, c, _e):
         """Triggered when the event-handler receives RPL_WELCOME."""
-        c.join(self.__initial_channel)
+        for ch in self.initial_channels:
+            c.join(ch)
 
     def on_privmsg(self, c, e):
         """Triggered when the event-handler receives RPL_WHOISUSER."""
@@ -278,19 +283,26 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
         Don't park on railroad tracks.
 
     Args:
-        channel (str): Channel to join, beginning with '#'.
+        channels (list of str): Channels to join, each beginning with '#'.
         nickname (str): Nickname to use when joining.
         irc_server (str): URL of IRC server.
         port (int): Port# to use.
 
     """
 
-    def __init__(self, channel, nickname, irc_server, port):
+    def __init__(self, channels, nickname, irc_server, port):
+        if channels is None or type(channels) not in (list, tuple):
+            raise IrcBadChannelNameError(str(channels) + " is a defective list of channels.")
+        for ch in channels:
+            if type(ch) is not str or len(ch) < 2 or ' ' in ch or ch[0] != '#':
+                raise IrcBadChannelNameError("%s is a defective channel name." % ch)
+            if len(ch) > 19:
+                raise IrcChannelNameTooLongError(str(ch) + " is too long")
         self.__received_queue = Queue()
         self.__transmit_queue = Queue()
         self.__wannaquit = False
         self.__wannaquit_lock = ReadWriteLock()
-        super().__init__(channel, nickname, generate_fingerprint(nickname), irc_server, port)
+        super().__init__(channels, nickname, generate_fingerprint(nickname), irc_server, port)
         self.__my_tx_thread = Thread(target=self._tx_start, daemon=True)
         self.__my_tx_thread.start()
 
@@ -388,7 +400,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         did-the-message-arrive-or-not checking.
 
     Args:
-        channel (str): The channel to join, e.g. #test
+        channels (list of str): The channels to join, e.g. #test
         nickname (str): The ideal nickname. The actual nickname is
             that one, unless there's a collision reported by the
             server. In that case, _on_nicknameinuse() will be
@@ -413,13 +425,16 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
 """
 
-    def __init__(self, channel:str, nickname:str, irc_server:str, port:int,
+    def __init__(self, channels:list, nickname:str, irc_server:str, port:int,
                  startup_timeout=JOINING_IRC_SERVER_TIMEOUT,
                  maximum_reconnections=None):
-        if channel is None or type(channel) is not str or len(channel) < 2 or ' ' in channel or channel[0] != '#':
-            raise IrcBadChannelNameError(str(channel) + " is a defective channel name. Remove spaces, make sure the first letter is '#', don't make it insanely long, etc.")
-        if len(channel) > 19:
-            raise IrcChannelNameTooLongError(str(channel) + " is too long")
+        if channels is None or type(channels) not in (list, tuple):
+            raise IrcBadChannelNameError(str(channels) + " is a defective list of channels.")
+        for ch in channels:
+            if type(ch) is not str or len(ch) < 2 or ' ' in ch or ch[0] != '#':
+                raise IrcBadChannelNameError("%s is a defective channel name." % ch)
+            if len(ch) > 19:
+                raise IrcChannelNameTooLongError(str(ch) + " is too long")
         if nickname is None or len(nickname) < 2 or not nickname[0].isalpha() or ' ' in nickname:
             raise IrcBadNicknameError(str(nickname) + " is a goofy nickname. Fix it.")
         if len(nickname) > MAX_NICKNAME_LENGTH:
@@ -435,7 +450,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         self.__transmit_queue = Queue()
         self.__should_we_quit = False
         self.__should_we_quit_lock = ReadWriteLock()
-        self.channel = channel
+        self.channels = channels
         self.__initial_nickname = nickname
         self.__desired_nickname = nickname
         self.__irc_server = irc_server
@@ -462,13 +477,17 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
     @property
     def users(self):
-        try:
-            return list(set([str(u) for u in self.client.channels[self.channel].users()]))
-        except AttributeError as e:
-            if self.channel not in self.client.channels:
-                raise IrcIAmNotInTheChannelError("I am not in %s. Therefore, I cannot obtain a list of its users." % self.channel) from e
-            else:
-                raise e
+        lst = []
+        for ch in self.channels:
+            try:
+                lst += [str(u) for u in self.client.channels[ch].users()]
+            except AttributeError as e:
+                if ch not in self.client.channels:
+                    print("I am not in %s. Therefore, I cannot obtain a list of its users." % ch)
+                    # raise IrcIAmNotInTheChannelError("I am not in %s. Therefore, I cannot obtain a list of its users." % ch) from e
+                else:
+                    raise e
+        return lst
 
     def _client_start(self):
         while not self.should_we_quit:
@@ -492,21 +511,23 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
     def main_service_function(self):
         """Do something while I'm connected."""
         sleep(.1)
-        if self.client is None and self.autoreconnect is True:
+        if self.should_we_quit is False and self.client is None and self.autoreconnect is True:
             try:
                 self.reconnect_server_connection()  # If its fingerprint is wonky, quit&reconnect.
                 print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, self.desired_nickname))
-            except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer) as e:
+            except (IrcBadChannelNameError, IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer) as e:
                 print("_main_loop() -->", str(e)[:48], '...')
                 print("Let's keep looping and/or reconnecting")
             else:
                 pass
-        if self.client.connected and self.channel not in self.client.channels:
-            print("WARNING -- we dropped out of %s" % self.channel)
-            try:
-                self.client.connection.join(self.channel)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print("I tried and failed to rejoin the room. ==>", e)
+        channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self.client.channels]
+        if self.client.connected and channels_weve_dropped_out_of != []:
+            print("WARNING -- we dropped out of", channels_weve_dropped_out_of)
+            for ch in channels_weve_dropped_out_of:
+                try:
+                    self.client.connection.join(ch)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    print("I tried and failed to rejoin", ch, "==>", e)
         if self.client is not None and self.desired_nickname != self.client.nickname:  # This means we RECONNECTED after fixing our nickname.
             self.desired_nickname = self.client.nickname
             print("*** RECONNECTED AS %s" % self.client.nickname)
@@ -658,7 +679,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
                 print("reconnect_server_connection() caught an exception:", e)
             self.client = None
         self.noof_reconnections += 1
-        self.client = DualQueuedSingleServerIRCBotWithWhoisSupport(channel=self.channel, nickname=self.desired_nickname,
+        self.client = DualQueuedSingleServerIRCBotWithWhoisSupport(channels=self.channels, nickname=self.desired_nickname,
             irc_server=self.irc_server,
             port=self.port)
         starting_datetime = datetime.datetime.now()
@@ -686,6 +707,6 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
 if __name__ == "__main__":
 
-    ircbot = SingleServerIRCBotWithWhoisSupport(channel="#prate", nickname='clyde', realname='ccllyyddee', irc_server='cinqcent.local', port=6667)
+    ircbot = SingleServerIRCBotWithWhoisSupport(channels=["#prate"], nickname='clyde', realname='ccllyyddee', irc_server='cinqcent.local', port=6667)
     ircbot.connect("cinqcent.local", 6667, "clyde")
     ircbot.start()

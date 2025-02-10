@@ -51,7 +51,8 @@ from Crypto.PublicKey import RSA
 from my.stringtools import generate_irc_handle, chop_up_string_into_substrings_of_N_characters
 from my.classes.exceptions import FernetKeyIsInvalidError, FernetKeyIsUnknownError, \
                             PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
-                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError
+                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError, IrcBadChannelNameError, \
+    IrcChannelNameTooLongError
 
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
@@ -81,9 +82,9 @@ def groovylsttotxt(lst):
 
 class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
 
-    def __init__(self, channel, nickname, irc_server, port, rsa_key,
+    def __init__(self, channels, nickname, irc_server, port, rsa_key,
                  startup_timeout=40, maximum_reconnections=None):
-        super().__init__(channel, nickname, irc_server, port, startup_timeout, maximum_reconnections)
+        super().__init__(channels, nickname, irc_server, port, startup_timeout, maximum_reconnections)
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
             raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key
@@ -116,7 +117,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             try:
                 self.trigger_handshaking_with_the_other_users()
             except IrcIAmNotInTheChannelError:
-                print("Warning -- I cannot contact other users of %s: I'm not even in there." % self.channel)
+                print("Warning -- I cannot contact other users of %s: I'm not even in there." % self.channels)
 
         while not self.should_we_quit:
             sleep(.1)
@@ -248,11 +249,11 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
 class HaremOfBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channel, list_of_all_irc_servers, rsa_key, harem_rx_queue, harem_tx_queue):
+    def __init__(self, channels, list_of_all_irc_servers, rsa_key, harem_rx_queue, harem_tx_queue):
         max_nickname_length = 9
         self.__harem_rx_queue = harem_rx_queue
         self.__harem_tx_queue = harem_tx_queue
-        self.__channel = channel
+        self.__channels = channels
         self.__rsa_key = rsa_key
         self.__list_of_all_irc_servers = list_of_all_irc_servers
         self.__desired_nickname = "%s%d" % (generate_irc_handle(max_nickname_length - 3, max_nickname_length - 3), randint(111, 999))
@@ -264,8 +265,8 @@ class HaremOfBots:
         return self.__list_of_all_irc_servers
 
     @property
-    def channel(self):
-        return self.__channel
+    def channels(self):
+        return self.__channels
 
     @property
     def rsa_key(self):
@@ -302,7 +303,7 @@ class HaremOfBots:
 
     def try_to_log_into_this_IRC_server(self, k):
         try:
-            self.bots[k] = PrateBot(channel=self.channel,
+            self.bots[k] = PrateBot(channels=self.channels,
                                    nickname=self.desired_nickname,
                                    irc_server=k,
                                    port=self.port,
@@ -356,7 +357,7 @@ if __name__ == "__main__":
         desired_nickname = sys.argv[4]
 
     my_rsa_key = RSA.generate(2048)
-    bot = PrateBot(my_channel, desired_nickname, my_irc_server, my_port, my_rsa_key)
+    bot = PrateBot([my_channel], desired_nickname, my_irc_server, my_port, my_rsa_key)
     while not bot.ready:
         sleep(1)
     print("Hi there.")
