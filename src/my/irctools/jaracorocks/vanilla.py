@@ -489,14 +489,16 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         return lst
 
     def _client_start(self):
+        print("SingleServerIRCBotWithWhoisSupport --- entering.")
         while not self.should_we_quit:
             while not self.should_we_quit and not self.client:
                 sleep(.1)
             try:
+                print("SingleServerIRCBotWithWhoisSupport is launching.")
                 self.client.start()
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print("_client_strt ==>", e)
-        print("SingleServerIRCBotWithWhoisSupport is quitting.")
+        print("SingleServerIRCBotWithWhoisSupport --- leaving.")
 
     def _main_loop(self):
         my_nick = self.initial_nickname
@@ -518,6 +520,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
                 for ch in channels_weve_dropped_out_of:
                     try:
                         self.client.connection.join(ch)
+                        print("Rejoined %s" % ch)
                     except Exception as e:  # pylint: disable=broad-exception-caught
                         print("I tried and failed to rejoin", ch, "==>", e)
             if self.client is not None and my_nick != self.client.nickname:  # This means we RECONNECTED after fixing our nickname.
