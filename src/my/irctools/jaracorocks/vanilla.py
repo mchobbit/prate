@@ -452,7 +452,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
     @property
     def users(self):
-        return list(set(self.client.channels[self.channel].users()))
+        return list(set([str(u) for u in self.client.channels[self.channel].users()]))
 
     def _client_start(self):
         while not self.should_we_quit:
