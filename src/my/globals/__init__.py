@@ -24,6 +24,7 @@ MAX_NOOF_FINGERPRINTING_FAILURES = 6 * ANTIOVERLOAD_CACHE_TIME  # maximum number
 JOINING_IRC_SERVER_TIMEOUT = 30
 MAX_NICKNAME_LENGTH = 9  # From mIRC's manual.
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
+MAX_CHANNEL_LENGTH = 10  # I made it up.
 
 
 def get_my_public_ip_address():

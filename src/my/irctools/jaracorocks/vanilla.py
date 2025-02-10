@@ -30,7 +30,7 @@ from random import randint
 import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
-from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH
+from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -296,7 +296,7 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
         for ch in channels:
             if type(ch) is not str or len(ch) < 2 or ' ' in ch or ch[0] != '#':
                 raise IrcBadChannelNameError("%s is a defective channel name." % ch)
-            if len(ch) > 19:
+            if len(ch) > MAX_CHANNEL_LENGTH:
                 raise IrcChannelNameTooLongError(str(ch) + " is too long")
         self.__received_queue = Queue()
         self.__transmit_queue = Queue()
@@ -435,7 +435,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         for ch in channels:
             if type(ch) is not str or len(ch) < 2 or ' ' in ch or ch[0] != '#':
                 raise IrcBadChannelNameError("%s is a defective channel name." % ch)
-            if len(ch) > 19:
+            if len(ch) > MAX_CHANNEL_LENGTH:
                 raise IrcChannelNameTooLongError(str(ch) + " is too long")
         if nickname is None or len(nickname) < 2 or not nickname[0].isalpha() or ' ' in nickname:
             raise IrcBadNicknameError(str(nickname) + " is a goofy nickname. Fix it.")
