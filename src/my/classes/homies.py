@@ -11,6 +11,12 @@ Each 'homie' record contains a nickname, a realname (usually a public key),
 a fernet key (symmetric), and a flag to say if the user actually *has* a public
 key.
 
+Because of the inevitable collisions/race conditions that must be mitigated
+during the key negotiation phase, there are two fernet keys: mine and his.
+Naturally, I send him mine and he sends me his. The one with the higher ascii
+value is the one that 'wins' and the one that we use. If we know only one
+of the two, fernetkey returns None: we need both.
+
 Todo:
     * Better docs
 
