@@ -30,7 +30,7 @@ from random import randint
 import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
-from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH
+from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -41,9 +41,9 @@ import datetime
 import validators
 
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
-from my.classes.exceptions import IrcStillConnectingError, IrcNicknameTooLongError, IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
+from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
     IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
-    IrcIAmNotInTheChannelError
+    IrcStillConnectingError, IrcNicknameTooLongError
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -82,8 +82,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     """
 
     def __init__(self, channels, nickname, realname, irc_server, port):
-        print("CHANNELS = >>>", channels , "<<<")
-        print("Type of CHANNELS =", type(channels))
+#        print("CHANNELS = >>>", channels , "<<<")
+#        print("Type of CHANNELS =", type(channels))
         if type(channels) not in (list, tuple):
             raise IrcBadChannelNameError("channels must be a list or a tuple")
         for ch in channels:
@@ -197,7 +197,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         else:
             c.notice(nick, "Unknown command => " + cmd)
 
-    def call_whois_and_wait_for_response(self, user, timeout=10):
+    def call_whois_and_wait_for_response(self, user, timeout=DEFAULT_WHOIS_TIMEOUT):
         """Call /whois, and use __whois_request_cache to get answer."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
@@ -612,7 +612,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         finally:
             self.__should_we_quit_lock.release_write()
 
-    def whois(self, user, timeout=10):
+    def whois(self, user, timeout=DEFAULT_WHOIS_TIMEOUT):
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
         if len(user) > MAX_NICKNAME_LENGTH:
