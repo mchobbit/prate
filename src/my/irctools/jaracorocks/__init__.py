@@ -36,7 +36,7 @@ from threading import Thread, Lock
 
 from cryptography.fernet import Fernet, InvalidToken
 import base64
-from my.globals import MY_IP_ADDRESS, MAX_NOOF_FINGERPRINTING_FAILURES
+from my.globals import MY_IP_ADDRESS
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.cryptoish import rsa_decrypt, rsa_encrypt, unsqueeze_da_keez
 from _queue import Empty
