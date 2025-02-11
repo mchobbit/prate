@@ -312,7 +312,7 @@ def encode_via_steg(the_plaintext_message, salad_txt, random_offset=True, lazine
     return outstr
 
 
-def decode_via_steg(the_ciphertext_message:str, output_in_bytes=False, clumps_dct=steg_dct_CLUMPS) -> str:
+def decode_via_steg(the_ciphertext_message:str, output_in_bytes=False, clumps_dct=None) -> str:
     """Extract the steganographically hidden message from the supplied text.
 
     Args:
@@ -322,6 +322,8 @@ def decode_via_steg(the_ciphertext_message:str, output_in_bytes=False, clumps_dc
         The hidden message.
 
     """
+    if clumps_dct is None:
+        clumps_dct = steg_dct_CLUMPS
     if the_ciphertext_message == '':
         return ''
     binaryvals_extracted = ''
@@ -353,7 +355,7 @@ def strict_encode_via_steg_SUB(the_plaintext_message, salad_txt, laziness=0, max
     noof_useful_chars = 0
     our_word_salad = ''
     for ch in salad_txt:
-        our_word_salad += ch  # FIXME: Inefficient. Don't care.
+        our_word_salad += ch  # QQQ Inefficient. Don't care.
         if ch in steg_dct_CLUMPS:
             noof_useful_chars += 1
     endmarker = '#' * 10
