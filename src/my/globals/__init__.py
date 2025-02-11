@@ -19,9 +19,10 @@ import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "
-ANTIOVERLOAD_CACHE_TIME = 20
-MAX_NOOF_FINGERPRINTING_FAILURES = 6 * ANTIOVERLOAD_CACHE_TIME  # maximum number of attempts to negotiate fingerprint
-JOINING_IRC_SERVER_TIMEOUT = 30
+SENSIBLE_TIMEOUT = 30
+JOINING_IRC_SERVER_TIMEOUT = SENSIBLE_TIMEOUT
+ANTIOVERLOAD_CACHE_TIME = SENSIBLE_TIMEOUT
+DEFAULT_WHOIS_TIMEOUT = SENSIBLE_TIMEOUT
 MAX_NICKNAME_LENGTH = 9  # From mIRC's manual.
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
 MAX_CHANNEL_LENGTH = 10  # I made it up.
@@ -41,7 +42,7 @@ def get_my_public_ip_address():
     """
     from requests import get
     endpoint = 'https://ipinfo.io/json'
-    response = get(endpoint, verify=True)
+    response = get(endpoint, timeout=30, verify=True)
     if response.status_code != 200:
         ip1 = None
         # print('Status:', response.status_code, 'Problem with the request. Exiting.')
@@ -49,7 +50,7 @@ def get_my_public_ip_address():
     else:
         data = response.json()
         ip1 = data['ip']
-    ip2 = get('https://api.ipify.org').content.decode('utf8')
+    ip2 = get('https://api.ipify.org', timeout=30).content.decode('utf8')
     if ip1 is None:
         ip1 = ip2
     if ip1 != ip2:
@@ -127,7 +128,8 @@ WHOIS_RESPCODE_LST = [ERR_NOSUCHNICK, ERR_NOSUCHSERVER, ERR_NONICKNAMEGIVEN, RPL
 
 try:
     MY_IP_ADDRESS = get_my_public_ip_address()
-except:
+except Exception as e:  # pylint: disable=broad-exception-caught
+    print("Warning — unable to grab IP address:", e)
     MY_IP_ADDRESS = "127.0.0.1"
 
 PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = "cinqcent.local rpi4b.local gmkone.local gmktwo.local"
