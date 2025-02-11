@@ -43,22 +43,21 @@ while not (bot1.ready and bot2.ready):
 """
 
 import sys
-from threading import Thread, Lock
+from threading import Thread
 
 # from my.classes.readwritelock import ReadWriteLock
 from random import randint, shuffle
 from Crypto.PublicKey import RSA
-from my.stringtools import generate_irc_handle, chop_up_string_into_substrings_of_N_characters
-from my.classes.exceptions import FernetKeyIsInvalidError, FernetKeyIsUnknownError, \
+from my.stringtools import generate_irc_handle
+from my.classes.exceptions import FernetKeyIsUnknownError, \
                             PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
-                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError, IrcBadChannelNameError, \
-    IrcChannelNameTooLongError
+                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError
 
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH
+from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 import base64
 from my.classes.readwritelock import ReadWriteLock
 from _queue import Empty
@@ -130,7 +129,7 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                 try:
                     self.read_messages_from_users()
                 except IrcStillConnectingError as e:
-                    print("Warning - we may be in the middle of quitting.")
+                    print("Warning - we may be in the middle of quitting =>", e)
         print("Quitting. Huzzah.")
 
     def read_messages_from_users(self):
