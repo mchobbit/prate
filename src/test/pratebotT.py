@@ -237,6 +237,16 @@ class TestGroupTwo(unittest.TestCase):
         while not bot2.ready:
             sleep(.1)
         self.assertTrue(bot2.ready)
+        try:
+            while True:
+                _ = bot1.get_nowait()
+        except Empty:
+            pass
+        try:
+            while True:
+                _ = bot2.get_nowait()
+        except Empty:
+            pass
         self.assertNotEqual(bot2.nickname, desired_nick)
         self.assertNotEqual(bot2.nickname, bot1.nickname)
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname))
