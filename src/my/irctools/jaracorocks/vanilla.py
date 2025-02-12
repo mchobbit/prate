@@ -494,7 +494,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         while not self.should_we_quit:
             try:
                 self.client.start()
-            except (OSError, AttributeError):
+            except (ValueError, OSError, AttributeError):
                 sleep(.1)
 
     def _main_loop(self):
@@ -509,7 +509,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
                     print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, my_nick))
                     self.noof_reconnections = 0
                 except IrcInitialConnectionTimeoutError:
-                    print("Timeout error. Retrying.")
+                    pass  # print("Timeout error. Retrying.")
                 except IrcFingerprintMismatchCausedByServer:
                     print("The IRC server changed my nickname from %s to %s, to prevent a collision." % (my_nick, self.nickname))
             channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self.client.channels]

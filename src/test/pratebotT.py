@@ -391,13 +391,13 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         self.assertTrue(bot1.empty())
         for i in range(0, 10):
             print("loop", i)
-            plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2)
-            bot1.crypto_put(bot2.nickname, plaintext.encode())
+            plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2).encode()
+            bot1.crypto_put(bot2.nickname, plaintext)
             while bot2.crypto_empty():
                 sleep(.1)
             (from_user, received_msg) = bot2.crypto_get()
             self.assertEqual(from_user, bot1.nickname)
-            self.assertEqual(received_msg.decode(), plaintext)
+            self.assertEqual(plaintext, received_msg)
         bot1.quit()
         bot2.quit()
 

@@ -170,15 +170,18 @@ def generate_fingerprint(s):
 def receive_and_decrypt_message(ciphertext, fernetkey):
     try:
         cipher_suite = Fernet(fernetkey)
-        decoded_msg = cipher_suite.decrypt(ciphertext).decode()
+        decoded_msg = cipher_suite.decrypt(ciphertext)
     except InvalidToken as e:
         raise FernetKeyIsInvalidError("Warning - failed to decode %s's message (key bad? ciphertext bad?)." % str(ciphertext)) from e
     except KeyError:
         raise FernetKeyIsUnknownError("Warning - failed to decode %s's message (fernet key not found?). Is his copy of my public key out of date?") from e
     else:
-        return decoded_msg.encode()
+        return decoded_msg
 
 
 def int_64bit_cksum(byteblock):
-    return (int.from_bytes(hashlib.sha256(byteblock).digest()[:8], 'little'))
+    return (int.from_bytes(bytes_64bit_cksum(byteblock), 'little'))
 
+
+def bytes_64bit_cksum(byteblock):
+    return hashlib.sha256(byteblock).digest()[:8]
