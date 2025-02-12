@@ -30,7 +30,8 @@ from random import randint
 import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
-from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT
+from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, \
+    DEFAULT_NOOF_RECONNECTIONS
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -318,7 +319,7 @@ class DualQueuedSingleServerIRCBotWithWhoisSupport(SingleServerIRCBotWithWhoisSu
             self.disconnect('Bye')
         except Exception as e:  # pylint: disable=broad-exception-caught
             print("Exception occurred while disconnecting:", e)
-        print("DualQueuedSingleServerIRCBotWithWhoisSupport is quitting.")
+#        print("DualQueuedSingleServerIRCBotWithWhoisSupport is quitting.")
 
     def quit(self):  # Do we need this?
         """Quit this bot."""
@@ -427,11 +428,11 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
 
     def __init__(self, channels:list, nickname:str, irc_server:str, port:int,
                  startup_timeout=JOINING_IRC_SERVER_TIMEOUT,
-                 maximum_reconnections=None):
+                 maximum_reconnections=DEFAULT_NOOF_RECONNECTIONS):
         if startup_timeout is None or type(startup_timeout) is not int or startup_timeout <= 0:
             raise ValueError(str(startup_timeout) + " is a goofy startup_timeout. Fix it.")
         if channels is None or type(channels) not in (list, tuple):
-            raise IrcBadChannelNameError(str(channels) + " is a defective list of channels.")
+            raise IrcBadChannelNameError(str(channels) + " needs to be a list or tuple of channels, please.")
         for ch in channels:
             if type(ch) is not str or len(ch) < 2 or ' ' in ch or ch[0] != '#':
                 raise IrcBadChannelNameError("%s is a defective channel name." % ch)
@@ -489,7 +490,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         return lst
 
     def _client_start(self):
-        print("SingleServerIRCBotWithWhoisSupport --- entering.")
+#         print("SingleServerIRCBotWithWhoisSupport --- entering.")
         while not self.should_we_quit:
             try:
                 self.client.start()
@@ -502,14 +503,15 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
             sleep(.1)
             if self.should_we_quit is False and self.client is None and self.autoreconnect is True:
+                self.noof_reconnections += 1
                 try:
                     self.reconnect_server_connection(my_nick)  # If its fingerprint is wonky, quit&reconnect.
                     print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, my_nick))
-                except (IrcBadChannelNameError, IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer) as e:
-                    print("_main_loop() -->", str(e)[:48], '...')
-                    print("Let's keep looping and/or reconnecting")
-                else:
-                    pass
+                    self.noof_reconnections = 0
+                except IrcInitialConnectionTimeoutError:
+                    print("Timeout error. Retrying.")
+                except IrcFingerprintMismatchCausedByServer:
+                    print("The IRC server changed my nickname from %s to %s, to prevent a collision." % (my_nick, self.nickname))
             channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self.client.channels]
             if self.client.connected and channels_weve_dropped_out_of != []:
                 print("WARNING -- we dropped out of", channels_weve_dropped_out_of)
@@ -527,7 +529,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             print("We've reconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever.")
         while not self.should_we_quit:
             sleep(.1)
-        print("Quitting. Huzzah.")
+#        print("Quitting. Huzzah.")
 
     @property
     def initial_nickname(self):
@@ -667,7 +669,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
             return self.client.ready
 
     def reconnect_server_connection(self, my_nick):
-        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
+#        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
         if self.client is not None:
             print("WARNING --- you're asking me to reconnect, but I'm already connected. That is a surprise.")
             try:
@@ -685,7 +687,7 @@ class BotForDualQueuedSingleServerIRCBotWithWhoisSupport:
         if not self.ready:
             raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
         if generate_fingerprint(self.client.nickname) != self.client.realname:
-            raise IrcFingerprintMismatchCausedByServer("My fingerprint no longer matches my username. This may indicate that the server changed my nickname and didn't tell me. Please try again, with a different nickname.")
+            raise IrcFingerprintMismatchCausedByServer("The server detected a nickname collision and changed mine, causing my fingerprint to be invalid.")
 
     def transmit_this_data(self, data_to_transmit):
         (user, message) = data_to_transmit

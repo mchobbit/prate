@@ -26,18 +26,18 @@ Todo:
 Example:
 
 
-from my.irctools.jaracorocks.pratebot import PrateBot
+from my.irctools.jaracorocks.pratebot import HaremOfBots
 from Crypto.PublicKey import RSA
-from my.irctools.cryptoish import *
 from time import sleep
+from my.stringtools import *
+from my.globals import *
 my_rsa_key1 = RSA.generate(2048)
 my_rsa_key2 = RSA.generate(2048)
-bot1 = PrateBot('#prate', 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-bot2 = PrateBot('#prate', 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-#bot1.paused = True
-#bot2.paused = True
-while not (bot1.ready and bot2.ready):
-    sleep(.1)
+list_of_all_irc_servers = PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.split(' ')
+h1 = HaremOfPrateBots(['#prate', '#etarp'], list_of_all_irc_servers, my_rsa_key1)
+h2 = HaremOfPrateBots(['#prate', '#etarp'], list_of_all_irc_servers, my_rsa_key2)
+h1.log_into_all_functional_IRC_servers()
+h2.log_into_all_functional_IRC_servers()
 
 
 """
@@ -55,7 +55,7 @@ from my.classes.exceptions import FernetKeyIsUnknownError, \
 
 from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH
+from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH, JOINING_IRC_SERVER_TIMEOUT, DEFAULT_NOOF_RECONNECTIONS
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
 from cryptography.fernet import Fernet
 import base64
@@ -66,13 +66,13 @@ import datetime
 from queue import Queue
 # from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
 
-_RQPK_ = "Hell"
-_TXPK_ = "TXPK"
-_RQFE_ = "RQFE"
-_TXFE_ = "TXFE"
-_RQIP_ = "RQIP"
-_TXIP_ = "TXIP"
-_TXTX_ = "TXTX"
+_RQPK_ = "He"
+_TXPK_ = "TK"
+_RQFE_ = "RE"
+_TXFE_ = "TE"
+_RQIP_ = "RP"
+_TXIP_ = "TP"
+_TXTX_ = "XX"
 
 
 def groovylsttotxt(lst):
@@ -82,18 +82,18 @@ def groovylsttotxt(lst):
 class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
-                 startup_timeout=40, maximum_reconnections=None):
+                 startup_timeout=JOINING_IRC_SERVER_TIMEOUT, maximum_reconnections=DEFAULT_NOOF_RECONNECTIONS):
         super().__init__(channels, nickname, irc_server, port, startup_timeout, maximum_reconnections)
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
             raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key
-        assert(not hasattr(self, '_bot_start'))
-        assert(not hasattr(self, '__my_main_thread'))
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
         self.__crypto_rx_queue = Queue()
         self.paused = False
-        self.__my_main_thread = Thread(target=self._bot_loop, daemon=True)
+        assert(not hasattr(self, '__my_main_thread'))
+        assert(not hasattr(self, '__my_main_loop'))
+        self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
 
     @property
@@ -103,11 +103,11 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         except AttributeError:
             return False
 
-    def _bot_loop(self):
-        print("Waiting for the bot to be ready to connect to %s..." % self.irc_server)
+    def __my_main_loop(self):
+#        print("Waiting for the bot to be ready to connect to %s..." % self.irc_server)
         while not self.ready and not self.should_we_quit:
             sleep(.1)
-        print("Connected. Looping...")
+#        print("Connected. Looping...")
         sleep(3)
         while self.paused:
             sleep(.1)
@@ -128,9 +128,9 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             else:
                 try:
                     self.read_messages_from_users()
-                except IrcStillConnectingError as e:
-                    print("Warning - we may be in the middle of quitting =>", e)
-        print("Quitting. Huzzah.")
+                except IrcStillConnectingError:  # print("We are in the middle of quitting. That's okay.")
+                    pass
+#        print("Quitting. Huzzah.")
 
     def read_messages_from_users(self):
         while True:
@@ -158,14 +158,18 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                 elif msg.startswith(_RQIP_):
                     cipher_suite = Fernet(self.homies[sender].fernetkey)
                     decoded_msg = cipher_suite.decrypt(msg[len(_RQIP_):])
-                    self.homies[sender].ipaddr = decoded_msg.decode()
+                    new_ipaddr = decoded_msg.decode()
+                    if self.homies[sender].ipaddr != new_ipaddr:
+                        self.homies[sender].ipaddr = new_ipaddr
                     self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
                     print("I've sent %s my IP address." % sender)
                 elif msg.startswith(_TXIP_):
                     cipher_suite = Fernet(self.homies[sender].fernetkey)
                     decoded_msg = cipher_suite.decrypt(msg[len(_TXIP_):])
-                    self.homies[sender].ipaddr = decoded_msg.decode()
-                    print("%s IS PROBABLY KOSHER" % sender)
+                    new_ipaddr = decoded_msg.decode()
+                    if self.homies[sender].ipaddr != new_ipaddr:
+                        self.homies[sender].ipaddr = new_ipaddr
+                        print("%s IS PROBABLY KOSHER" % sender)
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
                 else:
@@ -175,8 +179,8 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         for user in self.users:
             if user != self.nickname and self.whois(user) is not None and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1]:
                 if self.homies[user].pubkey is None:
-                    print("I, %s, am triggering a handshake with %s" % (self.nickname, user))
-                    self.put(user, "%so, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
+#                    print("I, %s, am triggering a handshake with %s" % (self.nickname, user))
+                    self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
 
     def my_encrypted_ipaddr(self, user):
         """Encrypt our IP address w/ the user's fernet key."""
@@ -236,6 +240,8 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             raise PublicKeyUnknownError("I do not know %s's public key." % user)
         elif self.homies[user].fernetkey is None:
             raise FernetKeyIsUnknownError("I have not negotiated a fernet key with %s yet." % user)
+        elif len(byteblock) > MAX_CRYPTO_MSG_LENGTH:
+            raise IrcPrivateMessageTooLongError("The encrypted message will be too long")
         else:
             cipher_suite = Fernet(self.homies[user].fernetkey)
             cipher_text = cipher_suite.encrypt(byteblock)
@@ -245,19 +251,22 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             self.put(user, outgoing_str)
 
 
-class HaremOfBots:
+class HaremOfPrateBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channels, list_of_all_irc_servers, rsa_key, harem_rx_queue, harem_tx_queue):
-        max_nickname_length = 9
-        self.__harem_rx_queue = harem_rx_queue
-        self.__harem_tx_queue = harem_tx_queue
+    def __init__(self, channels, list_of_all_irc_servers, rsa_key):
+        if type(list_of_all_irc_servers) not in (list, tuple):
+            raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         self.__channels = channels
         self.__rsa_key = rsa_key
         self.__list_of_all_irc_servers = list_of_all_irc_servers
-        self.__desired_nickname = "%s%d" % (generate_irc_handle(max_nickname_length - 3, max_nickname_length - 3), randint(111, 999))
+        self.__desired_nickname = "%s%d" % (generate_irc_handle(MAX_NICKNAME_LENGTH + 10, MAX_NICKNAME_LENGTH - 2), randint(11, 99))
         self.port = 6667
-        self.bots = {}
+        self.__bots = {}
+
+    @property
+    def bots(self):
+        return self.__bots  # TODO: make threadsafe
 
     @property
     def list_of_all_irc_servers(self):
@@ -275,14 +284,6 @@ class HaremOfBots:
     def desired_nickname(self):
         return self.__desired_nickname
 
-    @property
-    def harem_rx_queue(self):
-        return self.__harem_rx_queue
-
-    @property
-    def harem_tx_queue(self):
-        return self.__harem_tx_queue
-
     def log_into_all_functional_IRC_servers(self):
         shuffle(self.list_of_all_irc_servers)
         print("Trying all IRC servers")
@@ -291,8 +292,9 @@ class HaremOfBots:
             self.try_to_log_into_this_IRC_server(k)
         failures = lambda: [k for k in self.bots if self.bots[k].noof_reconnections >= 3 and not self.bots[k].client]
         successes = lambda: [k for k in self.bots if self.bots[k].client and self.bots[k].client.joined]
-        while len(failures()) + len(successes()) < len(self.bots):
-            sleep(1)
+        print("successes:", successes)
+        # while len(failures()) + len(successes()) < len(self.bots):
+        #     sleep(1)
         for k in list(failures()):
             print("Deleting", k)
             self.bots[k].autoreconnect = False

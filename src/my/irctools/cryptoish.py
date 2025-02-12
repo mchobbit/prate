@@ -177,3 +177,8 @@ def receive_and_decrypt_message(ciphertext, fernetkey):
         raise FernetKeyIsUnknownError("Warning - failed to decode %s's message (fernet key not found?). Is his copy of my public key out of date?") from e
     else:
         return decoded_msg.encode()
+
+
+def int_64bit_cksum(byteblock):
+    return (int.from_bytes(hashlib.sha256(byteblock).digest()[:8], 'little'))
+

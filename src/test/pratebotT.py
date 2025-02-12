@@ -316,7 +316,7 @@ class TestGroupThree(unittest.TestCase):
         self.assertEqual(bot2.get(timeout=5), (bot1.nickname, "Hello, world."))
         sleep(2)
         if bot2.empty():
-            print("Good.")
+            pass  # print("Good.")
         else:
             self.assertRaises(Empty, bot2.get_nowait)
         bot1.quit()
@@ -347,7 +347,7 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
 
     def testTwo(self):
         dct = {}
-        noofbots = 3
+        noofbots = 4
         for _ in range(0, noofbots):
             nick = generate_irc_handle()
             dct[nick] = {}
@@ -364,7 +364,7 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
                     if nickX == nickY:
                         continue
                     if dct[nickX]['pratebot'].homies[nickY].ipaddr is None:
-                        print("%s doesn't know %s's IP address" % (nickX, nickY))
+#                        print("%s doesn't know %s's IP address" % (nickX, nickY))
                         all_found = False
         print("Great. We have all the IP addresses.")
         for k in dct:

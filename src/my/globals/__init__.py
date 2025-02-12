@@ -19,13 +19,15 @@ import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "
-SENSIBLE_TIMEOUT = 30
+SENSIBLE_TIMEOUT = 15
 JOINING_IRC_SERVER_TIMEOUT = SENSIBLE_TIMEOUT
 ANTIOVERLOAD_CACHE_TIME = SENSIBLE_TIMEOUT
+DEFAULT_NOOF_RECONNECTIONS = 3
 DEFAULT_WHOIS_TIMEOUT = SENSIBLE_TIMEOUT
 MAX_NICKNAME_LENGTH = 9  # From mIRC's manual.
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
 MAX_CHANNEL_LENGTH = 10  # I made it up.
+MAX_CRYPTO_MSG_LENGTH = int((MAX_PRIVMSG_LENGTH - MAX_NICKNAME_LENGTH) * 0.618)
 
 
 def get_my_public_ip_address():
@@ -132,7 +134,8 @@ except Exception as e:  # pylint: disable=broad-exception-caught
     print("Warning — unable to grab IP address:", e)
     MY_IP_ADDRESS = "127.0.0.1"
 
-PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = "cinqcent.local rpi4b.local gmkone.local gmktwo.local"
+PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = "cinqcent.local rpi4b.local gmkone.local gmktwo.local \
+rpi0irc1.local rpi0irc2.local rpi0irc3.local rpi0irc4.local rpi0irc5.local rpi0irc6.local rpi0irc7.local"
 
 # PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = """irc.libera.chat
 # irc.oftc.net
