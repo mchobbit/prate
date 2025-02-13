@@ -16,7 +16,7 @@ from my.stringtools import generate_random_alphanumeric_string
 from queue import Empty
 from my.globals import ALL_SANDOX_IRC_NETWORK_NAMES
 from random import randint
-from my.classes.exceptions import IrcDuplicateNicknameError
+from my.classes.exceptions import IrcDuplicateNicknameError, IrcInitialConnectionTimeoutError
 
 
 class TestVanillaBot(unittest.TestCase):
@@ -232,28 +232,87 @@ class TestVanillaBot(unittest.TestCase):
         alice_bot.quit()
         bob_bot.quit()
 
-        # self.assertEqual(1, len(alice_bot.users))
-        # self.assertEqual(1, len(alice_bot.channels))
-        # self.assertEqual(1, len(bob_bot.users))
-        # self.assertEqual(1, len(bob_bot.channels))
-        # self.assertEqual([first_room], list(alice_bot.channels.keys()))
-        #
-        # alice_bot.join(second_room)
-        # self.assertEqual([first_room, second_room], list(alice_bot.channels.keys()))
-        # self.assertEqual(2, len(bob_bot.users))
-        # self.assertEqual(1, len(bob_bot.channels))
-        # self.assertEqual(2, len(alice_bot.channels))
-        # alice_bot.quit()
-        # bob_bot.quit()
+    def testNickCollisionAndAuthorizedReconnect(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        dupe_nick = alice_nick
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[the_room],
+                         nickname=alice_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        bob_bot = VanillaBot(channels=[the_room],
+                         nickname=bob_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        dupe_bot = VanillaBot(channels=[the_room],
+                         nickname=bob_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=False,
+                         autoreconnect=True)
+        self.assertTrue(alice_bot.ready)
+        self.assertTrue(bob_bot.ready)
+        self.assertTrue(dupe_bot.ready)
+        self.assertNotEqual(dupe_nick, dupe_bot.nickname)
+        alice_bot.quit()
+        bob_bot.quit()
+        dupe_bot.quit()
 
-#         alice_nickname = 'alice%d' % randint(111,999)
-#         bob_nickname = 'bob%d' % randint(111,999)
-#         alice_rsa_key = RSA.generate(2048)
-#         bob_rsa_kay = RSA.generate(2048)
-#
-#
-#
-#
+    def testNickCollisionWithNoRetry(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        dupe_nick = alice_nick
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[the_room],
+                         nickname=alice_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        bob_bot = VanillaBot(channels=[the_room],
+                         nickname=bob_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        self.assertTrue(alice_bot.ready)
+        self.assertTrue(bob_bot.ready)
+        self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
+                         dupe_nick, ALL_SANDOX_IRC_NETWORK_NAMES[-1], 6667, 30, 0, False, True)
+        dupe_bot = VanillaBot(channels=[the_room],
+                         nickname=dupe_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=1,
+                         strictly_nick=False,
+                         autoreconnect=True)
+        self.assertNotEqual(dupe_bot.nickname, dupe_nick)
+        alice_bot.quit()
+        bob_bot.quit()
+        dupe_bot.quit()
+
+    def testNonexistentServerConnect(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
+                         alice_nick, 'irc.nonexistent.server', 6667, 4, 2, True, True)
+
 #         Xbots = {}
 #         Ybots = {}
 #         my_channel = '#platit'

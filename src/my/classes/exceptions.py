@@ -27,6 +27,7 @@ Error
             IrcBadServerNameError
             IrcBadServerPortError
             IrcInitialConnectionTimeoutError
+            IrcRanOutOfReconnectionsError
             IrcStillConnectingError
             IrcRealnameTruncationError
             IrcFingerprintMismatchCausedByServer
@@ -249,6 +250,14 @@ class IrcBadServerPortError(IrcConnectionError):
 
 
 class IrcInitialConnectionTimeoutError(IrcConnectionError):
+    """Connecting took too long."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcRanOutOfReconnectionsError(IrcConnectionError):
     """Connecting took too long."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation

@@ -45,7 +45,7 @@ from my.stringtools import generate_irc_handle, generate_random_alphanumeric_str
 from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
     IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
     IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcDuplicateNicknameError, \
-    IrcConnectionError
+    IrcConnectionError, IrcRanOutOfReconnectionsError
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -503,7 +503,7 @@ class VanillaBot:
         while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(.1)
         if not self.ready:
-            if self._client.err:
+            if self._client and self._client.err:
                 raise self._client.err
             else:
                 raise IrcInitialConnectionTimeoutError("%s completely failed to connect to %s" % (self.initial_nickname, self.irc_server))
@@ -587,7 +587,7 @@ class VanillaBot:
                 except IrcInitialConnectionTimeoutError:
                     pass  # print("Timeout error. Retrying.")
                 except IrcFingerprintMismatchCausedByServer:
-                    print("The IRC server %s changed my nickname from %s to %s, to prevent a collision." % (self.irc_server, my_nick, self.nickname))
+                    pass  # print("The IRC server %s changed my nickname from %s to %s, to prevent a collision." % (self.irc_server, my_nick, self.nickname))
             channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self._client.channels]
             # if self._client.connected and channels_weve_dropped_out_of != []:
             #     print("WARNING -- we dropped out of", channels_weve_dropped_out_of)
@@ -606,10 +606,9 @@ class VanillaBot:
                     my_nick = self._client.nickname
                     print("*** RECONNECTED AS %s" % self._client.nickname)
         if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
-            print("%s disconnected. No more retrying." % self.irc_server)  # %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever." % (self.irc_server, self.noof_reconnections))
+            self.__err = IrcRanOutOfReconnectionsError("%s disconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever." % (self.irc_server, self.noof_reconnections))
         while not self.should_we_quit:
             sleep(.1)
-#        print("Quitting. Huzzah.")
 
     @property
     def initial_nickname(self):
