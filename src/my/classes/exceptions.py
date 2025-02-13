@@ -32,6 +32,8 @@ Error
             IrcFingerprintMismatchCausedByServer
             IrcNicknameChangedByServer
         IrcChannelError
+            IrcJoiningChannelTimeoutError
+            IrcPartingChannelTimeoutError
             IrcBadChannelNameError
             IrcChannelNameTooLongError
             IrcIAmNotInTheChannelError
@@ -343,6 +345,22 @@ class IrcNicknameChangedByServer(IrcConnectionError):
 
 class IrcChannelError(IrcError):
     """Class for all channel errors"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcJoiningChannelTimeoutError(IrcChannelError):
+    """Class for all """
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcPartingChannelTimeoutError(IrcChannelError):
+    """Class for all """
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 

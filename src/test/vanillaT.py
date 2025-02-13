@@ -29,7 +29,8 @@ class TestVanillaBot(unittest.TestCase):
     def testSimpleCreationAndDeletion(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        alice_bot = VanillaBot(channels=['#prate'],
+        first_room = '#room' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -37,7 +38,7 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=3,
                          strictly_nick=True,
                          autoreconnect=True)
-        bob_bot = VanillaBot(channels=['#prate'],
+        bob_bot = VanillaBot(channels=[first_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -56,7 +57,9 @@ class TestVanillaBot(unittest.TestCase):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         charlie_nick = 'charl%d' % randint(111, 999)
-        alice_bot = VanillaBot(channels=['#prate'],
+        first_room = '#room' + generate_random_alphanumeric_string(5)
+        second_room = '#boom' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -64,7 +67,7 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=3,
                          strictly_nick=True,
                          autoreconnect=True)
-        bob_bot = VanillaBot(channels=['#etarp'],
+        bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -72,7 +75,7 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=3,
                          strictly_nick=True,
                          autoreconnect=True)
-        charlie_bot = VanillaBot(channels=['#prate', '#etarp'],
+        charlie_bot = VanillaBot(channels=[first_room, second_room],
                          nickname=charlie_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -93,11 +96,11 @@ class TestVanillaBot(unittest.TestCase):
         self.assertFalse(alice_nick in bob_bot.users)
         self.assertFalse(bob_nick in alice_bot.users)
         alice_bot.quit()
-        sleep(5)
+#        sleep(5)
         self.assertFalse(alice_nick in bob_bot.users)
         self.assertFalse(alice_nick in charlie_bot.users)
         bob_bot.quit()
-        sleep(5)
+#        sleep(5)
         self.assertFalse(bob_nick in charlie_bot.users)
         self.assertEqual(charlie_bot.users, [charlie_nick])
         charlie_bot.quit()
@@ -105,8 +108,9 @@ class TestVanillaBot(unittest.TestCase):
     def testEnterAndLeaveRooms(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        charlie_nick = 'charl%d' % randint(111, 999)
-        alice_bot = VanillaBot(channels=['#prate'],
+        first_room = '#room' + generate_random_alphanumeric_string(5)
+        second_room = '#boom' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -114,7 +118,7 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=3,
                          strictly_nick=True,
                          autoreconnect=True)
-        bob_bot = VanillaBot(channels=['#etarp'],
+        bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
@@ -128,14 +132,48 @@ class TestVanillaBot(unittest.TestCase):
         self.assertEqual(1, len(alice_bot.channels))
         self.assertEqual(1, len(bob_bot.users))
         self.assertEqual(1, len(bob_bot.channels))
-        bob_bot.client.connection.join('#prate')
-        sleep(3)
+        bob_bot.join(first_room)
         self.assertEqual(2, len(bob_bot.channels))
         self.assertEqual(2, len(bob_bot.users))
         self.assertEqual(2, len(alice_bot.users))
         alice_bot.quit()
-        sleep(3)
         self.assertEqual(1, len(bob_bot.users))
+        bob_bot.quit()
+
+    def testDisconnectAndReconnect(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        first_room = '#room' + generate_random_alphanumeric_string(5)
+        second_room = '#boom' + generate_random_alphanumeric_string(5)
+
+        alice_bot = VanillaBot(channels=[first_room],
+                         nickname=alice_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        bob_bot = VanillaBot(channels=[second_room],
+                         nickname=bob_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        while not (alice_bot.ready and bob_bot.ready):
+            sleep(.1)
+        self.assertEqual(1, len(alice_bot.users))
+        self.assertEqual(1, len(alice_bot.channels))
+        self.assertEqual([first_room], list(alice_bot.channels.keys()))
+
+        alice_bot.join(second_room)
+        self.assertEqual([first_room, second_room], list(alice_bot.channels.keys()))
+        self.assertEqual(2, len(bob_bot.users))
+        self.assertEqual(1, len(bob_bot.channels))
+        self.assertEqual(2, len(alice_bot.channels))
+        alice_bot.quit()
         bob_bot.quit()
 
 #         alice_nickname = 'alice%d' % randint(111,999)

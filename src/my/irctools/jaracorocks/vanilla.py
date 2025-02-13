@@ -31,7 +31,7 @@ import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
 from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, \
-    DEFAULT_NOOF_RECONNECTIONS
+    DEFAULT_NOOF_RECONNECTIONS, SENSIBLE_TIMEOUT
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -44,7 +44,7 @@ import validators
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
 from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
     IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
-    IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer
+    IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -510,18 +510,34 @@ class VanillaBot:
 
     @property
     def channels(self):
-        return self.client.channels
+        return self._client.channels
+
+    def join(self, channel):
+        self._client.connection.join(channel)
+        for _ in range(0, SENSIBLE_TIMEOUT * 10):
+            sleep(.1)
+            if channel in list(self.channels.keys()):
+                return
+        raise IrcJoiningChannelTimeoutError("%s --- %s timed out while joining #%d" % (self.irc_server, self.nickname, channel))
+
+    def part(self, channel):
+        self._client.connection.part(channel)
+        for _ in range(0, SENSIBLE_TIMEOUT * 10):
+            sleep(.1)
+            if channel not in list(self.channels.keys()):
+                return
+        raise IrcPartingChannelTimeoutError("%s --- %s timed out while joining #%d" % (self.irc_server, self.nickname, channel))
 
     @property
     def users(self):
         lst = []
         for ch in self.channels:
             try:
-                for nickname in [str(u) for u in self.client.channels[ch].users()]:
+                for nickname in [str(u) for u in self._client.channels[ch].users()]:
                     if nickname not in lst:
                         lst += [nickname]
             except (KeyError, AttributeError) as e:
-                if ch not in self.client.channels:
+                if ch not in self._client.channels:
                     print("I (%s on %s) am not in %s. Therefore, I cannot obtain a list of its users." % (self.nickname, self.irc_server, ch))
                     # raise IrcIAmNotInTheChannelError("I am not in %s. Therefore, I cannot obtain a list of its users." % ch) from e
                 else:
@@ -532,7 +548,7 @@ class VanillaBot:
 #         print("SingleServerIRCBotWithWhoisSupport --- entering.")
         while not self.should_we_quit:
             try:
-                self.client.start()
+                self._client.start()
             except (ValueError, OSError, AttributeError):
                 sleep(.1)
 
@@ -541,31 +557,31 @@ class VanillaBot:
 
         while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
             sleep(.1)
-            if self.should_we_quit is False and self.client is None and self.autoreconnect is True:
+            if self.should_we_quit is False and self._client is None and self.autoreconnect is True:
                 self.noof_reconnections += 1
                 try:
                     self.reconnect_server_connection(my_nick)  # If its fingerprint is wonky, quit&reconnect.
-                    print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, my_nick))
+#                    print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, my_nick))
                     self.noof_reconnections = 0
                 except IrcInitialConnectionTimeoutError:
                     pass  # print("Timeout error. Retrying.")
                 except IrcFingerprintMismatchCausedByServer:
                     print("The IRC server %s changed my nickname from %s to %s, to prevent a collision." % (self.irc_server, my_nick, self.nickname))
-            channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self.client.channels]
-            # if self.client.connected and channels_weve_dropped_out_of != []:
+            channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self._client.channels]
+            # if self._client.connected and channels_weve_dropped_out_of != []:
             #     print("WARNING -- we dropped out of", channels_weve_dropped_out_of)
             #     for ch in channels_weve_dropped_out_of:
             #         try:
-            #             self.client.connection.join(ch)
+            #             self._client.connection.join(ch)
             #             print("Rejoined %s" % ch)
             #         except Exception as e:  # pylint: disable=broad-exception-caught
             #             print("I tried and failed to rejoin", ch, "==>", e)
-            if self.client is not None and my_nick != self.client.nickname:  # This means we RECONNECTED after fixing our nickname.
+            if self._client is not None and my_nick != self._client.nickname:  # This means we RECONNECTED after fixing our nickname.
                 if self.strictly_nick:
                     print("Not reconnecting: our preferred nick is unavailable.")
                 else:
-                    my_nick = self.client.nickname
-                    print("*** RECONNECTED AS %s" % self.client.nickname)
+                    my_nick = self._client.nickname
+                    print("*** RECONNECTED AS %s" % self._client.nickname)
         if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
             print("%s disconnected. No more retrying." % self.irc_server)  # %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever." % (self.irc_server, self.noof_reconnections))
         while not self.should_we_quit:
@@ -585,11 +601,11 @@ class VanillaBot:
         self.__currentlyexpected_nickname = value
 
     @property
-    def client(self):
+    def _client(self):
         return self.__client
 
-    @client.setter
-    def client(self, value):
+    @_client.setter
+    def _client(self, value):
         self.__client = value
 
     @property
@@ -658,41 +674,41 @@ class VanillaBot:
     def whois(self, user, timeout=DEFAULT_WHOIS_TIMEOUT):
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
-        return self.client.call_whois_and_wait_for_response(user, timeout)
+        return self._client.call_whois_and_wait_for_response(user, timeout)
 
     @property
     def nickname(self):
-        return self.client.nickname
+        return self._client.nickname
 
     def empty(self):
-        return self.client.empty()
+        return self._client.empty()
 
     @property
     def not_empty(self):
-        return self.client.not_empty
+        return self._client.not_empty
 
     def put(self, user, msg):
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
         if len(user) > MAX_NICKNAME_LENGTH:
             raise IrcNicknameTooLongError("Nickname is too long")
-        if self.client is None or not self.client.ready:
+        if self._client is None or not self._client.ready:
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
             raise IrcPrivateMessageContainsBadCharsError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. => %s" % str(msg))
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
             raise IrcPrivateMessageTooLongError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
-        return self.client.put(user, msg)
+        return self._client.put(user, msg)
 
     def get(self, block=True, timeout=None):
-        if self.client is None or not self.client.ready:
+        if self._client is None or not self._client.ready:
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
-        return self.client.get(block, timeout)
+        return self._client.get(block, timeout)
 
     def get_nowait(self):
-        if self.client is None or not self.client.ready:
+        if self._client is None or not self._client.ready:
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
-        return self.client.get_nowait()
+        return self._client.get_nowait()
 
     @property
     def maximum_reconnections(self):
@@ -700,48 +716,51 @@ class VanillaBot:
 
     @property
     def ready(self):
-        if self.client is None:
+        if self._client is None:
             return False
-        elif not hasattr(self.client, 'ready'):
+        elif not hasattr(self._client, 'ready'):
             return False
         else:
-            return self.client.ready
+            return self._client.ready
 
     def reconnect_server_connection(self, my_nick):
 #        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
-        if self.client is not None:
+        if self._client is not None:
             print("WARNING --- you're asking me to reconnect, but I'm already connected. That is a surprise.")
             try:
-                self.client.disconnect("Bye")
+                self._client.disconnect("Bye")
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print("reconnect_server_connection() caught an exception:", e)
-            self.client = None
+            self._client = None
         self.noof_reconnections += 1
-        self.client = DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(
+        self._client = DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(
             channels=self.initial_channels,
             nickname=my_nick,
             irc_server=self.irc_server,
             port=self.port,
             strictly_nick=self.strictly_nick)
         starting_datetime = datetime.datetime.now()
-        while not self.client.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
+        while not self._client.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
             sleep(.1)
         if not self.ready:
             raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
-        if generate_fingerprint(self.client.nickname) != self.client.realname:
+        if generate_fingerprint(self._client.nickname) != self._client.realname:
             raise IrcFingerprintMismatchCausedByServer("The server detected a nickname collision and changed mine, causing my fingerprint to be invalid.")
 
     def transmit_this_data(self, data_to_transmit):
         (user, message) = data_to_transmit
-        self.client.put(user, message)
+        self._client.put(user, message)
 
     def quit(self):  # Do we need this?
         """Quit this bot."""
         self.autoreconnect = False
-#        self.client.disconnect("Bye")
+#        self._client.disconnect("Bye")
         self.should_we_quit = True
         self.__my_main_thread.join()  # print("Joining server thread")
-        self.client.quit()
+        self._client.quit()
+        while self._client.connected:
+            sleep(.1)
+        sleep(1)
 
 ####################################################################################
 
