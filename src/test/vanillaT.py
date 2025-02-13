@@ -313,6 +313,63 @@ class TestVanillaBot(unittest.TestCase):
         self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
                          alice_nick, 'irc.nonexistent.server', 6667, 4, 2, True, True)
 
+    def testTalkToEachOther(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        dupe_nick = alice_nick
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[the_room],
+                         nickname=alice_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        bob_bot = VanillaBot(channels=[the_room],
+                         nickname=bob_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        dupe_bot = VanillaBot(channels=[the_room],
+                         nickname=bob_nick,
+                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=30,
+                         maximum_reconnections=3,
+                         strictly_nick=False,
+                         autoreconnect=True)
+        alice_bot.put(bob_bot.nickname, "HELLO BOB")
+        bob_bot.put(dupe_bot.nickname, "HELLO DUPE")
+        dupe_bot.put(alice_bot.nickname, "HELLO ALICE")
+        self.assertEqual(alice_bot.get(), (dupe_bot.nickname, "HELLO ALICE"))
+        self.assertEqual(bob_bot.get(), (alice_bot.nickname, "HELLO BOB"))
+        self.assertEqual(dupe_bot.get(), (bob_bot.nickname, "HELLO DUPE"))
+        self.assertRaises(Empty, alice_bot.get_nowait)
+        self.assertRaises(Empty, bob_bot.get_nowait)
+        self.assertRaises(Empty, dupe_bot.get_nowait)
+        alice_bot.put(bob_bot.nickname, "HELLO bob")
+        alice_bot.put(bob_bot.nickname, "HELLO bob")  # Cached
+        alice_bot.put(bob_bot.nickname, "HELLO bob")  # Cached
+        bob_bot.put(dupe_bot.nickname, "HELLO dupe")
+        bob_bot.put(dupe_bot.nickname, "HELLO dupe")  # Cached
+        bob_bot.put(dupe_bot.nickname, "HELLO dupe")  # Cached
+        dupe_bot.put(alice_bot.nickname, "HELLO alice")
+        dupe_bot.put(alice_bot.nickname, "HELLO alice")  # Cached
+        dupe_bot.put(alice_bot.nickname, "HELLO alice")  # Cached
+        self.assertEqual(alice_bot.get(), (dupe_bot.nickname, "HELLO alice"))
+        self.assertEqual(bob_bot.get(), (alice_bot.nickname, "HELLO bob"))
+        self.assertEqual(dupe_bot.get(), (bob_bot.nickname, "HELLO dupe"))
+        self.assertRaises(Empty, alice_bot.get, timeout=2)
+        self.assertRaises(Empty, bob_bot.get, timeout=2)
+        self.assertRaises(Empty, dupe_bot.get, timeout=2)
+        alice_bot.quit()
+        bob_bot.quit()
+        dupe_bot.quit()
+
 #         Xbots = {}
 #         Ybots = {}
 #         my_channel = '#platit'
