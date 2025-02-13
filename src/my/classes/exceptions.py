@@ -39,6 +39,7 @@ Error
             IrcIAmNotInTheChannelError
         IrcMessagingError
             IrcBadNicknameError
+            IrcDuplicateNicknameError
             IrcNicknameTooLongError
             IrcUnknownIncomingCommandError
             IrcPrivateMessageTooLongError
@@ -288,6 +289,14 @@ class IrcMessagingError(IrcError):
 
 
 class IrcBadNicknameError(IrcMessagingError):
+    """Unknown incoming command."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcDuplicateNicknameError(IrcMessagingError):
     """Unknown incoming command."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation

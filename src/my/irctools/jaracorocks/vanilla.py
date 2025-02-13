@@ -44,7 +44,8 @@ import validators
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
 from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
     IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
-    IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError
+    IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcDuplicateNicknameError, \
+    IrcConnectionError
 
 
 class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
@@ -105,10 +106,15 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         self.__irc_server = irc_server
         self.__strictly_nick = strictly_nick
         self.__initial_realname = realname
+        self.__err = None
         self.__initial_channels = channels  # These channels will automatically joined at Welcome stage
         self.__whois_results_dct = {}  # Messages incoming from reactor, re: /whois, will be stored here
         self.connection.add_global_handler('whoisuser', self._on_whoisuser, -1)
         self.connection.add_global_handler('nosuchnick', self._on_nosuchnick, -1)
+
+    @property
+    def err(self):
+        return self.__err
 
     @property
     def irc_server(self):
@@ -193,7 +199,8 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def on_nicknameinuse(self, _c, _e):
         """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
         if self.strictly_nick:
-            print("WARNING -- %s rejected my desired nickname of %s." % (self.irc_server, self.initial_nickname))
+            self.connection.disconnect()
+            self.__err = IrcDuplicateNicknameError("%s was already in use at %s" % (self.nickname, self.irc_server))
         else:
             new_nick = 'R' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
             self.nickname = new_nick
@@ -480,6 +487,7 @@ class VanillaBot:
         self.__initial_nickname = nickname
         self.__irc_server = irc_server
         self.__port = port
+        self.__err = None
         self.__client = None  # Set by self.maintain_server_connection()
         self.__maximum_reconnections = maximum_reconnections
         self.__should_we_quit = False
@@ -491,6 +499,14 @@ class VanillaBot:
         self.__my_client_start_thread = Thread(target=self._client_start, daemon=True)
         self.__my_main_thread.start()
         self.__my_client_start_thread.start()
+        starttime = datetime.datetime.now()
+        while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
+            sleep(.1)
+        if not self.ready:
+            if self._client.err:
+                raise self._client.err
+            else:
+                raise IrcInitialConnectionTimeoutError("%s completely failed to connect to %s" % (self.initial_nickname, self.irc_server))
 
     @property
     def irc_server(self):
@@ -507,6 +523,10 @@ class VanillaBot:
     @property
     def port(self):
         return self.__port
+
+    @property
+    def err(self):
+        return self.__err
 
     @property
     def channels(self):
@@ -530,6 +550,7 @@ class VanillaBot:
 
     @property
     def users(self):
+        """Get list of all users in all my channels."""
         lst = []
         for ch in self.channels:
             try:
@@ -579,6 +600,8 @@ class VanillaBot:
             if self._client is not None and my_nick != self._client.nickname:  # This means we RECONNECTED after fixing our nickname.
                 if self.strictly_nick:
                     print("Not reconnecting: our preferred nick is unavailable.")
+                    self.__err = self._client.err
+                    self.should_we_quit = True
                 else:
                     my_nick = self._client.nickname
                     print("*** RECONNECTED AS %s" % self._client.nickname)
@@ -740,7 +763,9 @@ class VanillaBot:
             port=self.port,
             strictly_nick=self.strictly_nick)
         starting_datetime = datetime.datetime.now()
-        while not self._client.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
+        if self._client.err:
+            raise self._client.err
+        while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
             sleep(.1)
         if not self.ready:
             raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
