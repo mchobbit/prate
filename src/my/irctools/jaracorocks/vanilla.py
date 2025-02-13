@@ -616,6 +616,10 @@ class VanillaBot:
         return self.__initial_nickname
 
     @property
+    def fingerprint(self):
+        return self._client.realname
+
+    @property
     def currentlyexpected_nickname(self):
         return self.__currentlyexpected_nickname
 
