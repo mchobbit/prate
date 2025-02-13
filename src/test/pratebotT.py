@@ -18,6 +18,7 @@ from _queue import Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
 from my.classes.exceptions import IrcBadChannelNameError, IrcBadServerNameError, IrcBadNicknameError, IrcChannelNameTooLongError, IrcNicknameTooLongError, IrcBadServerPortError, \
     PublicKeyBadKeyError, IrcPrivateMessageContainsBadCharsError, IrcStillConnectingError
+from my.irctools.jaracorocks.vanilla import BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
 
 
 class TestGroupOne(unittest.TestCase):
@@ -390,7 +391,7 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
             sleep(.1)
         self.assertTrue(bot1.empty())
         for i in range(0, 10):
-            print("loop", i)
+#            print("loop", i)
             plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2).encode()
             bot1.crypto_put(bot2.nickname, plaintext)
             while bot2.crypto_empty():

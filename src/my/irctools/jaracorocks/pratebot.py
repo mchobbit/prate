@@ -39,7 +39,7 @@ from my.classes.exceptions import FernetKeyIsUnknownError, \
                             PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
                             IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError
 
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
+from my.irctools.jaracorocks.vanilla import BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
 from time import sleep
 from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH, JOINING_IRC_SERVER_TIMEOUT, DEFAULT_NOOF_RECONNECTIONS
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, bytes_64bit_cksum, receive_and_decrypt_message
@@ -60,15 +60,14 @@ _TXIP_ = "TP"
 _TXTX_ = "XX"
 
 
-def groovylsttotxt(lst):
-    return ('%3d users' % len(lst)) if len(lst) > 5 else ' '.join(lst)
-
-
-class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
+class PrateBot(BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport):
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
-                 startup_timeout=JOINING_IRC_SERVER_TIMEOUT, maximum_reconnections=DEFAULT_NOOF_RECONNECTIONS):
-        super().__init__(channels, nickname, irc_server, port, startup_timeout, maximum_reconnections)
+                 startup_timeout=JOINING_IRC_SERVER_TIMEOUT, maximum_reconnections=DEFAULT_NOOF_RECONNECTIONS,
+                 strictly_nick=False):
+        self.__strictly_nick = strictly_nick
+        super().__init__(channels, nickname, irc_server, port, startup_timeout, maximum_reconnections,
+                         strictly_nick)
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
             raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key
@@ -82,6 +81,10 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
         self.__my_main_thread.start()
 
     @property
+    def strictly_nick(self):
+        return self.__strictly_nick
+
+    @property
     def ready(self):
         try:
             return super().ready
@@ -89,10 +92,8 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             return False
 
     def __my_main_loop(self):
-#        print("Waiting for the bot to be ready to connect to %s..." % self.irc_server)
         while not self.ready and not self.should_we_quit:
             sleep(.1)
-#        print("Connected. Looping...")
         sleep(3)
         while self.paused:
             sleep(.1)
@@ -101,21 +102,19 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
             try:
                 self.trigger_handshaking_with_the_other_users()
             except IrcIAmNotInTheChannelError:
-                print("Warning -- I cannot contact other users of %s: I'm not even in there." % self.channels)
+                print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
 
         while not self.should_we_quit:
             sleep(.1)
             if self.paused:
                 pass
-            elif datetime.datetime.now().second % 60 == 0:
-                self.trigger_handshaking_with_the_other_users()
-                sleep(1)
             else:
                 try:
                     self.read_messages_from_users()
                 except IrcStillConnectingError:  # print("We are in the middle of quitting. That's okay.")
                     pass
-#        print("Quitting. Huzzah.")
+                except FernetKeyIsInvalidError:
+                    print("Some kind of protocl error as %s in %s" % (self.nickname, self.irc_server))
 
     def read_messages_from_users(self):
         while True:
@@ -133,11 +132,16 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
                     if self.homies[sender].pubkey is None:  # print("I cannot send my fernet key to %s: I don't know his public key. That's OK! I'll ask for it again..." % sender)
                         self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
                     else:
-                        self.homies[sender].remotely_supplied_fernetkey = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
+                        dc = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
+                        if self.homies[sender].remotely_supplied_fernetkey != dc:
+                            self.homies[sender].remotely_supplied_fernetkey = dc
+                            print("Saving new fernet key for %s on %s" % (self.nickname, self.irc_server))
                         self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_TXFE_):
-                    self.homies[sender].remotely_supplied_fernetkey = \
-                                        rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
+                    dc = rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
+                    if self.homies[sender].remotely_supplied_fernetkey != dc:
+                        self.homies[sender].remotely_supplied_fernetkey = dc
+                        print("Saving new fernet key for %s on %s" % (self.nickname, self.irc_server))
                     if self.homies[sender].fernetkey is not None:
                         self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
                 elif msg.startswith(_RQIP_):
@@ -157,15 +161,19 @@ class PrateBot(BotForDualQueuedSingleServerIRCBotWithWhoisSupport):
 #                        print("%s IS PROBABLY KOSHER" % sender)
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
+#                    print("TXTX'ing")
                 else:
                     print("??? %s: %s" % (sender, msg))
 
     def trigger_handshaking_with_the_other_users(self):
-        for user in self.users:
-            if user != self.nickname and self.whois(user) is not None and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1]:
-                if self.homies[user].pubkey is None:
-#                    print("I, %s, am triggering a handshake with %s" % (self.nickname, user))
-                    self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
+        if not self.ready:
+            print("I choose not to try to trigger handshaking with other users: I'm not even online/joinedroom yet.")
+        else:
+            for user in self.users:
+                if user != self.nickname and self.whois(user) is not None and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1]:
+                    if self.homies[user].pubkey is None:
+                        print("I, %s, do not possess %s's public key. Therefore, I am triggering a handshake on %s" % (self.nickname, user, self.irc_server))
+                        self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
 
     def my_encrypted_ipaddr(self, user):
         """Encrypt our IP address w/ the user's fernet key."""

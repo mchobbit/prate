@@ -26,60 +26,111 @@ Todo:
 Example:
 
 
-from my.irctools.jaracorocks.pratebot import HaremOfPrateBots
+from my.irctools.jaracorocks.harem import HaremOfPrateBots
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import *
 from my.globals import *
 my_rsa_key1 = RSA.generate(2048)
 my_rsa_key2 = RSA.generate(2048)
-list_of_all_irc_servers = PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.split(' ')
-h1 = HaremOfPrateBots(['#prate', '#etarp'], list_of_all_irc_servers, my_rsa_key1)
-h2 = HaremOfPrateBots(['#prate', '#etarp'], list_of_all_irc_servers, my_rsa_key2)
-h1.log_into_all_functional_IRC_servers()
-h2.log_into_all_functional_IRC_servers()
+h1 = HaremOfPrateBots(['#prate'], 'mac1111', ALL_IRC_NETWORK_NAMES, my_rsa_key1)
+h2 = HaremOfPrateBots(['#prate'], 'mac2222', ALL_IRC_NETWORK_NAMES, my_rsa_key2)
 while len(h1.ready_bots(my_rsa_key2.public_key())) < 3 and len(h2.ready_bots(my_rsa_key2.public_key())) < 3:
     sleep(.1)
 
-h1.put(my_rsa_key2.public_key(), b"HELLO WORLD.")
-h2.process_incoming_data()
+h1.ready_bots(my_rsa_key2.public_key())
+for _ in range(0,10):
+    h1.put(my_rsa_key2.public_key(),b"HELLO WORLD")
+    h2.get() == (my_rsa_key1.public_key(),b"HELLO WORLD")
+
+with open("/Users/mchobbit/Downloads/pi_holder.stl", "rb") as f:
+    h1.put(my_rsa_key2.public_key(), f.read())
+
+pk, dat = h2.get()
 
 """
 
 import sys
 from threading import Thread
 
-# from my.classes.readwritelock import ReadWriteLock
+from my.classes.readwritelock import ReadWriteLock
 from random import randint, shuffle, choice
 from Crypto.PublicKey import RSA
-from my.stringtools import generate_irc_handle
-from my.classes.exceptions import FernetKeyIsUnknownError, \
-                            PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
-                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError
-
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
+from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string
+from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH, JOINING_IRC_SERVER_TIMEOUT, DEFAULT_NOOF_RECONNECTIONS
-from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, bytes_64bit_cksum, receive_and_decrypt_message
-from cryptography.fernet import Fernet, InvalidToken
-import base64
-from my.classes.readwritelock import ReadWriteLock
-from my.classes.homies import HomiesDct
-import datetime
+from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
+from my.globals import MAX_NICKNAME_LENGTH, ALL_IRC_NETWORK_NAMES
+from my.irctools.jaracorocks.vanilla import BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
+MAXIMUM_HAREM_BLOCK_SIZE = 256  # 288?
+
+# def get_list_of_kosher_IRC_servers(list_of_potential_servers=ALL_IRC_NETWORK_NAMES):
+#     Xbots = {}
+#     Ybots = {}
+#     my_channel = '#platit'
+#     X_desired_nickname = 'x%sx' % generate_random_alphanumeric_string(7)
+#     Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
+#
+#     my_port = 6667
+#     for my_irc_server in list_of_potential_servers:
+#         Xbots[my_irc_server] = BotForDualQueuedSingleServerIRCBotWithWhoisSupport([my_channel], X_desired_nickname, my_irc_server, my_port)
+#         Ybots[my_irc_server] = BotForDualQueuedSingleServerIRCBotWithWhoisSupport([my_channel], Y_desired_nickname, my_irc_server, my_port)
+#
+#     successes_thus_far = -1
+#     while successes_thus_far < len([k for k in list_of_potential_servers if Xbots[k].ready and Ybots[k].ready]):
+#         successes_thus_far = len([k for k in list_of_potential_servers if Xbots[k].ready and Ybots[k].ready])
+#         sleep(10)
+#
+#     goodK = [k for k in list_of_potential_servers if Xbots[k].ready and Ybots[k].ready]
+#
+#     for k in goodK:
+#         for xy in (Xbots, Ybots):
+#             try:
+#                 while True:
+#                     _ = xy[k].get_nowait()
+#             except Empty:
+#                 break
+#
+#     for k in goodK:
+#         print("Trying %s" % k)
+#         if Xbots[k].ready and Ybots[k].ready:
+#             p = "WORD UP FROM %s" % k
+#             Xbots[k].put(Y_desired_nickname, p)
+#
+#     defective_items = []
+#     yayK = []
+#     for k in goodK:
+#         p = "WORD UP FROM %s" % k
+#         try:
+#             (src, msg) = Ybots[k].get_nowait()
+#         except:
+#             src = None
+#             msg = None
+#         else:
+#             if p == msg:
+#                 yayK += [k]
+#             else:
+#                 print("%s is defective" % k)
+#                 defective_items += [k]
+#
+#     for k in goodK:
+#         Xbots[k].quit()
+#         Ybots[k].quit()
+#     return yayK
 
 
 class HaremOfPrateBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channels, list_of_all_irc_servers, rsa_key):
+    def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key):
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         self.__channels = channels
         self.__rsa_key = rsa_key
         self.__list_of_all_irc_servers = list_of_all_irc_servers
-        self.__desired_nickname = "%s%d" % (generate_irc_handle(MAX_NICKNAME_LENGTH + 10, MAX_NICKNAME_LENGTH - 2), randint(11, 99))
+        self.__desired_nickname = desired_nickname  # "%s%d" % (generate_irc_handle(MAX_NICKNAME_LENGTH + 10, MAX_NICKNAME_LENGTH - 2), randint(11, 99))
         self.port = 6667
         self.__bots = {}
         self.__outgoing_caches_dct = {}
@@ -101,15 +152,9 @@ class HaremOfPrateBots:
     def gotta_quit(self, value):
         self.__gotta_quit = value
 
-    @property
-    def ready(self):
-        try:
-            return super().ready
-        except AttributeError:
-            return False
-
     def __my_main_loop(self):
         print("Harem rx queue servicing loop -- starting")
+        self.log_into_all_functional_IRC_servers()
         while not self.gotta_quit:
             sleep(.1)
             self.process_incoming_buffer()
@@ -139,10 +184,14 @@ class HaremOfPrateBots:
     def outgoing_packetnumbers_dct(self):
         return self.__outgoing_packetnumbers_dct
 
-    def ready_bots(self, pubkey):
+    def handshook(self, pubkey):
         potential_bots = {}
         for k in self.bots:
             bot = self.bots[k]
+            if bot.homies != {}:
+                for h in bot.homies:
+                    if h.pubkey == pubkey:
+                        potential_bots[k] == h.nickname
             try:
                 nickname = [u for u in bot.homies if bot.ready \
                             and bot.homies[u].pubkey is not None \
@@ -156,8 +205,9 @@ class HaremOfPrateBots:
         return potential_bots
 
     def randomly_chosen_bot_and_corresponding_nickname(self, pubkey):
-        ready_bots = self.ready_bots(pubkey)
-        bot_key = choice(list(set(ready_bots.keys())))
+        ready_bots = self.handshook(pubkey)
+        bot_key = list(set(ready_bots.keys()))[self.outgoing_packetnumbers_dct[squeeze_da_keez(pubkey)] % len(ready_bots)]
+        print("Writing to %s" % bot_key)
         bot = self.bots[bot_key]
         nickname = ready_bots[bot_key]
         return(bot, nickname)
@@ -183,7 +233,7 @@ class HaremOfPrateBots:
         if self.outgoing_packetnumbers_dct[k] >= 256 * 256 * 256 * 127:
             self.outgoing_packetnumbers_dct[k] -= 256 * 256 * 256 * 127
         while True:
-            bytes_for_this_frame = min(288, bytes_remaining)
+            bytes_for_this_frame = min(MAXIMUM_HAREM_BLOCK_SIZE, bytes_remaining)
             our_block = datablock[pos:pos + bytes_for_this_frame]
             frame = bytearray()
             frame += self.outgoing_packetnumbers_dct[k].to_bytes(4, 'little')  # packet#
@@ -192,6 +242,7 @@ class HaremOfPrateBots:
             frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
             self.outgoing_caches_dct[k][self.outgoing_packetnumbers_dct[k] % 65536] = frame
             self.send_cryptoput_to_randomly_chosen_pratebot(pubkey, frame)
+            print("Sent pkt#%d of %d bytes" % (self.outgoing_packetnumbers_dct[k], len(frame)))
             bytes_remaining -= bytes_for_this_frame
             pos += bytes_for_this_frame
             self.outgoing_packetnumbers_dct[k] += 1
@@ -205,7 +256,8 @@ class HaremOfPrateBots:
             if self.gotta_quit:
                 return
             else:
-                for k in self.bots:
+                the_bots = self.bots
+                for k in the_bots:
                     try:
                         user, frame = self.bots[k].crypto_get_nowait()
                         if pubkey is None:
@@ -223,8 +275,11 @@ class HaremOfPrateBots:
                         self.incoming_cache[packetno % 65536] = frame
                         framelength = int.from_bytes(frame[4:6], 'little')
                         checksum = frame[framelength + 6:framelength + 14]
+                        print("Rx'd pkt#%d of %d bytes" % (packetno, len(frame)))
                         if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
                             print("Bad checksum for packet #%d. You should request a fresh copy." % packetno)
+                            # for i in range(6, 6 + framelength):
+                            #     frame[i] = 0  # FIXME: ugly kludge
                         if framelength == 0:
                             final_packetnumber = packetno
         data_to_be_returned = bytearray()
@@ -268,8 +323,7 @@ class HaremOfPrateBots:
         return self.__desired_nickname
 
     def log_into_all_functional_IRC_servers(self):
-        shuffle(self.list_of_all_irc_servers)
-#        print("Trying all IRC servers")
+        print("Trying all IRC servers")
         for k in self.list_of_all_irc_servers:
 #            print("Trying", k)
             self.try_to_log_into_this_IRC_server(k)
@@ -290,7 +344,9 @@ class HaremOfPrateBots:
                                    nickname=self.desired_nickname,
                                    irc_server=k,
                                    port=self.port,
-                                   rsa_key=self.rsa_key)
+                                   rsa_key=self.rsa_key,
+                                   maximum_reconnections=2,
+                                   strictly_nick=True)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             self.bots[k] = None
 
@@ -301,7 +357,21 @@ class HaremOfPrateBots:
             except Exception as e:
                 print("Exception while quitting", k, "==>", e)
 
+    @property
+    def ready(self):
+        return [k for k in h1.bots if self.bots[k].ready]
+
 
 if __name__ == "__main__":
     print("Hi.")
+    my_rsa_key1 = RSA.generate(2048)
+    my_rsa_key2 = RSA.generate(2048)
+    list_of_all_irc_servers = ('rpi0irc1.local', 'rpi0irc2.local', 'rpi0irc3.local', 'rpi0irc4.local',
+                               'rpi0irc5.local', 'rpi0irc6.local', 'rpi0irc7.local', 'rpi0irc8.local',
+                               'rpi0irc9.local', 'rpi0irc10.local', 'rpi0irc11.local', 'rpi0irc12.local',
+                               'cinqcent.local', 'gmkone.local', 'gmktwo.local', 'rpi4b.local')
 
+    h1 = HaremOfPrateBots(['#prate'], 'mac3333', list_of_all_irc_servers, my_rsa_key1)
+    h2 = HaremOfPrateBots(['#prate'], 'mac4444', list_of_all_irc_servers, my_rsa_key2)
+    print("Yay.")
+    print("<fin?")

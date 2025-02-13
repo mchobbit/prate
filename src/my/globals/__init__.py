@@ -19,8 +19,8 @@ import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "
-SENSIBLE_TIMEOUT = 15
-JOINING_IRC_SERVER_TIMEOUT = SENSIBLE_TIMEOUT
+SENSIBLE_TIMEOUT = 20
+JOINING_IRC_SERVER_TIMEOUT = 60
 ANTIOVERLOAD_CACHE_TIME = SENSIBLE_TIMEOUT
 DEFAULT_NOOF_RECONNECTIONS = 3
 DEFAULT_WHOIS_TIMEOUT = SENSIBLE_TIMEOUT
@@ -134,123 +134,132 @@ except Exception as e:  # pylint: disable=broad-exception-caught
     print("Warning — unable to grab IP address:", e)
     MY_IP_ADDRESS = "127.0.0.1"
 
-PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = "cinqcent.local rpi4b.local gmkone.local gmktwo.local \
-rpi0irc1.local rpi0irc2.local rpi0irc3.local rpi0irc4.local rpi0irc5.local rpi0irc6.local rpi0irc7.local"
-
-# PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = """irc.libera.chat
-# irc.oftc.net
-# irc.undernet.org
-# irc.IRCnet.net
-# irc.IRCnet.com
-# irc.hackint.org
-# irc.rizon.net
-# irc.hybridirc.com
-# irc.efnet.org
-# irc.chatzona.org
-# irc.dal.net
-# irc.quakenet.org
-# irc.azirc.net
-# irc.freenode.net
-# irc.freeunibg.eu
-# irc.p2p-network.net
-# irc.chathispano.com
-# irc.evochat.id
-# irc.snoonet.org
-# irc.simosnap.com
-# irc.aaviera.com
-# irc.europnet.org
-# irc.kampungchat.org
-# irc.abjects.net
-# irc.link-net.be
-# irc.gamesurge.net
-# irc.synirc.net
-# irc.esper.net
-# irc.chaat.fr
-# irc.eXpLoSioNiRc.net
-# irc-nerds.net
-# irc.digitalirc.org
-# irc.chattersnet.nl
-# irc.irchighway.net
-# irc.scenep2p.net
-# irc.tilde.chat
-# irc.bgirc.com
-# irc.orixon.org
-# irc.geeknode.org
-# irc.ptirc.org
-# irc.skychatz.org
-# irc.allnetwork.org
-# irc.globalirc.it
-# irc.sohbet.net
-# irc.darkfasel.net
-# irc.dejatoons.net
-# irc.euirc.net
-# irc.furnet.org
-# irc.geekshed.net
-# irc.bol-chat.com
-# irc.xxxchatters.com
-# irccloud.com
-# irc.virtualife.org
-# irc.openjoke.org
-# irc.Kalbim.Net
-# irc.ptnet.org
-# irc.allnightcafe.com
-# irc.rezosup.org
-# irc.darkworld.network
-# irc.net-tchat.fr
-# irc.sorcery.net
-# irc.mindforge.org
-# irc.slashnet.org
-# irc.abandoned-irc.net
-# irc.redesul.net.br
-# irc.tamarou.com
-# irc.do-dear.com
-# irc.evilnet.org
-# irc.afternet.org
-# irc.deutscher-chat.de
-# irc.global-irc.eu
-# irc.swiftirc.net
-# irc.redebrasnet.org
-# irc.pirc.pl
-# irc.epiknet.org
-# irc.SohbetBurada.Com
-# irc.soyle.net
-# irc.librairc.net
-# irc.oddprotocol.org
-# irc2.acc.umu.se
-# irc.bigua.org
-# irc.smurfnet.ch
-# irc.atrum.org
-# irc.twistednet.org
-# irc.cord.atw.hu
-# irc.lewdchat.com
-# irc.aitvaras.eu
-# irc.lunarirc.net
-# irc.chatlounge.net
+PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES = """
+irc.libera.chat
+irc.oftc.net
+irc.undernet.org
+irc.IRCnet.net
+irc.IRCnet.com
+irc.hackint.org
+irc.rizon.net
+irc.hybridirc.com
+irc.efnet.org
+irc.chatzona.org
+irc.dal.net
+irc.quakenet.org
+irc.azirc.net
+irc.freeunibg.eu
+irc.p2p-network.net
+irc.chathispano.com
+irc.snoonet.org
+irc.simosnap.com
+irc.aaviera.com
+irc.europnet.org
+irc.kampungchat.org
+irc.abjects.net
+irc.link-net.be
+irc.gamesurge.net
+irc.synirc.net
+irc.esper.net
+irc.chaat.fr
+irc.eXpLoSioNiRc.net
+irc-nerds.net
+irc.digitalirc.org
+irc.chattersnet.nl
+irc.irchighway.net
+irc.scenep2p.net
+irc.tilde.chat
+irc.bgirc.com
+irc.orixon.org
+irc.geeknode.org
+irc.ptirc.org
+irc.skychatz.org
+irc.allnetwork.org
+irc.globalirc.it
+irc.sohbet.net
+irc.darkfasel.net
+irc.dejatoons.net
+irc.euirc.net
+irc.furnet.org
+irc.bol-chat.com
+irc.xxxchatters.com
+irccloud.com
+irc.virtualife.org
+irc.openjoke.org
+irc.Kalbim.Net
+irc.ptnet.org
+irc.allnightcafe.com
+irc.rezosup.org
+irc.darkworld.network
+irc.net-tchat.fr
+irc.sorcery.net
+irc.mindforge.org
+irc.slashnet.org
+irc.abandoned-irc.net
+irc.redesul.net.br
+irc.tamarou.com
+irc.do-dear.com
+irc.evilnet.org
+irc.afternet.org
+irc.deutscher-chat.de
+irc.global-irc.eu
+irc.swiftirc.net
+irc.redebrasnet.org
+irc.pirc.pl
+irc.epiknet.org
+irc.SohbetBurada.Com
+irc.soyle.net
+irc.librairc.net
+irc.oddprotocol.org
+irc2.acc.umu.se
+irc.bigua.org
+irc.smurfnet.ch
+irc.atrum.org
+irc.twistednet.org
+irc.cord.atw.hu
+irc.lewdchat.com
+irc.aitvaras.eu
+irc.lunarirc.net
+irc.chatlounge.net
+irc.w3.org
+irc.bondage.international
+irc.zenet.org
+irc.german-elite.net
+irc.cool.chat
+irc.luatic.net
+irc.2600.net
+irc.data.it
+irc.anthrochat.net
+irc.arcnet-irc.org
+irc.austnet.org
+irc.canternet.org
+irc.chat4all.org
+irc.chatjunkies.org
+irc.unibg.net
+irc.chatspike.net
+irc.dairc.net
+irc.darkmyst.org
+irc.darkscience.net
+irc.digitalirc.org
+irc.underworld.no
+irc.entropynet.net
+irc.interlinked.me
+irc.irc4fun.net
+irc.othernet.org
+"""
 # irc.spotchat.org
-# irc.w3.org
-# irc.bondage.international
-# irc.zenet.org
-# irc.german-elite.net
-# irc.cool.chat
-# irc.luatic.net
-# irc.2600.net
-# irc.data.it
-# irc.anthrochat.net
-# irc.arcnet-irc.org
-# irc.austnet.org
-# irc.canternet.org
-# irc.chat4all.org
-# irc.chatjunkies.org
-# irc.unibg.net
-# irc.chatspike.net
-# irc.dairc.net
-# irc.darkmyst.org
-# irc.darkscience.net
-# irc.digitalirc.org
+# irc.freenode.net
+# irc.evochat.id
 # irc.choopa.net
-# irc.underworld.no
-# irc.entropynet.net
-# irc.interlinked.me
-# irc.irc4fun.net
-# irc.othernet.org
-# """
+# irc.geekshed.net
+
+ALL_REALWORLD_IRC_NETWORK_NAMES = [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if r != '']
+
+ALL_SANDOX_IRC_NETWORK_NAMES = ('rpi0irc1.local', 'rpi0irc2.local', 'rpi0irc3.local',
+                               'rpi0irc4.local', 'rpi0irc5.local', 'rpi0irc6.local',
+                               'rpi0irc7.local', 'rpi0irc8.local', 'rpi0irc9.local',
+                               'rpi0irc10.local', 'rpi0irc11.local', 'rpi0irc12.local',
+                               'rpi0irc13.local', 'rpi0irc14.local', 'rpi0irc15.local',
+                               'rpi0irc16.local', 'rpi0irc17.local', 'rpi0irc18.local',
+                               'gmkone.local', 'gmktwo.local', 'rpi4b.local', 'cinqcent.local')
+
