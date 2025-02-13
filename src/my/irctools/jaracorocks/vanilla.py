@@ -289,7 +289,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             self.__privmsg_c_hits_dct[user] += 1
             retval = 0
             if self.__privmsg_c_hits_dct[user] in (2, 5, 10, 20, 50, 100, 200, 500, 1000):
-                print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg[:4], user))
+                print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg, user))
             else:
                 pass
         return retval
@@ -603,8 +603,7 @@ class VanillaBot:
                     self.__err = self._client.err
                     self.should_we_quit = True
                 else:
-                    my_nick = self._client.nickname
-                    print("*** RECONNECTED AS %s" % self._client.nickname)
+                    my_nick = self._client.nickname  # print("*** RECONNECTED AS %s" % self._client.nickname)
         if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
             self.__err = IrcRanOutOfReconnectionsError("%s disconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever." % (self.irc_server, self.noof_reconnections))
         while not self.should_we_quit:
