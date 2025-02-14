@@ -160,7 +160,7 @@ class VanillaBot:
         if self._client.err:
             raise self._client.err
         while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
-            sleep(.1)
+            sleep(A_TICK)
         if not self.ready:
             raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
         if generate_fingerprint(self._client.nickname) != self._client.realname:
