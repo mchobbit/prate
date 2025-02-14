@@ -190,8 +190,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     @property
     def joined(self):
         """Am I a member of this channel?"""
-        return True if [] == [ch for ch in self.initial_channels if ch not in self.channels] \
-                    else False
+        return ([] == [ch for ch in self.initial_channels if ch not in self.channels])
 
     def _on_whoisuser(self, _c=None, e=None):
         """Triggered when the event-handler receives RPL_WHOISUSER."""
