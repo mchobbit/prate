@@ -121,10 +121,10 @@ class VanillaBot:
         self.__autoreconnect_lock = ReadWriteLock()
         self.__noof_reconnections = 0
         self.__noof_reconnections_lock = ReadWriteLock()
-        self.__my_main_thread = Thread(target=self._main_loop, daemon=True)
         self.__my_client_start_thread = Thread(target=self._client_start, daemon=True)
-        self.__my_main_thread.start()
+        self.__my_main_thread = Thread(target=self._main_loop, daemon=True)
         self.__my_client_start_thread.start()
+        self.__my_main_thread.start()
         starttime = datetime.datetime.now()
         while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(.1)
@@ -219,12 +219,15 @@ class VanillaBot:
         return lst
 
     def _client_start(self):
-#         print("SingleServerIRCBotWithWhoisSupport --- entering.")
-        while not self.should_we_quit:
+        while not self._client and not self.should_we_quit:
+            sleep(.1)
+        print("SingleServerIRCBotWithWhoisSupport --- entering.")
+        while self._client and not self.should_we_quit:
             try:
                 self._client.start()
             except (ValueError, OSError, AttributeError):
                 sleep(.1)
+        print("SingleServerIRCBotWithWhoisSupport --- leaving.")
 
     def _main_loop(self):
         my_nick = self.initial_nickname
@@ -411,8 +414,8 @@ class VanillaBot:
 #        self._client.disconnect("Bye")
         self.should_we_quit = True
         self.__my_main_thread.join()  # print("Joining server thread")
-        self.__my_client_start_thread.join()
         self._client.quit()
+        self.__my_client_start_thread.join()
         while self._client.connected:
             sleep(.1)
         sleep(1)
