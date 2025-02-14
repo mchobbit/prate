@@ -357,6 +357,7 @@ class HaremOfPrateBots:
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             pass
         else:
+            print("Connected to", bot.irc_server)
             self.bots[k] = bot
 
     def quit(self):
