@@ -355,9 +355,9 @@ class HaremOfPrateBots:
                                    maximum_reconnections=self.maximum_reconnections,
                                    strictly_nick=True)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
-            pass
+            print("Failed to join", k)
         else:
-            print("Connected to", bot.irc_server)
+            print("Connected to", k)
             self.bots[k] = bot
 
     def quit(self):
