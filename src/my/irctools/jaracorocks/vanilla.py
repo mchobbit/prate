@@ -137,7 +137,7 @@ class VanillaBot:
                 self.quit(yes_even_the_reactor_thread=False)
                 raise self.err
             else:
-                self.quit()
+                self.quit()  # yes_even_the_reactor_thread=False) QQQ
                 raise IrcInitialConnectionTimeoutError("%s completely failed to connect to %s" % (self.initial_nickname, self.irc_server))
 
     def reconnect_server_connection(self, my_nick):
