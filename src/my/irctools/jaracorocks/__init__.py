@@ -33,7 +33,7 @@ import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
 from my.globals import ANTIOVERLOAD_CACHE_TIME, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, \
-    MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, SENSIBLE_TIMEOUT
+    MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, SENSIBLE_TIMEOUT, A_TICK
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -258,7 +258,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             try:
                 return self.__whois_results_dct[user]  # Results, sent by IRC server, will be recorded when _no_whoisuser() is triggered
             except KeyError:
-                sleep(.1)  # Still waiting for answer
+                sleep(A_TICK)  # Still waiting for answer
         raise TimeoutError("Timeout while waiting for answer to /whois %s" % user)
 
     def privmsg(self, user, msg):
@@ -341,7 +341,7 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
                 user, msg = self.transmit_queue.get_nowait()
                 self.privmsg(user, msg)
             except Empty:
-                sleep(.1)
+                sleep(A_TICK)
         try:
             self.disconnect('Bye')
         except Exception as e:  # pylint: disable=broad-exception-caught

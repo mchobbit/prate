@@ -39,8 +39,7 @@ from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcIniti
     IrcStillConnectingError, IrcNicknameTooLongError, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcRanOutOfReconnectionsError, IrcBadNicknameError, \
     IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError
 from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport, SingleServerIRCBotWithWhoisSupport
-from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH
-from random import randint
+from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK
 
 
 class VanillaBot:
@@ -128,9 +127,9 @@ class VanillaBot:
         self.__my_main_thread.start()
         starttime = datetime.datetime.now()
         while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
-            sleep(.1)
+            sleep(A_TICK)
         if not self.ready:
-            _ = [sleep(.1) for __ in range(0, 50) if self.err is None]
+            _ = [sleep(A_TICK) for __ in range(0, 50) if self.err is None]
             if self._client is not None and self._client.err is not None:
                 self.quit(yes_even_the_reactor_thread=False)
                 raise self._client.err
@@ -194,7 +193,7 @@ class VanillaBot:
     def join(self, channel):
         self._client.connection.join(channel)
         for _ in range(0, SENSIBLE_TIMEOUT * 10):
-            sleep(.1)
+            sleep(A_TICK)
             if channel in list(self.channels.keys()):
                 return
         raise IrcJoiningChannelTimeoutError("%s --- %s timed out while joining #%d" % (self.irc_server, self.nickname, channel))
@@ -202,7 +201,7 @@ class VanillaBot:
     def part(self, channel):
         self._client.connection.part(channel)
         for _ in range(0, SENSIBLE_TIMEOUT * 10):
-            sleep(.1)
+            sleep(A_TICK)
             if channel not in list(self.channels.keys()):
                 return
         raise IrcPartingChannelTimeoutError("%s --- %s timed out while joining #%d" % (self.irc_server, self.nickname, channel))
@@ -226,21 +225,21 @@ class VanillaBot:
 
     def _client_start(self):
         while not self._client and not self.should_we_quit:
-            sleep(.1)
+            sleep(A_TICK)
         while self._client and not self.should_we_quit:
             try:
                 self._client.start()
             except (ValueError, OSError, AttributeError):  # as e:
 #                print("Client is stopping, I think:", e)
-                sleep(.1)
+                sleep(A_TICK)
 
     def _main_loop(self):
         have_we_ever_successfully_connected = False
         my_nick = self.initial_nickname
         while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
-            if randint(0, 10) == 0:
-                print("%s is still trying to connect" % self.irc_server)
-            sleep(.5)
+            # if randint(0, 10) == 0:
+            #     print("%s is still trying to connect" % self.irc_server)
+            sleep(A_TICK)
             if self.should_we_quit is False and self._client is None and self.autoreconnect is True:
                 self.noof_reconnections += 1
                 try:
@@ -277,7 +276,7 @@ class VanillaBot:
             else:
                 print("Client had error:", self.__err)
         while not self.should_we_quit:
-            sleep(.1)
+            sleep(A_TICK)
 
     @property
     def initial_nickname(self):
@@ -431,7 +430,7 @@ class VanillaBot:
             self._client.reactor.disconnect_all()
             self._client.quit()
             while self._client.connected:
-                sleep(.1)
+                sleep(A_TICK)
         if yes_even_the_reactor_thread:
             self.__my_client_start_thread.join()  # jaraco
         sleep(1)

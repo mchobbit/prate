@@ -36,7 +36,7 @@ my_rsa_key2 = RSA.generate(2048)
 h1 = HaremOfPrateBots(['#prate'], 'mac1111', ALL_IRC_NETWORK_NAMES, my_rsa_key1)
 h2 = HaremOfPrateBots(['#prate'], 'mac2222', ALL_IRC_NETWORK_NAMES, my_rsa_key2)
 while len(h1.ready_bots(my_rsa_key2.public_key())) < 3 and len(h2.ready_bots(my_rsa_key2.public_key())) < 3:
-    sleep(.1)
+    sleep(A_TICK)
 
 h1.ready_bots(my_rsa_key2.public_key())
 for _ in range(0,10):
@@ -58,7 +58,7 @@ from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import SENSIBLE_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, A_TICK
 
 MAXIMUM_HAREM_BLOCK_SIZE = 288
 
@@ -162,7 +162,7 @@ class HaremOfPrateBots:
     def __my_main_loop(self):
         print("Harem rx queue servicing loop -- starting")
         while not self.gotta_quit:
-            sleep(.1)
+            sleep(A_TICK)
             self.process_incoming_buffer()
         print("Harem rx queue servicing loop -- ending")
 
@@ -271,7 +271,7 @@ class HaremOfPrateBots:
                         else:
                             assert(pubkey == self.bots[k].homies[user].pubkey)
                     except Empty:
-                        sleep(.1)
+                        sleep(A_TICK)
                     else:
                         packetno = int.from_bytes(frame[0:4], 'little')
                         if packetno < 256 * 256 and self.incoming_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge

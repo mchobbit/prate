@@ -38,7 +38,7 @@ from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLong
 
 from my.irctools.jaracorocks.vanilla import VanillaBot
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH
+from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, A_TICK
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
 from cryptography.fernet import Fernet
 import base64
@@ -93,10 +93,10 @@ class PrateBot(VanillaBot):
 
     def __my_main_loop(self):
         while not self.ready and not self.should_we_quit:
-            sleep(.1)
+            sleep(A_TICK)
         sleep(3)
         while self.paused:
-            sleep(.1)
+            sleep(A_TICK)
 
         if not self.should_we_quit:
             try:
@@ -105,7 +105,7 @@ class PrateBot(VanillaBot):
                 print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
 
         while not self.should_we_quit:
-            sleep(.1)
+            sleep(A_TICK)
             if self.paused:
                 pass
             else:
