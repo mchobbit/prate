@@ -328,6 +328,7 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
         self.__transmit_queue = Queue()
         self.__strictly_nick = strictly_nick
         self.__wannaquit = False
+        self.__err = None
         self.__wannaquit_lock = ReadWriteLock()
         super().__init__(channels, nickname, generate_fingerprint(nickname), irc_server, port, strictly_nick)
         self.__my_tx_thread = Thread(target=self._tx_start, daemon=True)

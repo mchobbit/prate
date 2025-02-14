@@ -4,8 +4,32 @@ Created on Feb 9, 2025
 @author: mchobbit
 
 
-
-
+alice_nick = 'alice%d' % randint(111, 999)
+bob_nick = 'bob%d' % randint(111, 999)
+dupe_nick = alice_nick
+the_room = '#room' + generate_random_alphanumeric_string(5)
+alice_bot = VanillaBot(channels=[the_room],
+                 nickname=alice_nick,
+                 irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
+                 port=6667,
+                 startup_timeout=3,
+                 maximum_reconnections=2,
+                 autoreconnect=True,
+                 strictly_nick=True)
+bob_bot = VanillaBot(channels=[the_room],
+                 nickname=bob_nick,
+                 irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
+                 port=6667,
+                 startup_timeout=3,
+                 maximum_reconnections=2,
+                 autoreconnect=True,
+                 strictly_nick=True)
+self.assertTrue(alice_bot.ready)
+self.assertTrue(bob_bot.ready)
+self.assertRaises(IrcDuplicateNicknameError, VanillaBot, [the_room],
+                 dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 30, 3, True, True)
+alice_bot.quit()
+bob_bot.quit()
 
 '''
 import unittest
@@ -33,16 +57,16 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          strictly_nick=True,
                          autoreconnect=True)
         bob_bot = VanillaBot(channels=[first_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          strictly_nick=True,
                          autoreconnect=True)
         self.assertTrue(alice_bot.ready)
@@ -61,24 +85,24 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         charlie_bot = VanillaBot(channels=[first_room, second_room],
                          nickname=charlie_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         self.assertTrue(alice_bot.ready)
@@ -111,16 +135,16 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         self.assertTrue(alice_bot.ready)
@@ -147,16 +171,16 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         self.assertTrue(alice_bot.ready)
@@ -182,22 +206,22 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
         self.assertRaises(IrcDuplicateNicknameError, VanillaBot, [the_room],
-                         dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 30, 3, True, True)
+                         dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 3, 1, True, True)
         alice_bot.quit()
         bob_bot.quit()
 
@@ -209,16 +233,16 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         self.assertTrue(alice_bot.ready)
@@ -239,24 +263,24 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         dupe_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=False)
         self.assertTrue(alice_bot.ready)
@@ -276,16 +300,16 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         self.assertTrue(alice_bot.ready)
@@ -296,7 +320,7 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=dupe_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
+                         startup_timeout=3,
                          maximum_reconnections=1,
                          autoreconnect=True,
                          strictly_nick=False)
@@ -305,11 +329,17 @@ class TestVanillaBot(unittest.TestCase):
         bob_bot.quit()
         dupe_bot.quit()
 
+
+class TestNonex(unittest.TestCase):
+
     def testNonexistentServerConnect(self):
         alice_nick = 'alice%d' % randint(111, 999)
         the_room = '#room' + generate_random_alphanumeric_string(5)
         self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
                          alice_nick, 'irc.nonexistent.server', 6667, 4, 2, True, True)
+
+
+class TestTalk(unittest.TestCase):
 
     def testTalkToEachOther(self):
         alice_nick = 'alice%d' % randint(111, 999)
@@ -319,24 +349,24 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
         dupe_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=30,
-                         maximum_reconnections=3,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=False)
         alice_bot.put(bob_bot.nickname, "HELLO BOB")
