@@ -26,24 +26,18 @@ Todo:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 """
-from random import randint
-import irc.bot
 from time import sleep
-from my.classes import MyTTLCache
-from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
 from threading import Thread
 from my.irctools.cryptoish import generate_fingerprint
-from _queue import Empty
 import datetime
 import validators
 
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
-from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
-    IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
-    IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcDuplicateNicknameError, \
-    IrcConnectionError, IrcRanOutOfReconnectionsError
+from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
+    IrcStillConnectingError, IrcNicknameTooLongError, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcRanOutOfReconnectionsError, IrcBadNicknameError, \
+    IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError
 from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport, SingleServerIRCBotWithWhoisSupport
 from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH
 
@@ -135,6 +129,7 @@ class VanillaBot:
         while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(.1)
         if not self.ready:
+            self.quit()
             if self._client and self._client.err:
                 raise self._client.err
             else:
@@ -246,7 +241,7 @@ class VanillaBot:
                     pass  # print("Timeout error. Retrying.")
                 except IrcFingerprintMismatchCausedByServer:
                     pass  # print("The IRC server %s changed my nickname from %s to %s, to prevent a collision." % (self.irc_server, my_nick, self.nickname))
-            channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self._client.channels]
+            # channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self._client.channels]
             # if self._client.connected and channels_weve_dropped_out_of != []:
             #     print("WARNING -- we dropped out of", channels_weve_dropped_out_of)
             #     for ch in channels_weve_dropped_out_of:
@@ -416,6 +411,7 @@ class VanillaBot:
 #        self._client.disconnect("Bye")
         self.should_we_quit = True
         self.__my_main_thread.join()  # print("Joining server thread")
+        self.__my_client_start_thread.join()
         self._client.quit()
         while self._client.connected:
             sleep(.1)

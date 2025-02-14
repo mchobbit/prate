@@ -253,7 +253,7 @@ irc.othernet.org
 
 ALL_REALWORLD_IRC_NETWORK_NAMES = [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if r != '']
 
-ALL_SANDOX_IRC_NETWORK_NAMES = ('rpi0irc1.local', 'rpi0irc2.local', 'rpi0irc3.local',
+ALL_SANDBOX_IRC_NETWORK_NAMES = ('rpi0irc1.local', 'rpi0irc2.local', 'rpi0irc3.local',
                                'rpi0irc4.local', 'rpi0irc5.local', 'rpi0irc6.local',
                                'rpi0irc7.local', 'rpi0irc8.local', 'rpi0irc9.local',
                                'rpi0irc10.local', 'rpi0irc11.local', 'rpi0irc12.local',

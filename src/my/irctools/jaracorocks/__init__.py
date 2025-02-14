@@ -39,7 +39,7 @@ from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
 from threading import Thread
 from my.irctools.cryptoish import generate_fingerprint
-from _queue import Empty
+from queue import Empty
 import datetime
 import validators
 

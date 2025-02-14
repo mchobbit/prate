@@ -32,7 +32,6 @@ import sys
 from threading import Thread
 
 # from my.classes.readwritelock import ReadWriteLock
-from random import randint, shuffle, choice
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
                             IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
@@ -40,7 +39,7 @@ from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLong
 from my.irctools.jaracorocks.vanilla import VanillaBot
 from time import sleep
 from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH
-from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, bytes_64bit_cksum, receive_and_decrypt_message
+from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
 from cryptography.fernet import Fernet
 import base64
 from my.classes.readwritelock import ReadWriteLock
@@ -63,12 +62,14 @@ class PrateBot(VanillaBot):
                  startup_timeout=20, maximum_reconnections=2,
                  autoreconnect=True, strictly_nick=True):
         self.__strictly_nick = strictly_nick
+        if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
+            raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
+        if type(startup_timeout) is not int or startup_timeout <= 0:
+            raise ValueError("Startup_timeout should be a positive integer")
         super().__init__(channels=channels, nickname=nickname, irc_server=irc_server,
                          port=port, startup_timeout=startup_timeout,
                          maximum_reconnections=maximum_reconnections,
                          autoreconnect=autoreconnect, strictly_nick=strictly_nick)
-        if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
-            raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
@@ -134,13 +135,13 @@ class PrateBot(VanillaBot):
                         dc = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
                         if self.homies[sender].remotely_supplied_fernetkey != dc:
                             self.homies[sender].remotely_supplied_fernetkey = dc
-                            print("Saving new fernet key for %s on %s" % (self.nickname, self.irc_server))
+                            print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                         self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_TXFE_):
                     dc = rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
                     if self.homies[sender].remotely_supplied_fernetkey != dc:
                         self.homies[sender].remotely_supplied_fernetkey = dc
-                        print("Saving new fernet key for %s on %s" % (self.nickname, self.irc_server))
+                        print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                     if self.homies[sender].fernetkey is not None:
                         self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
                 elif msg.startswith(_RQIP_):
@@ -156,6 +157,7 @@ class PrateBot(VanillaBot):
                     new_ipaddr = decoded_msg.decode()
                     if self.homies[sender].ipaddr != new_ipaddr:
                         self.homies[sender].ipaddr = new_ipaddr
+                    print("%s --- %s now has %s's IP address. The link has been established." % (self.irc_server, self.nickname, sender))
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
                 else:
@@ -168,7 +170,7 @@ class PrateBot(VanillaBot):
             for user in self.users:
                 if user != self.nickname and self.whois(user) is not None and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1]:
                     if self.homies[user].pubkey is None:
-                        print("I, %s, do not possess %s's public key. Therefore, I am triggering a handshake on %s" % (self.nickname, user, self.irc_server))
+#                        print("I, %s, do not possess %s's public key. Therefore, I am triggering a handshake on %s" % (self.nickname, user, self.irc_server))
                         self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
 
     def my_encrypted_ipaddr(self, user):

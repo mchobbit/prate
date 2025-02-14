@@ -9,12 +9,10 @@ Created on Feb 9, 2025
 
 '''
 import unittest
-from Crypto.PublicKey import RSA
-from time import sleep
 from my.irctools.jaracorocks.vanilla import VanillaBot
 from my.stringtools import generate_random_alphanumeric_string
 from queue import Empty
-from my.globals import ALL_SANDOX_IRC_NETWORK_NAMES
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES
 from random import randint
 from my.classes.exceptions import IrcDuplicateNicknameError, IrcInitialConnectionTimeoutError
 
@@ -33,7 +31,7 @@ class TestVanillaBot(unittest.TestCase):
         first_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -41,7 +39,7 @@ class TestVanillaBot(unittest.TestCase):
                          autoreconnect=True)
         bob_bot = VanillaBot(channels=[first_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -61,7 +59,7 @@ class TestVanillaBot(unittest.TestCase):
         second_room = '#boom' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -69,7 +67,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -77,7 +75,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         charlie_bot = VanillaBot(channels=[first_room, second_room],
                          nickname=charlie_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -111,7 +109,7 @@ class TestVanillaBot(unittest.TestCase):
         second_room = '#boom' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -119,7 +117,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -147,7 +145,7 @@ class TestVanillaBot(unittest.TestCase):
 
         alice_bot = VanillaBot(channels=[first_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -155,7 +153,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[second_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -182,7 +180,7 @@ class TestVanillaBot(unittest.TestCase):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[the_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -190,7 +188,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -199,7 +197,7 @@ class TestVanillaBot(unittest.TestCase):
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
         self.assertRaises(IrcDuplicateNicknameError, VanillaBot, [the_room],
-                         dupe_nick, ALL_SANDOX_IRC_NETWORK_NAMES[-1], 6667, 30, 3, True, True)
+                         dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 30, 3, True, True)
         alice_bot.quit()
         bob_bot.quit()
 
@@ -209,7 +207,7 @@ class TestVanillaBot(unittest.TestCase):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[the_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -217,7 +215,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -239,7 +237,7 @@ class TestVanillaBot(unittest.TestCase):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[the_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -247,7 +245,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -255,7 +253,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         dupe_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -276,7 +274,7 @@ class TestVanillaBot(unittest.TestCase):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[the_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -284,7 +282,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -293,10 +291,10 @@ class TestVanillaBot(unittest.TestCase):
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
         self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
-                         dupe_nick, ALL_SANDOX_IRC_NETWORK_NAMES[-1], 6667, 30, 0, False, True)
+                         dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 30, 0, False, True)
         dupe_bot = VanillaBot(channels=[the_room],
                          nickname=dupe_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=1,
@@ -316,11 +314,10 @@ class TestVanillaBot(unittest.TestCase):
     def testTalkToEachOther(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        dupe_nick = alice_nick
         the_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[the_room],
                          nickname=alice_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -328,7 +325,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         bob_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -336,7 +333,7 @@ class TestVanillaBot(unittest.TestCase):
                          strictly_nick=True)
         dupe_bot = VanillaBot(channels=[the_room],
                          nickname=bob_nick,
-                         irc_server=ALL_SANDOX_IRC_NETWORK_NAMES[-1],
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
                          startup_timeout=30,
                          maximum_reconnections=3,
@@ -377,7 +374,7 @@ class TestVanillaBot(unittest.TestCase):
 #         Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
 #
 #         my_port = 6667
-#         for my_irc_server in ALL_SANDOX_IRC_NETWORK_NAMES:
+#         for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
 #             Xbots[my_irc_server] = VanillaBot([my_channel], X_desired_nickname, my_irc_server, my_port)
 #             Ybots[my_irc_server] = VanillaBot([my_channel], Y_desired_nickname, my_irc_server, my_port)
 #
@@ -386,10 +383,10 @@ class TestVanillaBot(unittest.TestCase):
 #
 #
 #         successes_thus_far = -1
-#         while successes_thus_far < len([k for k in ALL_SANDOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]):
-#             successes_thus_far = len([k for k in ALL_SANDOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready])
+#         while successes_thus_far < len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]):
+#             successes_thus_far = len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready])
 #             sleep(10)
-#         readyKs = [k for k in ALL_SANDOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]
+#         readyKs = [k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]
 #         for k in readyKs:
 #             for xy in (Xbots, Ybots):
 #                 try:
@@ -414,7 +411,7 @@ class TestVanillaBot(unittest.TestCase):
 #         for k in defective_items:
 #             readyKs.remove(k)
 #
-#         for my_irc_server in ALL_SANDOX_IRC_NETWORK_NAMES:
+#         for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
 #             Xbots[my_irc_server].quit()
 #             Ybots[my_irc_server].quit()
 

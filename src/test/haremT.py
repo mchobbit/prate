@@ -23,10 +23,9 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.irctools.jaracorocks.harem import HaremOfPrateBots
-from my.globals import ALL_IRC_NETWORK_NAMES
 from my.stringtools import generate_random_alphanumeric_string
-from my.irctools.jaracorocks.pratebot import PrateBot
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedSingleServerIRCBotWithWhoisSupport
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES
+from random import randint
 
 # class TestReliabilityOfEachPotentialIRCServer(unittest.TestCase):
 #
@@ -65,10 +64,12 @@ class TestHaremOne(unittest.TestCase):
     def setUpClass(cls):
         cls.my_rsa_key1 = RSA.generate(2048)
         cls.my_rsa_key2 = RSA.generate(2048)
-        list_of_all_irc_servers = ALL_IRC_NETWORK_NAMES
-        cls.h1 = HaremOfPrateBots(['#locerno'], list_of_all_irc_servers, cls.my_rsa_key1)
-        cls.h2 = HaremOfPrateBots(['#locerno'], list_of_all_irc_servers, cls.my_rsa_key2)
-        while len(cls.h1.ready_bots(cls.my_rsa_key2.public_key())) < 6 and len(cls.h2.ready_bots(cls.my_rsa_key2.public_key())) < 6:
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        cls.h1 = HaremOfPrateBots(['#locerno'], alice_nick, list_of_all_irc_servers, cls.my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        cls.h2 = HaremOfPrateBots(['#locerno'], bob_nick, list_of_all_irc_servers, cls.my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        while len(cls.h1.handshook(cls.my_rsa_key2.public_key())) < 3 and len(cls.h2.handshook(cls.my_rsa_key2.public_key())) < 3:
             sleep(.1)
 
     @classmethod
@@ -106,6 +107,8 @@ class TestHaremOne(unittest.TestCase):
             self.h1.put(self.my_rsa_key2.public_key(), plaintext)
             pk, msg = self.h2.get()
             self.assertEqual((pk, msg), (self.my_rsa_key1.public_key(), plaintext))
+
+    # .handshook <== test
 
     # def testBigFile(self):
     #     with open("/Users/mchobbit/Downloads/pi_holder.stl", "rb") as f:

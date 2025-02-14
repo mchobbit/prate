@@ -50,21 +50,17 @@ pk, dat = h2.get()
 
 """
 
-import sys
 from threading import Thread
 
-from my.classes.readwritelock import ReadWriteLock
-from random import randint, shuffle, choice
 from Crypto.PublicKey import RSA
-from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string
 from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import MAX_NICKNAME_LENGTH, ALL_IRC_NETWORK_NAMES
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
-MAXIMUM_HAREM_BLOCK_SIZE = 256  # 288?
+from my.globals import SENSIBLE_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES
+
+MAXIMUM_HAREM_BLOCK_SIZE = 288
 
 # def get_list_of_kosher_IRC_servers(list_of_potential_servers=ALL_IRC_NETWORK_NAMES):
 #     Xbots = {}
@@ -124,11 +120,13 @@ MAXIMUM_HAREM_BLOCK_SIZE = 256  # 288?
 class HaremOfPrateBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key):
+    def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key, startup_timeout, maximum_reconnections):
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         self.__channels = channels
         self.__rsa_key = rsa_key
+        self.__startup_timeout = startup_timeout
+        self.__maximum_reconnections = maximum_reconnections
         self.__list_of_all_irc_servers = list_of_all_irc_servers
         self.__desired_nickname = desired_nickname  # "%s%d" % (generate_irc_handle(MAX_NICKNAME_LENGTH + 10, MAX_NICKNAME_LENGTH - 2), randint(11, 99))
         self.port = 6667
@@ -141,8 +139,17 @@ class HaremOfPrateBots:
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__gotta_quit = False
+        self.log_into_all_functional_IRC_servers()
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
+
+    @property
+    def startup_timeout(self):
+        return self.__startup_timeout
+
+    @property
+    def maximum_reconnections(self):
+        return self.__maximum_reconnections
 
     @property
     def gotta_quit(self):
@@ -154,7 +161,6 @@ class HaremOfPrateBots:
 
     def __my_main_loop(self):
         print("Harem rx queue servicing loop -- starting")
-        self.log_into_all_functional_IRC_servers()
         while not self.gotta_quit:
             sleep(.1)
             self.process_incoming_buffer()
@@ -191,7 +197,7 @@ class HaremOfPrateBots:
             if bot.homies != {}:
                 for h in bot.homies:
                     if h.pubkey == pubkey:
-                        potential_bots[k] == h.nickname
+                        potential_bots[k.irc_server] = h.nickname
             try:
                 nickname = [u for u in bot.homies if bot.ready \
                             and bot.homies[u].pubkey is not None \
@@ -304,7 +310,7 @@ class HaremOfPrateBots:
 
     @property
     def bots(self):
-        return self.__bots  # TODO: make threadsafe
+        return self.__bots
 
     @property
     def list_of_all_irc_servers(self):
@@ -340,15 +346,18 @@ class HaremOfPrateBots:
 
     def try_to_log_into_this_IRC_server(self, k):
         try:
-            self.bots[k] = PrateBot(channels=self.channels,
+            bot = PrateBot(channels=self.channels,
                                    nickname=self.desired_nickname,
                                    irc_server=k,
                                    port=self.port,
                                    rsa_key=self.rsa_key,
-                                   maximum_reconnections=2,
+                                   startup_timeout=self.startup_timeout,
+                                   maximum_reconnections=self.maximum_reconnections,
                                    strictly_nick=True)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
-            self.bots[k] = None
+            pass
+        else:
+            self.bots[k] = bot
 
     def quit(self):
         for k in self.bots:
@@ -366,12 +375,8 @@ if __name__ == "__main__":
     print("Hi.")
     my_rsa_key1 = RSA.generate(2048)
     my_rsa_key2 = RSA.generate(2048)
-    list_of_all_irc_servers = ('rpi0irc1.local', 'rpi0irc2.local', 'rpi0irc3.local', 'rpi0irc4.local',
-                               'rpi0irc5.local', 'rpi0irc6.local', 'rpi0irc7.local', 'rpi0irc8.local',
-                               'rpi0irc9.local', 'rpi0irc10.local', 'rpi0irc11.local', 'rpi0irc12.local',
-                               'cinqcent.local', 'gmkone.local', 'gmktwo.local', 'rpi4b.local')
 
-    h1 = HaremOfPrateBots(['#prate'], 'mac3333', list_of_all_irc_servers, my_rsa_key1)
-    h2 = HaremOfPrateBots(['#prate'], 'mac4444', list_of_all_irc_servers, my_rsa_key2)
+    h1 = HaremOfPrateBots(['#prate'], 'mac3333', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+    h2 = HaremOfPrateBots(['#prate'], 'mac4444', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
     print("Yay.")
     print("<fin?")

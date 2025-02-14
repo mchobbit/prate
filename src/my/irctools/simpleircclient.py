@@ -9,7 +9,18 @@ IRC Tools for test purposes
 Todo:
     * Finish docs
     * WRITE UNIT TESTS!
-
+from my.globals import *
+from my.irctools import *
+import base64
+pubslim = skinny_key(MY_RSAKEY.public_key())
+b85slim = pubkey_to_b85(MY_RSAKEY.public_key())
+b64slim = pubkey_to_b64(MY_RSAKEY.public_key())
+assert(b85_to_pubkey(b85slim) == MY_RSAKEY.public_key())
+assert(b64_to_pubkey(b64slim) == MY_RSAKEY.public_key())
+assert(unskin_key(pubslim) == MY_RSAKEY.public_key())
+print("pubslim: %d chars" % len(pubslim))
+print("b85    : %d chars" % len(b85slim))
+print("b64    : %d chars" % len(b64slim))
 """
 
 # import requests
@@ -22,8 +33,8 @@ Todo:
 # from time import sleep
 # from my.stringtools import generate_irc_handle, get_word_salad, get_bits_to_be_encoded, encode_via_steg, decode_via_steg, strict_encode_via_steg, multiline_encode_via_steg
 # from random import randint, choice, shuffle
+# from queue import Empty
 # from threading import Thread
-# from _queue import Empty
 #
 # from Crypto.PublicKey import RSA
 # from Crypto.Cipher import PKCS1_OAEP
@@ -66,21 +77,6 @@ def superduper_simple_irc_client():
             resp = data.strip(ping)
             client.send(pong + resp)
             print(pong + resp)
-
-'''
-from my.globals import *
-from my.irctools import *
-import base64
-pubslim = skinny_key(MY_RSAKEY.public_key())
-b85slim = pubkey_to_b85(MY_RSAKEY.public_key())
-b64slim = pubkey_to_b64(MY_RSAKEY.public_key())
-assert(b85_to_pubkey(b85slim) == MY_RSAKEY.public_key())
-assert(b64_to_pubkey(b64slim) == MY_RSAKEY.public_key())
-assert(unskin_key(pubslim) == MY_RSAKEY.public_key())
-print("pubslim: %d chars" % len(pubslim))
-print("b85    : %d chars" % len(b85slim))
-print("b64    : %d chars" % len(b64slim))
-'''
 
 # if __name__ == "__main__":
 #

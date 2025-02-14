@@ -14,11 +14,11 @@ from time import sleep
 from my.stringtools import generate_irc_handle, get_word_salad
 from my.globals import MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH
 from test.myttlcacheT import generate_random_alphanumeric_string
-from _queue import Empty
+from queue import Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.classes.exceptions import IrcBadChannelNameError, IrcBadServerNameError, IrcBadNicknameError, IrcChannelNameTooLongError, IrcNicknameTooLongError, IrcBadServerPortError, \
-    PublicKeyBadKeyError, IrcPrivateMessageContainsBadCharsError, IrcStillConnectingError
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
+from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageContainsBadCharsError, IrcBadNicknameError, IrcChannelNameTooLongError, IrcBadChannelNameError, \
+    IrcNicknameTooLongError, IrcBadServerPortError, IrcBadServerNameError
+from random import randint
 
 
 class TestGroupOne(unittest.TestCase):
@@ -31,12 +31,13 @@ class TestGroupOne(unittest.TestCase):
 
     def testGoofyParams(self):
         my_rsa_key = RSA.generate(2048)
-        self.assertRaises(IrcBadChannelNameError, PrateBot, None, 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcBadChannelNameError, PrateBot, [''], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcBadChannelNameError, PrateBot, ['missinghash'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcBadChannelNameError, PrateBot, ['#'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcBadChannelNameError, PrateBot, ['#roomname with a space in it'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcChannelNameTooLongError, PrateBot, ['#impossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylong'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
+        alice_nick = 'alice%d' % randint(111, 999)
+        self.assertRaises(IrcBadChannelNameError, PrateBot, None, alice_nick, 'cinqcent.local', 6667, my_rsa_key)
+        self.assertRaises(IrcBadChannelNameError, PrateBot, [''], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
+        self.assertRaises(IrcBadChannelNameError, PrateBot, ['missinghash'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
+        self.assertRaises(IrcBadChannelNameError, PrateBot, ['#'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
+        self.assertRaises(IrcBadChannelNameError, PrateBot, ['#roomname with a space in it'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
+        self.assertRaises(IrcChannelNameTooLongError, PrateBot, ['#impossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylongimpossiblylong'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertRaises(IrcBadNicknameError, PrateBot, ['#prate'], None, 'cinqcent.local', 6667, my_rsa_key)
         self.assertRaises(IrcBadNicknameError, PrateBot, ['#prate'], '1', 'cinqcent.local', 6667, my_rsa_key)
         self.assertRaises(IrcBadNicknameError, PrateBot, ['#prate'], ' ', 'cinqcent.local', 6667, my_rsa_key)
@@ -46,60 +47,45 @@ class TestGroupOne(unittest.TestCase):
         self.assertRaises(IrcBadNicknameError, PrateBot, ['#prate'], 'hi ', 'cinqcent.local', 6667, my_rsa_key)
         self.assertRaises(IrcBadNicknameError, PrateBot, ['#prate'], 'hi ', 'cinqcent.local', 6667, my_rsa_key)
         self.assertRaises(IrcNicknameTooLongError, PrateBot, ['#prate'], 'hitherefolksomgthisiswaytoolong', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcBadServerNameError, PrateBot, ['#prate'], 'mac1', None, 6667, my_rsa_key)
-        self.assertRaises(IrcBadServerNameError, PrateBot, ['#prate'], 'mac1', 'cinqcent dot local', 6667, my_rsa_key)
-        self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', None, my_rsa_key)
-        self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 'Word up', my_rsa_key)
-        self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 0, my_rsa_key)
-        self.assertRaises(PublicKeyBadKeyError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 6667, None)
-        self.assertRaises(PublicKeyBadKeyError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 6667, 'blah')
-        self.assertRaises(ValueError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key, startup_timeout=-1)
-        self.assertRaises(ValueError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key, startup_timeout=0)
-        self.assertRaises(ValueError, PrateBot, ['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key, startup_timeout='Blah')
+        self.assertRaises(IrcBadServerNameError, PrateBot, ['#prate'], alice_nick, None, 6667, my_rsa_key)
+        self.assertRaises(IrcBadServerNameError, PrateBot, ['#prate'], alice_nick, 'cinqcent dot local', 6667, my_rsa_key)
+        self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', None, my_rsa_key)
+        self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 'Word up', my_rsa_key)
+        self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 0, my_rsa_key)
+        self.assertRaises(PublicKeyBadKeyError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, None)
+        self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key, startup_timeout=-1)
+        self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key, startup_timeout=0)
+        self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key, startup_timeout='Blah')
+        self.assertRaises(PublicKeyBadKeyError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, 'blah')
 
     def testSimpleLogin(self):
+        alice_nick = 'alice%d' % randint(111, 999)
         my_rsa_key = RSA.generate(2048)
-        bot = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcStillConnectingError, bot.put, "mac1", "HI")
-        while not bot.ready:
-            print("Waiting for bot to be ready")
-            sleep(1)
+        bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
         bot.quit()
 
     def testReady(self):
+        alice_nick = 'alice%d' % randint(111, 999)
         my_rsa_key = RSA.generate(2048)
-        bot = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcStillConnectingError, bot.put, "mac1", "HI")
-        self.assertEqual(bot.ready, False)
-        while not bot.ready:
-            print("Waiting for bot to be ready")
-            sleep(1)
+        bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
-        self.assertTrue(bot.client.ready)
+        self.assertTrue(bot._client.ready)
         bot.quit()
 
     def testSimpleWhois(self):
+        alice_nick = 'alice%d' % randint(111, 999)
         my_rsa_key = RSA.generate(2048)
-        bot = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        self.assertRaises(IrcStillConnectingError, bot.put, "mac1", "HI")
-        self.assertFalse(bot.ready)
-        while not bot.ready:
-            print("Waiting for bot to be ready")
-            sleep(1)
+        bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
-        self.assertTrue(bot.client.ready)
-        self.assertEqual(bot.whois('mac1').split('* ', 1)[-1], bot.client.realname)
+        self.assertEqual(bot.whois(alice_nick).split('* ', 1)[-1], bot.fingerprint)
         bot.quit()
 
     def testSimpleCallResponse(self):
+        alice_nick = 'alice%d' % randint(111, 999)
         my_rsa_key = RSA.generate(2048)
-        bot = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key)
-        while not bot.ready:
-            print("Waiting for bot to be ready")
-            sleep(1)
+        bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
-        self.assertTrue(bot.client.ready)
         bot.put(bot.nickname, "HELLO")
         sleep(1)
         self.assertEqual(bot.get_nowait(), (bot.nickname, 'HELLO'))
@@ -142,8 +128,6 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
         the_message = get_word_salad()[:400]
         bot1.put(bot1.nickname, the_message)
         sleep(1)
@@ -167,7 +151,6 @@ class TestGroupTwo(unittest.TestCase):
                 bot1.paused = True
                 bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
                 bot2.paused = True
-                sleep(3)
                 self.assertTrue(bot1.ready)
                 self.assertTrue(bot2.ready)
                 assert(len(bot1.nickname) <= MAX_NICKNAME_LENGTH)
@@ -200,8 +183,6 @@ class TestGroupTwo(unittest.TestCase):
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.paused = True
         bot2.paused = True
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
         bot1.quit()
         bot2.quit()
 
@@ -217,8 +198,6 @@ class TestGroupTwo(unittest.TestCase):
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.paused = True
         bot2.paused = True
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
         self.assertEqual(bot1.nickname, nick1)
         self.assertEqual(bot2.nickname, nick2)
         bot1.quit()
@@ -229,14 +208,10 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key = RSA.generate(2048)
         bot1 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key)
         bot1.paused = True
-        while not bot1.ready:
-            sleep(.1)
         self.assertTrue(bot1.ready)
         self.assertEqual(bot1.nickname, desired_nick)
-        bot2 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key)
+        bot2 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key, strictly_nick=False)  # To allow the automatic renaming of the nickname
         bot2.paused = True
-        while not bot2.ready:
-            sleep(.1)
         self.assertTrue(bot2.ready)
         try:
             while True:
@@ -280,8 +255,6 @@ class TestGroupThree(unittest.TestCase):
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.paused = True
         bot2.paused = True
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(nick2))
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, "Hello, world.")
@@ -306,8 +279,6 @@ class TestGroupThree(unittest.TestCase):
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.paused = True
         bot2.paused = True
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(nick2))
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, msg)
@@ -333,12 +304,12 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
         pass
 
     def testOne(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
-        bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-        bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         while bot1.homies[bot2.nickname].ipaddr is None and bot2.homies[bot1.nickname].ipaddr is None:
             sleep(.1)
         print("%s: %s" % (bot1.nickname, bot1.homies[bot2.nickname].ipaddr))
@@ -381,17 +352,17 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         pass
 
     def testSimpleEncryptedTransferOf100Bytes(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
-        bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-        bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
-            sleep(.1)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         while bot1.homies[bot2.nickname].ipaddr is None or bot2.homies[bot1.nickname].ipaddr is None:
             sleep(.1)
         self.assertTrue(bot1.empty())
         for i in range(0, 10):
-#            print("loop", i)
+            print("loop", i)
             plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2).encode()
             bot1.crypto_put(bot2.nickname, plaintext)
             while bot2.crypto_empty():
@@ -412,16 +383,14 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         from my.globals import *
         from my.classes.exceptions import *
         '''
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
-        bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-        while not bot1.ready:
-            sleep(.1)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         lou1 = bot1.users
         lou1.sort()
-        bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-        while not bot2.ready:
-            sleep(.1)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         lou2 = bot2.users
         lou2.sort()
         self.assertTrue(bot2.nickname not in lou1)
@@ -443,20 +412,15 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         from my.globals import *
         from my.classes.exceptions import *
         '''
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
-        bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-        while not bot1.ready:
-            sleep(.1)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         lou1 = bot1.users
-        sleep(3)
-        bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-        while not bot2.ready:
-            sleep(.1)
-#        lou2 = bot2.users
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         b1nick = bot1.nickname
         b2nick = bot2.nickname
-        sleep(3)
         self.assertTrue(b2nick not in lou1)
         self.assertTrue(b2nick in bot1.users)
         self.assertTrue(b1nick in bot2.users)
@@ -466,12 +430,12 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bot2.quit()
 
     def testJoiningAndLeavingSeveralDifferentChannels(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
-        bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1)
-        bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot2.ready and bot1.ready):
-            sleep(.1)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.quit()
         bot2.quit()
 
