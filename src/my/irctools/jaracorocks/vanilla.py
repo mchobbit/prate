@@ -221,13 +221,11 @@ class VanillaBot:
     def _client_start(self):
         while not self._client and not self.should_we_quit:
             sleep(.1)
-        print("SingleServerIRCBotWithWhoisSupport --- entering.")
         while self._client and not self.should_we_quit:
             try:
                 self._client.start()
             except (ValueError, OSError, AttributeError):
                 sleep(.1)
-        print("SingleServerIRCBotWithWhoisSupport --- leaving.")
 
     def _main_loop(self):
         my_nick = self.initial_nickname
