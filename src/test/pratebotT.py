@@ -71,7 +71,7 @@ class TestGroupOne(unittest.TestCase):
         my_rsa_key = RSA.generate(2048)
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
-        self.assertTrue(bot._client.ready)
+        self.assertTrue(bot._client.ready)  # Should be the same as bot.ready pylint: disable=protected-access
         bot.quit()
 
     def testSimpleWhois(self):
