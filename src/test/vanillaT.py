@@ -31,6 +31,58 @@ self.assertRaises(IrcDuplicateNicknameError, VanillaBot, [the_room],
 alice_bot.quit()
 bob_bot.quit()
 
+
+vvv DO NOT USE THIS YET vvv
+        Xbots = {}
+        Ybots = {}
+        my_channel = '#platit'
+        X_desired_nickname = 'x%sx' % generate_random_alphanumeric_string(7)
+        Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
+
+        my_port = 6667
+        for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
+            Xbots[my_irc_server] = VanillaBot([my_channel], X_desired_nickname, my_irc_server, my_port)
+            Ybots[my_irc_server] = VanillaBot([my_channel], Y_desired_nickname, my_irc_server, my_port)
+
+elf, channels:list, nickname:str, irc_server:str, port:int,
+                 startup_timeout:int, maximum_reconnections:int, strictly_nick:bool, autoreconnect:bool
+
+
+        successes_thus_far = -1
+        while successes_thus_far < len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]):
+            successes_thus_far = len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready])
+            sleep(10)
+        readyKs = [k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]
+        for k in readyKs:
+            for xy in (Xbots, Ybots):
+                try:
+                    while True:
+                        _ = xy[k].get_nowait()
+                except Empty:
+                    break
+        for k in readyKs:
+            print("Trying %s" % k)
+            if Xbots[k].ready and Ybots[k].ready:
+                p = "Hello there from %s" % k
+                Xbots[k].put(Y_desired_nickname, p)
+
+        defective_items = []
+        for k in readyKs:
+            p = "WORD UP FROM %s" % k
+            (src, msg) = Ybots[k].get()
+            if p != msg:
+                print("%s is defective" % k)
+                defective_items += [k]
+
+        for k in defective_items:
+            readyKs.remove(k)
+
+        for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
+            Xbots[my_irc_server].quit()
+            Ybots[my_irc_server].quit()
+
+^^^ DO NOT USE THIS YET ^^^
+
 '''
 import unittest
 from my.irctools.jaracorocks.vanilla import VanillaBot
@@ -332,11 +384,17 @@ class TestVanillaBot(unittest.TestCase):
 
 class TestNonex(unittest.TestCase):
 
-    def testNonexistentServerConnect(self):
+    def testStupidServerConnect(self):
         alice_nick = 'alice%d' % randint(111, 999)
         the_room = '#room' + generate_random_alphanumeric_string(5)
         self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
                          alice_nick, 'irc.nonexistent.server', 6667, 4, 2, True, True)
+
+    def testSaneButMissingServerConnect(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
+                         alice_nick, 'rpi0irc99.local', 6667, 4, 2, True, True)
 
 
 class TestTalk(unittest.TestCase):
@@ -396,54 +454,6 @@ class TestTalk(unittest.TestCase):
         alice_bot.quit()
         bob_bot.quit()
         dupe_bot.quit()
-
-#         Xbots = {}
-#         Ybots = {}
-#         my_channel = '#platit'
-#         X_desired_nickname = 'x%sx' % generate_random_alphanumeric_string(7)
-#         Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
-#
-#         my_port = 6667
-#         for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
-#             Xbots[my_irc_server] = VanillaBot([my_channel], X_desired_nickname, my_irc_server, my_port)
-#             Ybots[my_irc_server] = VanillaBot([my_channel], Y_desired_nickname, my_irc_server, my_port)
-#
-# elf, channels:list, nickname:str, irc_server:str, port:int,
-#                  startup_timeout:int, maximum_reconnections:int, strictly_nick:bool, autoreconnect:bool
-#
-#
-#         successes_thus_far = -1
-#         while successes_thus_far < len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]):
-#             successes_thus_far = len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready])
-#             sleep(10)
-#         readyKs = [k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]
-#         for k in readyKs:
-#             for xy in (Xbots, Ybots):
-#                 try:
-#                     while True:
-#                         _ = xy[k].get_nowait()
-#                 except Empty:
-#                     break
-#         for k in readyKs:
-#             print("Trying %s" % k)
-#             if Xbots[k].ready and Ybots[k].ready:
-#                 p = "Hello there from %s" % k
-#                 Xbots[k].put(Y_desired_nickname, p)
-#
-#         defective_items = []
-#         for k in readyKs:
-#             p = "WORD UP FROM %s" % k
-#             (src, msg) = Ybots[k].get()
-#             if p != msg:
-#                 print("%s is defective" % k)
-#                 defective_items += [k]
-#
-#         for k in defective_items:
-#             readyKs.remove(k)
-#
-#         for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
-#             Xbots[my_irc_server].quit()
-#             Ybots[my_irc_server].quit()
 
 
 if __name__ == "__main__":
