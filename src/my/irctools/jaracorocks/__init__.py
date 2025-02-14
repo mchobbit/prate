@@ -118,6 +118,10 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def err(self):
         return self.__err
 
+    @err.setter
+    def err(self, value):
+        self.__err = value
+
     @property
     def irc_server(self):
         return self.__irc_server
@@ -202,7 +206,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         """Triggered when the event-handler receives ERR_NICKNAMEINUSE."""
         if self.strictly_nick:
             self.connection.disconnect()
-            self.__err = IrcDuplicateNicknameError("%s was already in use at %s" % (self.nickname, self.irc_server))
+            self.err = IrcDuplicateNicknameError("%s was already in use at %s" % (self.nickname, self.irc_server))
         else:
             new_nick = 'R' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
             self.nickname = new_nick
@@ -328,7 +332,6 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
         self.__transmit_queue = Queue()
         self.__strictly_nick = strictly_nick
         self.__wannaquit = False
-        self.__err = None
         self.__wannaquit_lock = ReadWriteLock()
         super().__init__(channels, nickname, generate_fingerprint(nickname), irc_server, port, strictly_nick)
         self.__my_tx_thread = Thread(target=self._tx_start, daemon=True)

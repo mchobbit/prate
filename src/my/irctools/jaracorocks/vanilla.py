@@ -186,6 +186,10 @@ class VanillaBot:
     def err(self):
         return self.__err
 
+    @err.setter
+    def err(self, value):
+        self.__err = value
+
     @property
     def channels(self):
         return self._client.channels
@@ -263,18 +267,18 @@ class VanillaBot:
             if self._client is not None and my_nick != self._client.nickname:  # This means we RECONNECTED after fixing our nickname.
                 if self.strictly_nick:
                     print("Not reconnecting: our preferred nick is unavailable.")
-                    self.__err = self._client.err
+                    self.err = self._client.err
                     self.should_we_quit = True
                 else:
                     my_nick = self._client.nickname  # print("*** RECONNECTED AS %s" % self._client.nickname)
         if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
-            if self.__err is None:
+            if self.err is None:
                 if have_we_ever_successfully_connected:
-                    self.__err = IrcRanOutOfReconnectionsError("%s disconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever." % (self.irc_server, self.noof_reconnections))
+                    self.err = IrcRanOutOfReconnectionsError("%s disconnected %d times. That's enough. It's over. This connection has died and I'll not resurrect it. Instead, I'll wait until this bot is told to quit; then, I'll exit/join/whatever." % (self.irc_server, self.noof_reconnections))
                 else:
-                    self.__err = IrcInitialConnectionTimeoutError("We tried %d times to connect to %s. We failed." % (self.noof_reconnections, self.irc_server))
+                    self.err = IrcInitialConnectionTimeoutError("We tried %d times to connect to %s. We failed." % (self.noof_reconnections, self.irc_server))
             else:
-                print("Client had error:", self.__err)
+                print("Client had error:", self.err)
         while not self.should_we_quit:
             sleep(A_TICK)
 
