@@ -34,20 +34,17 @@ from threading import Thread
 # from my.classes.readwritelock import ReadWriteLock
 from random import randint, shuffle, choice
 from Crypto.PublicKey import RSA
-from my.stringtools import generate_irc_handle
-from my.classes.exceptions import FernetKeyIsUnknownError, \
-                            PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
-                            IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError
+from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
+                            IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
 
-from my.irctools.jaracorocks.vanilla import BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
+from my.irctools.jaracorocks.vanilla import VanillaBot
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH, JOINING_IRC_SERVER_TIMEOUT, DEFAULT_NOOF_RECONNECTIONS
+from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, bytes_64bit_cksum, receive_and_decrypt_message
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 import base64
 from my.classes.readwritelock import ReadWriteLock
 from my.classes.homies import HomiesDct
-import datetime
 from queue import Queue, Empty
 # from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
 
@@ -60,14 +57,16 @@ _TXIP_ = "TP"
 _TXTX_ = "XX"
 
 
-class PrateBot(BotForDualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport):
+class PrateBot(VanillaBot):
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
-                 startup_timeout=JOINING_IRC_SERVER_TIMEOUT, maximum_reconnections=DEFAULT_NOOF_RECONNECTIONS,
-                 strictly_nick=False):
+                 startup_timeout=20, maximum_reconnections=2,
+                 autoreconnect=True, strictly_nick=True):
         self.__strictly_nick = strictly_nick
-        super().__init__(channels, nickname, irc_server, port, startup_timeout, maximum_reconnections,
-                         strictly_nick)
+        super().__init__(channels=channels, nickname=nickname, irc_server=irc_server,
+                         port=port, startup_timeout=startup_timeout,
+                         maximum_reconnections=maximum_reconnections,
+                         autoreconnect=autoreconnect, strictly_nick=strictly_nick)
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
             raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         self.rsa_key = rsa_key

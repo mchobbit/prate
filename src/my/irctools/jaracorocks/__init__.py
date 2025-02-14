@@ -32,8 +32,8 @@ from random import randint
 import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
-from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, \
-    DEFAULT_NOOF_RECONNECTIONS, SENSIBLE_TIMEOUT
+from my.globals import ANTIOVERLOAD_CACHE_TIME, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, \
+    MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, SENSIBLE_TIMEOUT
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock

@@ -30,8 +30,6 @@ from random import randint
 import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
-from my.globals import ANTIOVERLOAD_CACHE_TIME, JOINING_IRC_SERVER_TIMEOUT, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, \
-    DEFAULT_NOOF_RECONNECTIONS, SENSIBLE_TIMEOUT
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -47,6 +45,7 @@ from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContains
     IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcDuplicateNicknameError, \
     IrcConnectionError, IrcRanOutOfReconnectionsError
 from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport, SingleServerIRCBotWithWhoisSupport
+from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH
 
 
 class VanillaBot:
