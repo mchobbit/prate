@@ -92,7 +92,7 @@ class VanillaBot:
 """
 
     def __init__(self, channels:list, nickname:str, irc_server:str, port:int,
-                 startup_timeout:int, maximum_reconnections:int, strictly_nick:bool, autoreconnect:bool):
+                 startup_timeout:int, maximum_reconnections:int, autoreconnect:bool, strictly_nick:bool):
         if startup_timeout is None or type(startup_timeout) is not int or startup_timeout <= 0:
             raise ValueError(str(startup_timeout) + " is a goofy startup_timeout. Fix it.")
         if channels is None or type(channels) not in (list, tuple):
@@ -140,6 +140,32 @@ class VanillaBot:
                 raise self._client.err
             else:
                 raise IrcInitialConnectionTimeoutError("%s completely failed to connect to %s" % (self.initial_nickname, self.irc_server))
+
+    def reconnect_server_connection(self, my_nick):
+#        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
+        if self._client is not None:
+            print("WARNING --- you're asking me to reconnect, but I'm already connected. That is a surprise.")
+            try:
+                self._client.disconnect("Bye")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print("reconnect_server_connection() caught an exception:", e)
+            self._client = None
+        self.noof_reconnections += 1
+        self._client = DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(
+            channels=self.initial_channels,
+            nickname=my_nick,
+            irc_server=self.irc_server,
+            port=self.port,
+            strictly_nick=self.strictly_nick)
+        starting_datetime = datetime.datetime.now()
+        if self._client.err:
+            raise self._client.err
+        while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
+            sleep(.1)
+        if not self.ready:
+            raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
+        if generate_fingerprint(self._client.nickname) != self._client.realname:
+            raise IrcFingerprintMismatchCausedByServer("The server detected a nickname collision and changed mine, causing my fingerprint to be invalid.")
 
     @property
     def irc_server(self):
@@ -380,32 +406,6 @@ class VanillaBot:
             return False
         else:
             return self._client.ready
-
-    def reconnect_server_connection(self, my_nick):
-#        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
-        if self._client is not None:
-            print("WARNING --- you're asking me to reconnect, but I'm already connected. That is a surprise.")
-            try:
-                self._client.disconnect("Bye")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print("reconnect_server_connection() caught an exception:", e)
-            self._client = None
-        self.noof_reconnections += 1
-        self._client = DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(
-            channels=self.initial_channels,
-            nickname=my_nick,
-            irc_server=self.irc_server,
-            port=self.port,
-            strictly_nick=self.strictly_nick)
-        starting_datetime = datetime.datetime.now()
-        if self._client.err:
-            raise self._client.err
-        while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
-            sleep(.1)
-        if not self.ready:
-            raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
-        if generate_fingerprint(self._client.nickname) != self._client.realname:
-            raise IrcFingerprintMismatchCausedByServer("The server detected a nickname collision and changed mine, causing my fingerprint to be invalid.")
 
     def transmit_this_data(self, data_to_transmit):
         (user, message) = data_to_transmit
