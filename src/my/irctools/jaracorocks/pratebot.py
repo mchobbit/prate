@@ -110,15 +110,15 @@ class PrateBot(VanillaBot):
             else:
                 try:
                     self.read_messages_from_users()
-                except IrcStillConnectingError:  # print("We are in the middle of quitting. That's okay.")
+                except IrcStillConnectingError:
                     pass
                 except FernetKeyIsInvalidError:
-                    print("Some kind of protocl error as %s in %s" % (self.nickname, self.irc_server))
+                    print("Some kind of protocol error as %s in %s" % (self.nickname, self.irc_server))
 
     def read_messages_from_users(self):
         while True:
             try:
-                (sender, msg) = self.get_nowait()  # t(timeout=1)
+                (sender, msg) = self.get_nowait()
             except Empty:
                 return
             else:
@@ -128,7 +128,7 @@ class PrateBot(VanillaBot):
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
                     self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_RQFE_):
-                    if self.homies[sender].pubkey is None:  # print("I cannot send my fernet key to %s: I don't know his public key. That's OK! I'll ask for it again..." % sender)
+                    if self.homies[sender].pubkey is None:
                         self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
                     else:
                         dc = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
@@ -150,17 +150,14 @@ class PrateBot(VanillaBot):
                     if self.homies[sender].ipaddr != new_ipaddr:
                         self.homies[sender].ipaddr = new_ipaddr
                     self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
-#                    print("I've sent %s my IP address." % sender)
                 elif msg.startswith(_TXIP_):
                     cipher_suite = Fernet(self.homies[sender].fernetkey)
                     decoded_msg = cipher_suite.decrypt(msg[len(_TXIP_):])
                     new_ipaddr = decoded_msg.decode()
                     if self.homies[sender].ipaddr != new_ipaddr:
                         self.homies[sender].ipaddr = new_ipaddr
-#                        print("%s IS PROBABLY KOSHER" % sender)
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
-#                    print("TXTX'ing")
                 else:
                     print("??? %s: %s" % (sender, msg))
 
