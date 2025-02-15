@@ -137,7 +137,9 @@ class HaremOfPrateBots:
     def outgoing_packetnumbers_dct(self):
         return self.__outgoing_packetnumbers_dct
 
-    def handshook(self, pubkey):
+    def find_nickname_by_pubkey(self, pubkey):
+        if type(pubkey) not in (str, RSA.RsaKey):
+            raise ValueError("find_nickname_by_pubkey() takes a pubkey or a nickname")
         potential_bots = {}
         for k in self.bots:
             bot = self.bots[k]
@@ -158,7 +160,7 @@ class HaremOfPrateBots:
         return potential_bots
 
     def randomly_chosen_bot_and_corresponding_nickname(self, pubkey):
-        ready_bots = self.handshook(pubkey)
+        ready_bots = self.find_nickname_by_pubkey(pubkey)
         bot_key = list(set(ready_bots.keys()))[self.outgoing_packetnumbers_dct[squeeze_da_keez(pubkey)] % len(ready_bots)]
         print("Writing to %s" % bot_key)
         bot = self.bots[bot_key]
