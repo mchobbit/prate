@@ -37,7 +37,7 @@ import validators
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
 from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
     IrcStillConnectingError, IrcNicknameTooLongError, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcRanOutOfReconnectionsError, IrcBadNicknameError, \
-    IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError
+    IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError, IrcAlreadyDisconnectedError, IrcYouCantUseABotAfterQuittingItError
 from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport, SingleServerIRCBotWithWhoisSupport
 from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK
 
@@ -125,20 +125,26 @@ class VanillaBot:
         self.__my_main_thread = Thread(target=self._main_loop, daemon=True)
         self.__my_client_start_thread.start()
         self.__my_main_thread.start()
+        self.__quitted = False
         starttime = datetime.datetime.now()
         while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(A_TICK)
         if not self.ready:
             _ = [sleep(A_TICK) for __ in range(0, 50) if self.err is None]
             if self._client is not None and self._client.err is not None:
-                self.quit(yes_even_the_reactor_thread=False)
+                self.quit()
                 raise self._client.err
             elif self.err is not None:
-                self.quit(yes_even_the_reactor_thread=False)
+                self.quit()
                 raise self.err
             else:
-                self.quit()  # yes_even_the_reactor_thread=False) QQQ
+                self.quit(yes_even_the_reactor_thread=True)
                 raise IrcInitialConnectionTimeoutError("%s completely failed to connect to %s" % (self.initial_nickname, self.irc_server))
+
+    @property
+    def quitted(self):
+        """Have I run my course, and have I been terminated (by quitting)?"""
+        return self.__quitted
 
     def reconnect_server_connection(self, my_nick):
 #        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
@@ -370,6 +376,9 @@ class VanillaBot:
             self.__should_we_quit_lock.release_write()
 
     def whois(self, user, timeout=DEFAULT_WHOIS_TIMEOUT):
+        if self.quitted:
+            raise IrcYouCantUseABotAfterQuittingItError("%s was quitted. You can't use it after that." % self.irc_server)
+
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
         return self._client.call_whois_and_wait_for_response(user, timeout)
@@ -425,19 +434,22 @@ class VanillaBot:
         (user, message) = data_to_transmit
         self._client.put(user, message)
 
-    def quit(self, yes_even_the_reactor_thread=True):  # Do we need this?
+    def quit(self, yes_even_the_reactor_thread=False, timeout=10):
         """Quit this bot."""
+        if self.quitted:
+            raise IrcAlreadyDisconnectedError("Trying to quit %s twice. This should be unnecessary." % self.irc_server)
         self.autoreconnect = False
         self.should_we_quit = True
-        self.__my_main_thread.join()
+        self.__my_main_thread.join(timeout=timeout)
         if self._client:
             self._client.reactor.disconnect_all()
             self._client.quit()
             while self._client.connected:
                 sleep(A_TICK)
         if yes_even_the_reactor_thread:
-            self.__my_client_start_thread.join()  # jaraco
+            self.__my_client_start_thread.join(timeout)  # jaraco
         sleep(1)
+        self.__quitted = True
 
 ####################################################################################
 

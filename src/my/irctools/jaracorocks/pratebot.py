@@ -241,11 +241,11 @@ class PrateBot(VanillaBot):
                 raise IrcPrivateMessageTooLongError("Cannot send %s to %s: message is too long" % (outgoing_str, user))
             self.put(user, outgoing_str)
 
-    # def quit(self, yes_even_the_reactor_thread=True):
-    #     super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread)
-    #     print("And now, I'll get rid of main loop")
-    #     self.__my_main_thread.join()
-    #     print("Huzzah")
+    def quit(self):  # Q: Why False & not True? A: I lock up if I send True.
+        super().quit()
+        print("And now, I'll get rid of main loop")
+        self.__my_main_thread.join()
+        print("Huzzah")
 
 
 if __name__ == "__main__":

@@ -32,6 +32,10 @@ Error
             IrcRealnameTruncationError
             IrcFingerprintMismatchCausedByServer
             IrcNicknameChangedByServer
+        IrcDisconnectionError
+            IrcDisconnectionTakingTooLongError
+            IrcAlreadyDisconnectedError
+            IrcYouCantUseABotAfterQuittingItError
         IrcChannelError
             IrcJoiningChannelTimeoutError
             IrcPartingChannelTimeoutError
@@ -283,6 +287,38 @@ class IrcRealnameTruncationError(IrcConnectionError):
 
 class IrcFingerprintMismatchCausedByServer(IrcConnectionError):
     """My local fingerprint and the server's copy of my fingerprint do not match, perhaps because my nickname changed somewhere"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcDisconnectionError(IrcError):
+    """Class for all IrcDisConnectionError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcDisconnectionTakingTooLongError(IrcDisconnectionError):
+    """Unknown incoming command."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcAlreadyDisconnectedError(IrcDisconnectionError):
+    """Unknown incoming command."""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class IrcYouCantUseABotAfterQuittingItError(IrcDisconnectionError):
+    """Unknown incoming command."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
