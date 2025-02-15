@@ -73,7 +73,7 @@ class VanillaBot:
             rejected by the IRC server for being a dupe, abort.
 
     Example:
-        $ bot = BotForDualQueuedSingleServerIRCBotWithWhoisSupport(['#prate'], 'mac1', 'cinqcent.local', 6667, 30, 2, True, True)
+        $ bot = VanillaBot(['#prate'], 'mac1', 'cinqcent.local', 6667, 30, 2, True, True)
         $ bot.put("mac1", "WORD")
         $ bot.get()
         ("mac1", "WORD")
