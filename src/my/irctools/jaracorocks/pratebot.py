@@ -95,7 +95,7 @@ class PrateBot(VanillaBot):
         while not self.ready and not self.should_we_quit:
             sleep(A_TICK)
         sleep(3)
-        while self.paused:
+        while self.paused and not self.should_we_quit:
             sleep(A_TICK)
 
         if not self.should_we_quit:
@@ -241,11 +241,9 @@ class PrateBot(VanillaBot):
                 raise IrcPrivateMessageTooLongError("Cannot send %s to %s: message is too long" % (outgoing_str, user))
             self.put(user, outgoing_str)
 
-    def quit(self):  # Q: Why False & not True? A: I lock up if I send True.
+    def quit(self):
         super().quit()
-        print("And now, I'll get rid of main loop")
-        self.__my_main_thread.join()
-        print("Huzzah")
+        self.__my_main_thread.join(timeout=10)
 
 
 if __name__ == "__main__":
