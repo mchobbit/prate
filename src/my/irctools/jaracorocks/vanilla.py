@@ -127,7 +127,8 @@ class VanillaBot:
         self.__my_main_thread.start()
         self.__quitted = False
         starttime = datetime.datetime.now()
-        while not self.ready and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
+        # Make initial attempt to join IRC server
+        while not self.ready and not self.should_we_quit and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(A_TICK)
         if not self.ready:
             _ = [sleep(A_TICK) for __ in range(0, 50) if self.err is None]
