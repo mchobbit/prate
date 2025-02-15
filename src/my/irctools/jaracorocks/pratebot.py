@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Example Google style docstrings.
+"""PrateBot class code.
 
 Created on Jan 30, 2025
 
 @author: mchobbit
 
-This module contains classes for creating a Prate class that monitors the IRC
-server and sets up secure comms between users.
+This module contains the code for PrateBot, a Jaraco-class IRC bot to
+connect to an IRC server and maintain secure communication channels with
+some of its users.
 
 Todo:
     * Better docs
@@ -57,6 +58,52 @@ _TXTX_ = "XX"
 
 
 class PrateBot(VanillaBot):
+    """Bot for encrypted communication with other IRC users.
+
+    The PrateBot class runs an enhanced IRC bot in the background. It
+    reconnects it if it disconnects. It allows for nickname collision
+    and can resolve it by reconnecting with a new nick (if wished). It
+    offers rudimentary buffered private message sending and receiving.
+    It offers up a userlist of all users in all channels that the bot
+    has joined. Also, it negotiates public keys, followed by symmetric
+    keys, and finally IP addresses. This facilitates secure comms
+    between IRC users.
+
+    Note:
+        There is no did-the-message-arrive-or-not checking.
+
+    Args:
+        channels (list of str): The channels to join, e.g. ['#test','#test2']
+        nickname (str): The ideal nickname. The actual nickname is
+            that one, unless there's a collision reported by the
+            server. In that case, a new nick will be chosen at
+            random & submitted if strictly_nick is False.
+            The current nick is always available from the attribute
+            .nickname .
+        irc_server (str): The server, e.g. irc.dal.net
+        port (int): The port# to use.
+        rsa_key (RSA.Key): The RSA key to use.
+        startup_timeout (int): How long should we wait to connect?
+        maximum_reconnections (int): Maximum number of permitted
+            reconnection attempts.
+        autoreconnect (bool): If True, autoreconnect should a
+            disconnection occur. If False, don't.
+        strictly_nick (bool): If True, and the nickname is
+            rejected by the IRC server for being a dupe, abort.
+
+    Example:
+        $ my_rsa_key1 = RSA.generate(2048)
+        $ my_rsa_key2 = RSA.generate(2048)
+        $ bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1, 30, 2, True, True)
+        $ bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2, 30, 2, True, True)
+        $ sleep(30)
+        $ bot1.crypto_put("mac1", "WORD")
+        $ bot2.crypto_get()
+        ("mac1", "WORD")
+        $ bot1.quit()
+        $ bot2.quit()
+
+    """
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
                  startup_timeout=10, maximum_reconnections=2,
