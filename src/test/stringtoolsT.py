@@ -8,7 +8,7 @@ import unittest
 from my.stringtools import  generate_irc_handle, encode_via_steg, decode_via_steg, get_word_salad
 import paramiko
 from my.globals.poetry import CICERO, HAMLET
-from my.globals import VANILLA_WORD_SALAD
+from my.globals import VANILLA_WORD_SALAD, MAX_NICKNAME_LENGTH
 
 
 class Test(unittest.TestCase):
@@ -30,10 +30,10 @@ class Test(unittest.TestCase):
 
     def testIrcNickGenerator(self):
         for _ in range(10):
-            for minval in range(5, 10):
+            for minval in range(5, MAX_NICKNAME_LENGTH):
                 nick = generate_irc_handle(minval)
                 self.assertTrue(minval <= len(nick))
-                for maxval in range(minval, 20):
+                for maxval in range(minval, MAX_NICKNAME_LENGTH):
                     nick = generate_irc_handle(minval, maxval)
                     self.assertTrue(minval <= len(nick) <= maxval)
 
