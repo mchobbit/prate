@@ -1,11 +1,11 @@
-"""PrateBot class(es) for miniircd-ish... boring.
+"""Jaraco-style IRC bot classes.
 
 Created on Jan 30, 2025
 
 @author: mchobbit
 
-This module contains classes for creating a Prate class that monitors the IRC
-server and sets up secure comms between users.
+This module contains classes for creating a Jaraco-style class of bot
+that monitors an IRC server and sets up secure comms between users.
 
 Todo:
     * Better docs
