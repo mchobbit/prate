@@ -58,64 +58,10 @@ from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, A_TICK
+from my.globals import A_TICK
 import datetime
 
 MAXIMUM_HAREM_BLOCK_SIZE = 288
-
-# def get_list_of_kosher_IRC_servers(list_of_potential_servers=ALL_IRC_NETWORK_NAMES):
-#     Xbots = {}
-#     Ybots = {}
-#     my_channel = '#platit'
-#     X_desired_nickname = 'x%sx' % generate_random_alphanumeric_string(7)
-#     Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
-#
-#     my_port = 6667
-#     for my_irc_server in list_of_potential_servers:
-#         Xbots[my_irc_server] = BotForDualQueuedSingleServerIRCBotWithWhoisSupport([my_channel], X_desired_nickname, my_irc_server, my_port)
-#         Ybots[my_irc_server] = BotForDualQueuedSingleServerIRCBotWithWhoisSupport([my_channel], Y_desired_nickname, my_irc_server, my_port)
-#
-#     successes_thus_far = -1
-#     while successes_thus_far < len([k for k in list_of_potential_servers if Xbots[k].ready and Ybots[k].ready]):
-#         successes_thus_far = len([k for k in list_of_potential_servers if Xbots[k].ready and Ybots[k].ready])
-#         sleep(10)
-#
-#     goodK = [k for k in list_of_potential_servers if Xbots[k].ready and Ybots[k].ready]
-#
-#     for k in goodK:
-#         for xy in (Xbots, Ybots):
-#             try:
-#                 while True:
-#                     _ = xy[k].get_nowait()
-#             except Empty:
-#                 break
-#
-#     for k in goodK:
-#         print("Trying %s" % k)
-#         if Xbots[k].ready and Ybots[k].ready:
-#             p = "WORD UP FROM %s" % k
-#             Xbots[k].put(Y_desired_nickname, p)
-#
-#     defective_items = []
-#     yayK = []
-#     for k in goodK:
-#         p = "WORD UP FROM %s" % k
-#         try:
-#             (src, msg) = Ybots[k].get_nowait()
-#         except:
-#             src = None
-#             msg = None
-#         else:
-#             if p == msg:
-#                 yayK += [k]
-#             else:
-#                 print("%s is defective" % k)
-#                 defective_items += [k]
-#
-#     for k in goodK:
-#         Xbots[k].quit()
-#         Ybots[k].quit()
-#     return yayK
 
 
 class HaremOfPrateBots:
