@@ -241,8 +241,8 @@ class PrateBot(VanillaBot):
                 raise IrcPrivateMessageTooLongError("Cannot send %s to %s: message is too long" % (outgoing_str, user))
             self.put(user, outgoing_str)
 
-    def quit(self):
-        super().quit()
+    def quit(self, yes_even_the_reactor_thread=False, timeout=10):
+        super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread, timeout=timeout)
         self.__my_main_thread.join(timeout=10)
 
 
