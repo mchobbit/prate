@@ -90,7 +90,7 @@ from my.stringtools import generate_random_alphanumeric_string
 from queue import Empty
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES
 from random import randint
-from my.classes.exceptions import IrcDuplicateNicknameError, IrcInitialConnectionTimeoutError
+from my.classes.exceptions import IrcDuplicateNicknameError, IrcInitialConnectionTimeoutError, IrcAlreadyDisconnectedError
 
 
 class TestVanillaBot(unittest.TestCase):
@@ -126,6 +126,24 @@ class TestVanillaBot(unittest.TestCase):
         alice_bot.quit()
         self.assertTrue(alice_nick not in bob_bot.users)
         bob_bot.quit()
+
+    def testDoubleQuit(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        first_room = '#room' + generate_random_alphanumeric_string(5)
+        alice_bot = VanillaBot(channels=[first_room],
+                         nickname=alice_nick,
+                         irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
+                         port=6667,
+                         startup_timeout=3,
+                         maximum_reconnections=2,
+                         strictly_nick=True,
+                         autoreconnect=True)
+        self.assertTrue(alice_bot.ready)
+        self.assertFalse(alice_bot.quitted)
+        alice_bot.quit()
+        self.assertTrue(alice_bot.quitted)
+        self.assertRaises(IrcAlreadyDisconnectedError, alice_bot.quit)
+        self.assertTrue(alice_bot.quitted)
 
     def testMultipleChannelsUserlist(self):
         alice_nick = 'alice%d' % randint(111, 999)
