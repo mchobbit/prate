@@ -36,7 +36,7 @@ from my.stringtools import generate_irc_handle, generate_random_alphanumeric_str
 from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
     IrcStillConnectingError, IrcNicknameTooLongError, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcRanOutOfReconnectionsError, IrcBadNicknameError, \
     IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError, IrcAlreadyDisconnectedError, IrcYouCantUseABotAfterQuittingItError
-from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport, SingleServerIRCBotWithWhoisSupport
+from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
 from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK
 
 
@@ -307,14 +307,6 @@ class VanillaBot:
         return self._client.realname
 
     @property
-    def currentlyexpected_nickname(self):
-        return self.__currentlyexpected_nickname
-
-    @currentlyexpected_nickname.setter
-    def currentlyexpected_nickname(self, value):
-        self.__currentlyexpected_nickname = value
-
-    @property
     def _client(self):
         """Our instance of a Jaraco-style bot that runs in the background & talks to the IRC server."""
         return self.__client
@@ -396,7 +388,6 @@ class VanillaBot:
         """Obtain the /whois record of the specified user."""
         if self.quitted:
             raise IrcYouCantUseABotAfterQuittingItError("%s was quitted. You can't use it after that." % self.irc_server)
-
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
         return self._client.call_whois_and_wait_for_response(user, timeout)
@@ -456,10 +447,6 @@ class VanillaBot:
         else:
             return self._client.ready
 
-    def transmit_this_data(self, data_to_transmit):
-        (user, message) = data_to_transmit
-        self._client.put(user, message)
-
     def quit(self, yes_even_the_reactor_thread=False, timeout=10):
         """Quit this bot."""
         if self.quitted:
@@ -477,11 +464,3 @@ class VanillaBot:
         sleep(1)
         self.__quitted = True
 
-####################################################################################
-
-
-if __name__ == "__main__":
-
-    ircbot = SingleServerIRCBotWithWhoisSupport(channels=["#prate"], nickname='clyde', realname='ccllyyddee', irc_server='cinqcent.local', port=6667)
-    ircbot.connect("cinqcent.local", 6667, "clyde")
-    ircbot.start()
