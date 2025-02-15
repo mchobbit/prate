@@ -32,7 +32,6 @@ Example:
 import sys
 from threading import Thread
 
-# from my.classes.readwritelock import ReadWriteLock
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
                             IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
@@ -46,7 +45,6 @@ import base64
 from my.classes.readwritelock import ReadWriteLock
 from my.classes.homies import HomiesDct
 from queue import Queue, Empty
-# from my.globals import JOINING_IRC_SERVER_TIMEOUT, PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
 
 _RQPK_ = "He"
 _TXPK_ = "TK"
