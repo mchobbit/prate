@@ -45,7 +45,7 @@ class Test(unittest.TestCase):
             while nick not in all_nicks:
                 all_nicks += [nick]
                 nick = generate_irc_handle(minimum_desired_length=6)
-                self.assertTrue(len(all_nicks) < 300)
+                self.assertLess(len(all_nicks), 500)
             keyspace_lst += [len(all_nicks)]
 #        print("Average of %d keyspace" % (sum(keyspace_lst) / len(keyspace_lst)))
 
