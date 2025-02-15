@@ -59,6 +59,7 @@ from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, A_TICK
+import datetime
 
 MAXIMUM_HAREM_BLOCK_SIZE = 288
 
@@ -312,6 +313,10 @@ class HaremOfPrateBots:
     def bots(self):
         return self.__bots
 
+    def trigger_handshaking(self):
+        for k in self.bots:
+            self.bots[k].trigger_handshaking()
+
     @property
     def list_of_all_irc_servers(self):
         return self.__list_of_all_irc_servers
@@ -333,6 +338,7 @@ class HaremOfPrateBots:
         for k in self.list_of_all_irc_servers:
 #            print("Trying", k)
             self.try_to_log_into_this_IRC_server(k)
+        self.trigger_handshaking()
 #        failures = lambda: [k for k in self.bots if self.bots[k].noof_reconnections >= 3 and not self.bots[k].client]
 #        successes = lambda: [k for k in self.bots if self.bots[k].client and self.bots[k].client.joined]
 #        print("successes:", successes)
@@ -353,7 +359,7 @@ class HaremOfPrateBots:
                                    rsa_key=self.rsa_key,
                                    startup_timeout=self.startup_timeout,
                                    maximum_reconnections=self.maximum_reconnections,
-                                   strictly_nick=True)
+                                   strictly_nick=False)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             print("Failed to join", k)
         else:
@@ -369,15 +375,15 @@ class HaremOfPrateBots:
 
     @property
     def ready(self):
-        return [k for k in h1.bots if self.bots[k].ready]
+        return [k for k in self.bots if self.bots[k].ready]
 
 
 if __name__ == "__main__":
     print("Hi.")
-    my_rsa_key1 = RSA.generate(2048)
-    my_rsa_key2 = RSA.generate(2048)
-
-    h1 = HaremOfPrateBots(['#prate'], 'mac3333', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
-    h2 = HaremOfPrateBots(['#prate'], 'mac4444', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
-    print("Yay.")
-    print("<fin?")
+    # my_rsa_key1 = RSA.generate(2048)
+    # my_rsa_key2 = RSA.generate(2048)
+    #
+    # h1 = HaremOfPrateBots(['#prate'], 'mac3333', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key1, startup_timeout=30, maximum_reconnections=2)
+    # h2 = HaremOfPrateBots(['#prate'], 'mac4444', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key2, startup_timeout=30, maximum_reconnections=2)
+    # print("Yay.")
+    # print("<fin?")

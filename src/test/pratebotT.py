@@ -19,6 +19,7 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageContainsBadCharsError, IrcBadNicknameError, IrcChannelNameTooLongError, IrcBadChannelNameError, \
     IrcNicknameTooLongError, IrcBadServerPortError, IrcBadServerNameError
 from random import randint
+from my.stringtools import flatten
 
 
 class TestGroupOne(unittest.TestCase):
@@ -439,6 +440,22 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.quit()
         bot2.quit()
+
+
+class TestHugeNumberOfUsers(unittest.TestCase):
+
+    def testTwentyUsersAtOnce(self):
+        noof_nicks = 20
+        bots = {}
+        keys = {}
+        for _ in range(0, noof_nicks):
+            nickname = 'big%d' % randint(111, 999)
+            keys[nickname] = RSA.generate(2048)
+            bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
+        while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
+            sleep(5)
+        for k in bots:
+            bots[k].quit()
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ import base64
 from urllib3.connectionpool import HTTPSConnectionPool
 import string
 
+from functools import reduce
+
+from typing import Iterable
+
 # def get_random_zenquote(timeout:int=10) -> str:
 #     """Return an uplifting quote from ZenQuotes.
 #
@@ -407,3 +411,14 @@ def multiline_encode_via_steg(plaintext, salad_txt=VANILLA_WORD_SALAD, random_of
 def chop_up_string_into_substrings_of_N_characters(s, n):
     return [(s[i:i + n]) for i in range(0, len(s), n)]
 
+# from collections import Iterable                            # < py38
+
+
+def flatten(items):
+    """Yield items from any nested iterable; see Reference."""
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            for sub_x in flatten(x):
+                yield sub_x
+        else:
+            yield x

@@ -26,8 +26,160 @@ from my.irctools.jaracorocks.harem import HaremOfPrateBots
 from my.stringtools import generate_random_alphanumeric_string
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES
 from random import randint
+import datetime
 
-# class TestReliabilityOfEachPotentialIRCServer(unittest.TestCase):
+
+class TestHaremZero(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def testOneitemServerList(self):
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        noof_channels = 1
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        print("testOneitemServerList is waiting for handshaking to complete")
+        while len(h1.handshook(my_rsa_key2.public_key())) < noof_channels and len(h2.handshook(my_rsa_key1.public_key())) < noof_channels:
+            sleep(1)
+        h1.quit()
+        h2.quit()
+
+    def testTwoitemsServerList(self):
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        noof_channels = 2
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        print("testTwoitemsServerList is waiting for handshaking to complete")
+        while len(h1.handshook(my_rsa_key2.public_key())) < noof_channels and len(h2.handshook(my_rsa_key1.public_key())) < noof_channels:
+            sleep(1)
+            if datetime.datetime.now().second == 0:
+                h1.trigger_handshaking()
+                h2.trigger_handshaking()
+        h1.quit()
+        h2.quit()
+
+    def testServerListOfOneGoodAndOneNonexistent(self):
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        list_of_all_irc_servers = ['cinqcent.local', 'rpi0irc99.local']
+        noof_channels = len(list_of_all_irc_servers)
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        print("testServerListOfOneGoodAndOneNonexistent is waiting for handshaking to complete")
+        while len(h1.handshook(my_rsa_key2.public_key())) < noof_channels - 1 and len(h2.handshook(my_rsa_key1.public_key())) < noof_channels - 1:
+            sleep(1)
+            if datetime.datetime.now().second == 0:
+                h1.trigger_handshaking()
+                h2.trigger_handshaking()
+        h1.quit()
+        h2.quit()
+
+    def testServerListOfOneNonexistentAndOneGood(self):
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        list_of_all_irc_servers = ['rpi0irc99.local', 'cinqcent.local']
+        noof_channels = len(list_of_all_irc_servers)
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        print("testServerListOfOneNonexistentAndOneGood is waiting for handshaking to complete")
+        while len(h1.handshook(my_rsa_key2.public_key())) < noof_channels - 1 and len(h2.handshook(my_rsa_key1.public_key())) < noof_channels - 1:
+            sleep(1)
+            if datetime.datetime.now().second == 0:
+                h1.trigger_handshaking()
+                h2.trigger_handshaking()
+        h1.quit()
+        h2.quit()
+
+    def testServerListOfTwoNonexistent(self):
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        list_of_all_irc_servers = ['rpi0irc98.local', 'rpi0irc99.local']
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        sleep(5)
+        self.assertEqual(0, len(h1.bots))
+        self.assertEqual(0, len(h2.bots))
+        h1.quit()
+        h2.quit()
+
+    def testFouritemsServerList(self):
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        noof_channels = 4
+        print("testThreeandmoreitemsServerList with %d channels" % noof_channels)
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        print("testFouritemsServerList is waiting for handshaking to complete")
+        while len(h1.handshook(my_rsa_key2.public_key())) < noof_channels and len(h2.handshook(my_rsa_key1.public_key())) < noof_channels:
+            sleep(1)
+            if datetime.datetime.now().second == 0:
+                h1.trigger_handshaking()
+                h2.trigger_handshaking()
+        h1.quit()
+        h2.quit()
+
+    # def testFullServerList(self):
+    #     my_rsa_key1 = RSA.generate(2048)
+    #     my_rsa_key2 = RSA.generate(2048)
+    #     the_room = '#room' + generate_random_alphanumeric_string(5)
+    #     noof_channels = 4
+    #     print("testThreeandmoreitemsServerList with %d channels" % noof_channels)
+    #     list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+    #     alice_nick = 'alice%d' % randint(111, 999)
+    #     bob_nick = 'bob%d' % randint(111, 999)
+    #     h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+    #     h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+    #     print("testFullServerList is waiting for handshaking to complete")
+    #     while len(h1.handshook(my_rsa_key2.public_key())) < noof_channels and len(h2.handshook(my_rsa_key1.public_key())) < noof_channels:
+    #         sleep(1)
+    #     h1.quit()
+    #     h2.quit()
+
+# class TestHaremOne(unittest.TestCase):
+#
+#     @classmethod
+#     def setUpClass(cls):
+#         cls.my_rsa_key1 = RSA.generate(2048)
+#         cls.my_rsa_key2 = RSA.generate(2048)
+#         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:4]
+#         alice_nick = 'alice%d' % randint(111, 999)
+#         bob_nick = 'bob%d' % randint(111, 999)
+#         cls.h1 = HaremOfPrateBots(['#locerno'], alice_nick, list_of_all_irc_servers, cls.my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
+#         cls.h2 = HaremOfPrateBots(['#locerno'], bob_nick, list_of_all_irc_servers, cls.my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+#         while len(cls.h1.handshook(cls.my_rsa_key2.public_key())) < 3 and len(cls.h2.handshook(cls.my_rsa_key1.public_key())) < 3:
+#             sleep(.1)
+#
+#     @classmethod
+#     def tearDownClass(cls):
+#         cls.h1.quit()
+#         cls.h2.quit()
 #
 #     def setUp(self):
 #         pass
@@ -36,77 +188,29 @@ from random import randint
 #         pass
 #
 #     def testFirstOfAll(self):
-#         Xbots = {}
-#         Ybots = {}
-#         Xmy_rsa_key = RSA.generate(2048)
-#         Ymy_rsa_key = RSA.generate(2048)
-#         my_channel = '#plate'
-#         X_desired_nickname = 'x%sx' % generate_random_alphanumeric_string(7)
-#         Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
-#         my_port = 6667
-#         for my_irc_server in ALL_IRC_NETWORK_NAMES:
-#             Xbots[my_irc_server] = PrateBot([my_channel], X_desired_nickname, my_irc_server, my_port, Xmy_rsa_key)
-#             Ybots[my_irc_server] = PrateBot([my_channel], Y_desired_nickname, my_irc_server, my_port, Ymy_rsa_key)
-#         sleep(60)
-#         for my_irc_server in ALL_IRC_NETWORK_NAMES:
-#             Xbots[my_irc_server].crypto_put(Ymy_rsa_key.public_key(), b"HELLO WORLD")
-#         sleep(5)
-#         for my_irc_server in ALL_IRC_NETWORK_NAMES:
-#             (pk, msg) = Ybots[my_irc_server].crypto_get_nowait()
-#             if msg != b'HELLO WORLD':
-#                 print("%s sucks" % my_irc_server)
-#         print("OK.")
-
-
-class TestHaremOne(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.my_rsa_key1 = RSA.generate(2048)
-        cls.my_rsa_key2 = RSA.generate(2048)
-        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES
-        alice_nick = 'alice%d' % randint(111, 999)
-        bob_nick = 'bob%d' % randint(111, 999)
-        cls.h1 = HaremOfPrateBots(['#locerno'], alice_nick, list_of_all_irc_servers, cls.my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
-        cls.h2 = HaremOfPrateBots(['#locerno'], bob_nick, list_of_all_irc_servers, cls.my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
-        while len(cls.h1.handshook(cls.my_rsa_key2.public_key())) < 3 and len(cls.h2.handshook(cls.my_rsa_key2.public_key())) < 3:
-            sleep(.1)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.h1.quit()
-        cls.h2.quit()
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def testFirstOfAll(self):
-
-        plaintext = b""
-        self.h1.put(self.my_rsa_key2.public_key(), plaintext)
-        pkey, xferred_data = self.h2.get()
-        self.assertEqual((self.my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
-
-        plaintext = b"WORD UP, HOMIE G."
-        self.h1.put(self.my_rsa_key2.public_key(), plaintext)
-        pkey, xferred_data = self.h2.get()
-        self.assertEqual((self.my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
-
-        for length in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000):
-            plaintext = generate_random_alphanumeric_string(length).encode()
-            self.h1.put(self.my_rsa_key2.public_key(), plaintext)
-            pkey, xferred_data = self.h2.get()
-            self.assertEqual((self.my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
-
-    def testOneHundredLittleOnes(self):
-        for _ in range(0, 100):
-            plaintext = generate_random_alphanumeric_string(50).encode()
-            self.h1.put(self.my_rsa_key2.public_key(), plaintext)
-            pk, msg = self.h2.get()
-            self.assertEqual((pk, msg), (self.my_rsa_key1.public_key(), plaintext))
+#
+#         plaintext = b""
+#         self.h1.put(self.my_rsa_key2.public_key(), plaintext)
+#         pkey, xferred_data = self.h2.get()
+#         self.assertEqual((self.my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
+#
+#         plaintext = b"WORD UP, HOMIE G."
+#         self.h1.put(self.my_rsa_key2.public_key(), plaintext)
+#         pkey, xferred_data = self.h2.get()
+#         self.assertEqual((self.my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
+#
+#         for length in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000):
+#             plaintext = generate_random_alphanumeric_string(length).encode()
+#             self.h1.put(self.my_rsa_key2.public_key(), plaintext)
+#             pkey, xferred_data = self.h2.get()
+#             self.assertEqual((self.my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
+#
+#     def testOneHundredLittleOnes(self):
+#         for _ in range(0, 100):
+#             plaintext = generate_random_alphanumeric_string(50).encode()
+#             self.h1.put(self.my_rsa_key2.public_key(), plaintext)
+#             pk, msg = self.h2.get()
+#             self.assertEqual((pk, msg), (self.my_rsa_key1.public_key(), plaintext))
 
     # .handshook <== test
 
@@ -120,4 +224,5 @@ class TestHaremOne(unittest.TestCase):
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
+    pass
 

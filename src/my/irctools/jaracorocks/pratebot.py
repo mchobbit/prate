@@ -100,7 +100,7 @@ class PrateBot(VanillaBot):
 
         if not self.should_we_quit:
             try:
-                self.trigger_handshaking_with_the_other_users()
+                self.trigger_handshaking()
             except IrcIAmNotInTheChannelError:
                 print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
 
@@ -135,13 +135,13 @@ class PrateBot(VanillaBot):
                         dc = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
                         if self.homies[sender].remotely_supplied_fernetkey != dc:
                             self.homies[sender].remotely_supplied_fernetkey = dc
-                            print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
+#                            print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                         self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_TXFE_):
                     dc = rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
                     if self.homies[sender].remotely_supplied_fernetkey != dc:
                         self.homies[sender].remotely_supplied_fernetkey = dc
-                        print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
+#                        print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                     if self.homies[sender].fernetkey is not None:
                         self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
                 elif msg.startswith(_RQIP_):
@@ -157,13 +157,13 @@ class PrateBot(VanillaBot):
                     new_ipaddr = decoded_msg.decode()
                     if self.homies[sender].ipaddr != new_ipaddr:
                         self.homies[sender].ipaddr = new_ipaddr
-                    print("%s --- %s now has %s's IP address. The link has been established." % (self.irc_server, self.nickname, sender))
+                        print("%s --- %s now has %s's IP address. The link has been established." % (self.irc_server, self.nickname, sender))
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
                 else:
                     print("??? %s: %s" % (sender, msg))
 
-    def trigger_handshaking_with_the_other_users(self):
+    def trigger_handshaking(self):
         if not self.ready:
             print("I choose not to try to trigger handshaking with other users: I'm not even online/joinedroom yet.")
         else:
@@ -240,6 +240,12 @@ class PrateBot(VanillaBot):
             if len(outgoing_str) > MAX_PRIVMSG_LENGTH - len(user):
                 raise IrcPrivateMessageTooLongError("Cannot send %s to %s: message is too long" % (outgoing_str, user))
             self.put(user, outgoing_str)
+
+    # def quit(self, yes_even_the_reactor_thread=True):
+    #     super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread)
+    #     print("And now, I'll get rid of main loop")
+    #     self.__my_main_thread.join()
+    #     print("Huzzah")
 
 
 if __name__ == "__main__":
