@@ -5,11 +5,9 @@ Created on Jan 22, 2025
 
 @author: mchobbit
 
-This module contains classes, functions, and other tools that were inspired
-by or taken from the work that Jaraco did on an IRC project. That project
-helps programmers to speak to IRC servers in meaningful ways. For example,
-some of the classes and subclasses facilitate asynchronous communication
-with a chosen server, sending messages, running channels, etc.
+This module contains the class VanillaBot, which wraps around
+DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport and
+provides an enhanced IRC bot that runs in the background.
 
 URL of Jaraco's project:
     https://github.com/jaraco/irc/blob/main/scripts/irccat.py
@@ -45,21 +43,23 @@ from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH
 class VanillaBot:
     """Bot for dual-queue IRC bot with fingerprinting and with Whois support.
 
-    This class provides a self-sustaining connection to the IRC server of
-    choice. It offers up a simple interface for sending and receiving
-    private messages, irrespective of the connecting/disconnecting/
-    reconnecting behind the scenes.
+    The VanillaBot class runs an enhanced IRC bot in the background. It
+    reconnects it if it disconnects. It allows for nickname collision
+    and can resolve it by reconnecting with a new nick (if wished). It
+    offers rudimentary buffered private message sending and receiving.
+    It offers up a userlist of all users in all channels that the bot
+    has joined.
 
     Note:
-        This includes very little error-handling & virtually no
-        did-the-message-arrive-or-not checking.
+        There is no did-the-message-arrive-or-not checking.
 
     Args:
-        channels (list of str): The channels to join, e.g. #test
+
+        channels (list of str): The channels to join, e.g. ['#test','#test2']
         nickname (str): The ideal nickname. The actual nickname is
             that one, unless there's a collision reported by the
-            server. In that case, _on_nicknameinuse() will be
-            triggered and a new nick will be chosen & submitted.
+            server. In that case, a new nick will be chosen at
+            random & submitted if strictly_nick is False.
             The current nick is always available from the attribute
             .nickname .
         irc_server (str): The server, e.g. irc.dal.net
@@ -67,20 +67,17 @@ class VanillaBot:
         startup_timeout (int): How long should we wait to connect?
         maximum_reconnections (int): Maximum number of permitted
             reconnection attempts.
-        strictly_nick (bool): If True, and the nickname is
-            rejected by the IRC server for being a dupe, abort.
         autoreconnect (bool): If True, autoreconnect should a
             disconnection occur. If False, don't.
-
-    Attributes:
-        nickname (str): The current nickname, per the IRC server.
+        strictly_nick (bool): If True, and the nickname is
+            rejected by the IRC server for being a dupe, abort.
 
     Example:
-        $ bot = BotForDualQueuedSingleServerIRCBotWithWhoisSupport('#prate', 'mac1', 'cinqcent.local', 6667)
-        $ while not bot.ready: sleep(1)
+        $ bot = BotForDualQueuedSingleServerIRCBotWithWhoisSupport(['#prate'], 'mac1', 'cinqcent.local', 6667, 30, 2, True, True)
         $ bot.put("mac1", "WORD")
         $ bot.get()
         ("mac1", "WORD")
+        $ bot.quit()
 
 """
 
@@ -144,11 +141,11 @@ class VanillaBot:
 
     @property
     def quitted(self):
-        """Have I run my course, and have I been terminated (by quitting)?"""
+        """Have I run my course, and have I been terminated (by a self.quit() call)?"""
         return self.__quitted
 
     def reconnect_server_connection(self, my_nick):
-#        print("*** Connecting to %s as %s  ***" % (self.irc_server, my_nick))
+        """Reconnect to the IRC server."""
         if self._client is not None:
             print("WARNING --- you're asking me to reconnect, but I'm already connected. That is a surprise.")
             try:
@@ -175,22 +172,27 @@ class VanillaBot:
 
     @property
     def irc_server(self):
+        """URL of the IRC server."""
         return self.__irc_server
 
     @property
     def initial_channels(self):
+        """The initial channels that I was told to join."""
         return self.__initial_channels
 
     @property
     def strictly_nick(self):
+        """Should I insist on using the given nickname & not negotiating another if a collision occurs?"""
         return self.__strictly_nick
 
     @property
     def port(self):
+        """Port# to use when connecting to the IRC server."""
         return self.__port
 
     @property
     def err(self):
+        """The exception, if any, that occurred during the main background loop."""
         return self.__err
 
     @err.setter
@@ -199,9 +201,11 @@ class VanillaBot:
 
     @property
     def channels(self):
+        """List of the IRC channels that I've joined and am in now."""
         return self._client.channels
 
     def join(self, channel):
+        """Join this IRC channel."""
         self._client.connection.join(channel)
         for _ in range(0, SENSIBLE_TIMEOUT * 10):
             sleep(A_TICK)
@@ -210,6 +214,7 @@ class VanillaBot:
         raise IrcJoiningChannelTimeoutError("%s --- %s timed out while joining #%d" % (self.irc_server, self.nickname, channel))
 
     def part(self, channel):
+        """Leave this IRC channel."""
         self._client.connection.part(channel)
         for _ in range(0, SENSIBLE_TIMEOUT * 10):
             sleep(A_TICK)
@@ -235,6 +240,7 @@ class VanillaBot:
         return lst
 
     def _client_start(self):
+        """Start a Jaraco-ish bot class instance."""
         while not self._client and not self.should_we_quit:
             sleep(A_TICK)
         while self._client and not self.should_we_quit:
@@ -245,6 +251,7 @@ class VanillaBot:
                 sleep(A_TICK)
 
     def _main_loop(self):
+        """The main background loop. It maintains our connection with the IRC server."""
         have_we_ever_successfully_connected = False
         my_nick = self.initial_nickname
         while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
@@ -291,10 +298,12 @@ class VanillaBot:
 
     @property
     def initial_nickname(self):
+        """What was the initial nickname that I was told to use?"""
         return self.__initial_nickname
 
     @property
     def fingerprint(self):
+        """What is the realname (AKA fingerprint) according to the IRC server's /whois record?"""
         return self._client.realname
 
     @property
@@ -307,6 +316,7 @@ class VanillaBot:
 
     @property
     def _client(self):
+        """Our instance of a Jaraco-style bot that runs in the background & talks to the IRC server."""
         return self.__client
 
     @_client.setter
@@ -315,6 +325,7 @@ class VanillaBot:
 
     @property
     def noof_reconnections(self):
+        """How many reconnections have already been attempted?"""
         self.__noof_reconnections_lock.acquire_read()
         try:
             retval = self.__noof_reconnections
@@ -332,18 +343,22 @@ class VanillaBot:
 
     @property
     def startup_timeout(self):
+        """How many seconds should elapse before the initial connection attempt is reported as a failure?"""
         return self.__startup_timeout
 
     @property
     def received_queue(self):
+        """FIFO queue of private messages that were sent to my nickname at the IRC server by other users."""
         return self.__received_queue
 
     @property
     def transmit_queue(self):
+        """FIFO queue of private messages that I have been told to send to other users on the IRC server."""
         return self.__transmit_queue
 
     @property
     def autoreconnect(self):
+        """Should I autoreconnect?"""
         self.__autoreconnect_lock.acquire_read()
         try:
             retval = self.__autoreconnect
@@ -361,6 +376,7 @@ class VanillaBot:
 
     @property
     def should_we_quit(self):
+        """Have I been intructed to start quitting?"""
         self.__should_we_quit_lock.acquire_read()
         try:
             retval = self.__should_we_quit
@@ -377,6 +393,7 @@ class VanillaBot:
             self.__should_we_quit_lock.release_write()
 
     def whois(self, user, timeout=DEFAULT_WHOIS_TIMEOUT):
+        """Obtain the /whois record of the specified user."""
         if self.quitted:
             raise IrcYouCantUseABotAfterQuittingItError("%s was quitted. You can't use it after that." % self.irc_server)
 
@@ -386,16 +403,20 @@ class VanillaBot:
 
     @property
     def nickname(self):
+        """What is my current nickname on the IRC server?"""
         return self._client.nickname
 
-    def empty(self):
+    def empty(self):  # FUNCTION
+        """Is my queue (of private messages from the IRC server's users) empty?"""
         return self._client.empty()
 
     @property
-    def not_empty(self):
+    def not_empty(self):  # ATTRIBUTE
+        """Is my queue (of private messages from the IRC server's users) not empty?"""
         return self._client.not_empty
 
     def put(self, user, msg):
+        """Send a private message to the specified user on the IRC server."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
         if len(user) > MAX_NICKNAME_LENGTH:
@@ -409,21 +430,25 @@ class VanillaBot:
         return self._client.put(user, msg)
 
     def get(self, block=True, timeout=None):
+        """Retrieve the next private message from our queue, sent by a user on the IRC server."""
         if self._client is None or not self._client.ready:
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         return self._client.get(block, timeout)
 
     def get_nowait(self):
+        """Retrieve the next private message from our queue, sent by a user on the IRC server."""
         if self._client is None or not self._client.ready:
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         return self._client.get_nowait()
 
     @property
     def maximum_reconnections(self):
+        """How many reconnections will the main loop be allowed to attempt to make, if the IRC connection drops?"""
         return self.__maximum_reconnections
 
     @property
     def ready(self):
+        """Is our bot connected to the IRC server and has it joined our desired rooms?"""
         if self._client is None:
             return False
         elif not hasattr(self._client, 'ready'):
