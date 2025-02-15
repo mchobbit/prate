@@ -25,6 +25,9 @@ Todo:
 
 Example:
 
+import os
+import socket
+hostname = socket.gethostname()
 
 from my.irctools.jaracorocks.harem import HaremOfPrateBots
 from Crypto.PublicKey import RSA
