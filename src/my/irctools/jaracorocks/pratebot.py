@@ -297,7 +297,9 @@ class PrateBot(VanillaBot):
 
     def quit(self, yes_even_the_reactor_thread=False, timeout=10):
         super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread, timeout=timeout)
-        self.__my_main_thread.join(timeout=10)
+        if hasattr(self, '__my_main_thread'):  # Is someone deleting it?
+            print("HUZZAH! WE CAN CLOSE THE MAIN THREAD.")
+            self.__my_main_thread.join(timeout=10)
 
 
 if __name__ == "__main__":
