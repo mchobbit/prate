@@ -143,11 +143,20 @@ class PrateBot(VanillaBot):
         while self.paused and not self.should_we_quit:
             sleep(A_TICK)
 
-        if not self.should_we_quit:
-            try:
-                self.trigger_handshaking()
-            except IrcIAmNotInTheChannelError:
-                print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
+        while True:
+            if self.should_we_quit:
+#                print("Quitting before we could finish handshaking")
+                return
+            else:
+                try:
+                    self.trigger_handshaking()
+                    break
+                except IrcStillConnectingError:
+                    print("Warning -- %s is not ready for handshaking yet." % self.irc_server)
+                except IrcIAmNotInTheChannelError:
+                    print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
+                finally:
+                    sleep(10)
 
         while not self.should_we_quit:
             sleep(A_TICK)
