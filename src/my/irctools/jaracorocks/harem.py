@@ -31,7 +31,7 @@ Example:
 from threading import Thread
 
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError
+from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError, IrcNicknameTooLongError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
@@ -48,6 +48,8 @@ class HaremOfPrateBots:
     def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key, startup_timeout=SENSIBLE_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS):
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
+        if len(desired_nickname) > MAX_NICKNAME_LENGTH:
+            raise IrcNicknameTooLongError("Your nickname is too long")
         self.__channels = channels
         self.__rsa_key = rsa_key
         self.__startup_timeout = startup_timeout
