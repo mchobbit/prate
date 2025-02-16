@@ -36,7 +36,7 @@ from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import A_TICK
+from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS
 import datetime
 
 MAXIMUM_HAREM_BLOCK_SIZE = 288
@@ -45,7 +45,7 @@ MAXIMUM_HAREM_BLOCK_SIZE = 288
 class HaremOfPrateBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key, startup_timeout, maximum_reconnections):
+    def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key, startup_timeout=SENSIBLE_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS):
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         self.__channels = channels
