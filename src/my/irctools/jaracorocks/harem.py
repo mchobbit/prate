@@ -66,7 +66,6 @@ class HaremOfPrateBots:
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__gotta_quit = False
-        self.log_into_all_functional_IRC_servers()
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
 
@@ -88,6 +87,7 @@ class HaremOfPrateBots:
 
     def __my_main_loop(self):
         print("Harem rx queue servicing loop -- starting")
+        self.log_into_all_functional_IRC_servers()
         while not self.gotta_quit:
             sleep(A_TICK)
             self.process_incoming_buffer()
@@ -200,7 +200,7 @@ class HaremOfPrateBots:
                         else:
                             assert(pubkey == self.bots[k].homies[user].pubkey)
                     except Empty:
-                        sleep(A_TICK)
+                        pass
                     else:
                         packetno = int.from_bytes(frame[0:4], 'little')
                         if packetno < 256 * 256 and self.incoming_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge
@@ -292,21 +292,16 @@ class HaremOfPrateBots:
         return self.__desired_nickname
 
     def log_into_all_functional_IRC_servers(self):
+        pratestartup_threads_lst = []
         print("Trying all IRC servers")
         for k in self.list_of_all_irc_servers:
-#            print("Trying", k)
-            self.try_to_log_into_this_IRC_server(k)
-        self.trigger_handshaking()
-#        failures = lambda: [k for k in self.bots if self.bots[k].noof_reconnections >= 3 and not self.bots[k].client]
-#        successes = lambda: [k for k in self.bots if self.bots[k].client and self.bots[k].client.joined]
-#        print("successes:", successes)
-        # while len(failures()) + len(successes()) < len(self.bots):
-        #     sleep(1)
-#        for k in list(failures()):
-#            print("Deleting", k)
-#            self.bots[k].autoreconnect = False
-#            del self.bots[k]  # Triggers quit()
-#        print("Huzzah. We are logged into %d functional IRC servers." % len(self.bots))
+            pratestartup_threads_lst += [Thread(target=self.try_to_log_into_this_IRC_server, args=[k], daemon=True)]
+        for t in pratestartup_threads_lst:
+            t.start()
+        for t in pratestartup_threads_lst:
+            if self.gotta_quit:
+                break
+            t.join(timeout=SENSIBLE_TIMEOUT)
 
     def try_to_log_into_this_IRC_server(self, k):
         try:
@@ -319,9 +314,9 @@ class HaremOfPrateBots:
                                    maximum_reconnections=self.maximum_reconnections,
                                    strictly_nick=False)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
-            print("Failed to join", k)
+            pass  # print("Failed to join", k)
         else:
-            print("Connected to", k)
+#            print("Connected to", k)
             self.bots[k] = bot
 
     def quit(self):
