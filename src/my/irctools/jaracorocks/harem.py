@@ -25,31 +25,6 @@ Todo:
 
 Example:
 
-import os
-import socket
-hostname = socket.gethostname()
-
-from my.irctools.jaracorocks.harem import HaremOfPrateBots
-from Crypto.PublicKey import RSA
-from time import sleep
-from my.stringtools import *
-from my.globals import *
-my_rsa_key1 = RSA.generate(2048)
-my_rsa_key2 = RSA.generate(2048)
-h1 = HaremOfPrateBots(['#prate'], 'mac1111', ALL_IRC_NETWORK_NAMES, my_rsa_key1)
-h2 = HaremOfPrateBots(['#prate'], 'mac2222', ALL_IRC_NETWORK_NAMES, my_rsa_key2)
-while len(h1.ready_bots(my_rsa_key2.public_key())) < 3 and len(h2.ready_bots(my_rsa_key2.public_key())) < 3:
-    sleep(A_TICK)
-
-h1.ready_bots(my_rsa_key2.public_key())
-for _ in range(0,10):
-    h1.put(my_rsa_key2.public_key(),b"HELLO WORLD")
-    h2.get() == (my_rsa_key1.public_key(),b"HELLO WORLD")
-
-with open("/Users/mchobbit/Downloads/pi_holder.stl", "rb") as f:
-    h1.put(my_rsa_key2.public_key(), f.read())
-
-pk, dat = h2.get()
 
 """
 
