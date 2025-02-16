@@ -226,6 +226,36 @@ class HaremOfPrateBots:
     def not_empty(self):
         return self.incoming_queue.not_empty
 
+    @property
+    def users(self):
+        """Users in our chatroom(s). THAT INCLUDES US: being in there is mandatory whereas being a homie is optional."""
+        retval = []
+        for k in self.bots:
+            retval += [u for u in self.bots[k].users]
+        return list(set(retval))
+
+    @property
+    def ipaddrs(self):
+        """IP addresses of homies in our chatroom(s)."""
+        retval = []
+        for k in self.bots:
+            for user in [u for u in self.bots[k].users]:
+                ipaddr = self.bots[k].homies[user].ipaddr
+                if ipaddr is not None:
+                    retval += [ipaddr]
+        return list(set(retval))
+
+    @property
+    def pubkeys(self):
+        """Pubkeys of homies in our chatroom(s)."""
+        retval = []
+        for k in self.bots:
+            for user in [u for u in self.bots[k].users]:
+                pubkey = self.bots[k].homies[user].pubkey
+                if pubkey is not None and pubkey not in retval:
+                    retval += [pubkey]
+        return retval
+
     def empty(self):
         return self.incoming_queue.empty()
 
