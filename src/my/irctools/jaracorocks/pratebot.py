@@ -211,7 +211,7 @@ class PrateBot(VanillaBot):
                     new_ipaddr = decoded_msg.decode()
                     if self.homies[sender].ipaddr != new_ipaddr:
                         self.homies[sender].ipaddr = new_ipaddr
-                        print("%s --- %s now has %s's IP address. The link has been established." % (self.irc_server, self.nickname, sender))
+                        print("Handshake w/ %s on %s is complete." % (sender, self.irc_server,))
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
                 else:
