@@ -140,24 +140,22 @@ class PrateBot(VanillaBot):
         while not self.ready and not self.should_we_quit:
             sleep(A_TICK)
         sleep(3)
-        while self.paused and not self.should_we_quit:
-            sleep(A_TICK)
-
         while True:
             if self.should_we_quit:
 #                print("Quitting before we could finish handshaking")
-                return
+                break
+            elif self.paused:
+                sleep(A_TICK)
             else:
                 try:
                     self.trigger_handshaking()
-                    break
                 except IrcStillConnectingError:
                     print("Warning -- %s is not ready for handshaking yet." % self.irc_server)
                 except IrcIAmNotInTheChannelError:
                     print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
-                finally:
-                    sleep(10)
-
+                else:
+#                     print("%s on %s has triggered the first handshakinging " % (self.nickname, self.irc_server))
+                    break
         while not self.should_we_quit:
             sleep(A_TICK)
             if self.paused:
@@ -169,6 +167,7 @@ class PrateBot(VanillaBot):
                     pass
                 except FernetKeyIsInvalidError:
                     print("Some kind of protocol error as %s in %s" % (self.nickname, self.irc_server))
+#        print("main loop is quitting")
 
     def read_messages_from_users(self):
         while True:
