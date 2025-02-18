@@ -29,6 +29,8 @@ MAX_CHANNEL_LENGTH = 10  # I made it up.
 MAX_CRYPTO_MSG_LENGTH = int((MAX_PRIVMSG_LENGTH - MAX_NICKNAME_LENGTH) * 0.618)
 A_TICK = 0.1  # ... as in, 'hold on a tick!'
 
+MAXIMUM_HAREM_BLOCK_SIZE = 288
+
 
 def get_my_public_ip_address():
     """Get my public IP address.

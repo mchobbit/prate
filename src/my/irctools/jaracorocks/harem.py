@@ -39,8 +39,6 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS
 import datetime
 
-MAXIMUM_HAREM_BLOCK_SIZE = 288
-
 
 class HaremOfPrateBots:
 # Eventually, make it threaded!

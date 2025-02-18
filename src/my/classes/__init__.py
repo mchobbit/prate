@@ -112,4 +112,3 @@ class MyTTLCache:
             else:
                 del self.cache[key]
         return None
-
