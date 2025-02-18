@@ -23,6 +23,7 @@ from my.globals.poetry import CICERO
 import hashlib
 from my.classes.exceptions import PublicKeyBadKeyError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
 from cryptography.fernet import Fernet, InvalidToken
+from threading import Lock
 
 
 def sha1(nickname):
@@ -149,10 +150,14 @@ def get_random_Cicero_line() -> str:
     return str(choice(all_useful_lines))
 
 
+sdkmutex = Lock()
+
+
 def squeeze_da_keez(i):
     """Compress the supplied RSA public key. Spit out b85 ascii."""
 #    return skinny_key(i)
-    return pubkey_to_b85(i)
+    with sdkmutex:
+        return pubkey_to_b85(i)
 
 
 def unsqueeze_da_keez(i):
