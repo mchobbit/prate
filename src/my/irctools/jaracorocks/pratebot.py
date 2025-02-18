@@ -210,7 +210,7 @@ class PrateBot(VanillaBot):
                     new_ipaddr = decoded_msg.decode()
                     if self.homies[sender].ipaddr != new_ipaddr:
                         self.homies[sender].ipaddr = new_ipaddr
-                        print("Handshake w/ %s on %s is complete." % (sender, self.irc_server,))
+                        print("%s-to-%s on %s is complete." % (self.nickname, sender, self.irc_server,))
                 elif msg.startswith(_TXTX_):
                     self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
                 else:
