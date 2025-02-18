@@ -60,9 +60,10 @@ class HaremOfPrateBots:
         self.__bots = {}
         self.__outgoing_caches_dct = {}
         self.__outgoing_packetnumbers_dct = {}
-        self.__incoming_queue = Queue()
-        self.__incoming_cache = [None] * 65536
-        self.__incoming_alreadyspatout = 0
+        self.__privmsgs_from_harem_bots = Queue()
+        self.__our_getqueue = Queue()
+        self.__our_getq_cache = [None] * 65536
+        self.__our_getq_alreadyspatout = 0
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__gotta_quit = False
@@ -94,20 +95,20 @@ class HaremOfPrateBots:
         print("Harem rx queue servicing loop -- ending")
 
     @property
-    def incoming_queue(self):
-        return self.__incoming_queue
+    def our_getqueue(self):
+        return self.__our_getqueue
 
     @property
-    def incoming_cache(self):
-        return self.__incoming_cache
+    def our_getq_cache(self):
+        return self.__our_getq_cache
 
     @property
-    def incoming_alreadyspatout(self):
-        return self.__incoming_alreadyspatout
+    def our_getq_alreadyspatout(self):
+        return self.__our_getq_alreadyspatout
 
-    @incoming_alreadyspatout.setter
-    def incoming_alreadyspatout(self, value):
-        self.__incoming_alreadyspatout = value
+    @our_getq_alreadyspatout.setter
+    def our_getq_alreadyspatout(self, value):
+        self.__our_getq_alreadyspatout = value
 
     @property
     def outgoing_caches_dct(self):
@@ -187,7 +188,7 @@ class HaremOfPrateBots:
     def process_incoming_buffer(self):
         final_packetnumber = -1
         pubkey = None
-        while final_packetnumber < 0 or [] != [i for i in range(self.incoming_alreadyspatout, final_packetnumber + 1) if self.incoming_cache[i % 65536] is None]:
+        while final_packetnumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1) if self.our_getq_cache[i % 65536] is None]:
             if self.gotta_quit:
                 return
             else:
@@ -203,11 +204,11 @@ class HaremOfPrateBots:
                         pass
                     else:
                         packetno = int.from_bytes(frame[0:4], 'little')
-                        if packetno < 256 * 256 and self.incoming_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge
+                        if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge
                             print("I think we've wrapped around.")
-                            self.incoming_alreadyspatout = 0
+                            self.our_getq_alreadyspatout = 0
                         assert(packetno < 256 * 256 * 256 * 127)  # FIXME: PROGRAM A WRAPAROUND.
-                        self.incoming_cache[packetno % 65536] = frame
+                        self.our_getq_cache[packetno % 65536] = frame
                         framelength = int.from_bytes(frame[4:6], 'little')
                         checksum = frame[framelength + 6:framelength + 14]
                         print("Rx'd pkt#%d of %d bytes" % (packetno, len(frame)))
@@ -218,15 +219,15 @@ class HaremOfPrateBots:
                         if framelength == 0:
                             final_packetnumber = packetno
         data_to_be_returned = bytearray()
-        for i in range(self.incoming_alreadyspatout, final_packetnumber + 1):
-            data_to_be_returned += self.incoming_cache[i][6:-8]
-            self.incoming_cache[i] = None
-        self.incoming_alreadyspatout = final_packetnumber + 1
-        self.incoming_queue.put((pubkey, data_to_be_returned))
+        for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1):
+            data_to_be_returned += self.our_getq_cache[i][6:-8]
+            self.our_getq_cache[i] = None
+        self.our_getq_alreadyspatout = final_packetnumber + 1
+        self.our_getqueue.put((pubkey, data_to_be_returned))
 
     @property
     def not_empty(self):
-        return self.incoming_queue.not_empty
+        return self.our_getqueue.not_empty
 
     @property
     def users(self):
@@ -259,13 +260,13 @@ class HaremOfPrateBots:
         return retval
 
     def empty(self):
-        return self.incoming_queue.empty()
+        return self.our_getqueue.empty()
 
     def get(self, block=True, timeout=None):
-        return self.incoming_queue.get(block, timeout)
+        return self.our_getqueue.get(block, timeout)
 
     def get_nowait(self):
-        return self.incoming_queue.get_nowait()
+        return self.our_getqueue.get_nowait()
 
     @property
     def bots(self):
