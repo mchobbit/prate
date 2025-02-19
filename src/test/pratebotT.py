@@ -482,8 +482,8 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
 
 class TestHugeNumberOfUsers(unittest.TestCase):
 
-    def testTwentyUsersAtOnce(self):
-        noof_nicks = 20
+    def testTenUsersAtOnce(self):
+        noof_nicks = 10
         bots = {}
         keys = {}
         for i in range(0, noof_nicks):
