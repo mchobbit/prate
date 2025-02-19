@@ -204,7 +204,7 @@ class HaremOfPrateBots:
                         self.our_getq_cache[packetno % 65536] = frame
                         framelength = int.from_bytes(frame[4:6], 'little')
                         checksum = frame[framelength + 6:framelength + 14]
-#                         print("Rx'd pkt#%d of %d bytes" % (packetno, len(frame)))
+                        print("Rx'd pkt#%d of %d bytes" % (packetno, len(frame)))
                         if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
                             print("Bad checksum for packet #%d. You should request a fresh copy." % packetno)
                             # for i in range(6, 6 + framelength):
