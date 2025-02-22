@@ -51,6 +51,8 @@ Error
             IrcPrivateMessageContainsBadCharsError
             IrcIncomingCommandFromMyselfError
     EncryptionError
+        EncryptionHandshakingError
+            EncryptionHandshakeTimeoutError
         EncryptionKeyError
             PublicKeyError
                 PublicKeyBadKeyError
@@ -446,7 +448,23 @@ class IrcIAmNotInTheChannelError(IrcChannelError):
 
 
 class EncryptionError(Error):
-    """Class for all EncryptionKeyError"""
+    """Class for all EncryptionError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class EncryptionHandshakingError(EncryptionError):
+    """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class EncryptionHandshakeTimeoutError(EncryptionHandshakingError):
+    """"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
