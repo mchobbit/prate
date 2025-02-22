@@ -15,6 +15,7 @@ import string
 from functools import reduce
 
 from typing import Iterable
+import datetime
 
 # def get_random_zenquote(timeout:int=10) -> str:
 #     """Return an uplifting quote from ZenQuotes.
@@ -422,3 +423,8 @@ def flatten(items):
                 yield sub_x
         else:
             yield x
+
+
+def s_now():
+    """Now, as HH:MM:SS str."""
+    return datetime.datetime.fromtimestamp(datetime.datetime.timestamp(datetime.datetime.now())).strftime("%H:%M:%S")
