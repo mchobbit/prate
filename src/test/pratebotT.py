@@ -12,7 +12,7 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_irc_handle, get_word_salad
-from my.globals import MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH
+from my.globals import MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, MAX_CRYPTO_MSG_LENGTH
 from test.myttlcacheT import generate_random_alphanumeric_string
 from queue import Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
@@ -20,6 +20,7 @@ from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageContain
     IrcNicknameTooLongError, IrcBadServerPortError, IrcBadServerNameError
 from random import randint
 from my.stringtools import flatten
+from my.irctools.cryptoish import squeeze_da_keez
 
 
 class TestGroupOne(unittest.TestCase):
@@ -130,10 +131,15 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        sleep(5)
+        noof_loops = 0
+        while [my_rsa_key1.public_key()] != bot2.pubkeys or [my_rsa_key2.public_key()] != bot1.pubkeys:
+            sleep(1)
+            noof_loops += 1
+            if noof_loops > 180:
+                raise TimeoutError("testTwoBots() ran out of time")
         self.assertEqual([my_rsa_key1.public_key()], bot2.pubkeys)
         self.assertEqual([my_rsa_key2.public_key()], bot1.pubkeys)
-        the_message = get_word_salad()[:200]
+        the_message = get_word_salad()[:MAX_CRYPTO_MSG_LENGTH]
         bot1.crypto_put(bot2.nickname, the_message.encode())
         sleep(2)
         self.assertEqual(bot2.crypto_get_nowait(), (bot1.nickname, the_message))
@@ -464,19 +470,47 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bot1.quit()
         bot2.quit()
 
+# class TestHugeNumberOfUsers(unittest.TestCase):
+#
+#     def testThreeUsersAtOnce(self):
+#         noof_nicks = 3
+#         bots = {}
+#         keys = {}
+#         for i in range(0, noof_nicks):
+#             nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
+#             keys[nickname] = RSA.generate(2048)
+#             bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
+#         while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
+#             sleep(5)
+#         for k in bots:
+#             bots[k].quit()
 
-class TestHugeNumberOfUsers(unittest.TestCase):
 
-    def testTenUsersAtOnce(self):
+class TestManualHandshaking(unittest.TestCase):
+
+    def testSimpleManualHandshaking(self):
         noof_nicks = 10
         bots = {}
-        keys = {}
+        rsakeys = {}
         for i in range(0, noof_nicks):
             nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
-            keys[nickname] = RSA.generate(2048)
-            bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
-        while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
-            sleep(5)
+        #    self.assertFalse(nickname in rsakeys)
+        #    self.assertFalse(nickname in bots)
+            rsakeys[nickname] = RSA.generate(2048)
+            bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, rsakeys[nickname], autohandshake=False)
+        alice_bot = bots[list(bots)[0]]
+        bob_bot = bots[list(bots)[1]]
+        alice_bot.trigger_handshaking(bob_bot.nickname)
+        noof_loops = 0
+        while alice_bot.homies[bob_bot.nickname].ipaddr is None or bob_bot.homies[alice_bot.nickname].ipaddr is None:
+            sleep(1)
+            noof_loops += 1
+            if noof_loops > 30:
+                raise TimeoutError("testSimpleManualHandshaking() ran out of time")
+        self.assertEqual(squeeze_da_keez(alice_bot.homies[bob_bot.nickname].pubkey), squeeze_da_keez(bob_bot.rsa_key.public_key()))
+        self.assertEqual(bob_bot.homies[alice_bot.nickname].pubkey, alice_bot.rsa_key.public_key())
+        self.assertTrue(alice_bot.homies[bob_bot.nickname].ipaddr not in (None, ''))
+        self.assertTrue(bob_bot.homies[alice_bot.nickname].ipaddr not in (None, ''))
         for k in bots:
             bots[k].quit()
 
@@ -499,19 +533,6 @@ class TestFernetKeyMismatches(unittest.TestCase):
         self.assertEqual(bot1.homies[nick2].fernetkey, bot2.homies[nick1].fernetkey)
         bot1.quit()
         bot2.quit()
-
-    # def testTenUsersAtOnce(self):
-    #     noof_nicks = 10
-    #     bots = {}
-    #     keys = {}
-    #     for i in range(0, noof_nicks):
-    #         nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
-    #         keys[nickname] = RSA.generate(2048)
-    #         bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
-    #     while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
-    #         sleep(5)
-    #     for k in bots:
-    #         bots[k].quit()
 
 
 if __name__ == "__main__":
