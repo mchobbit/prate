@@ -35,11 +35,11 @@ from threading import Thread
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
                             IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, IrcNicknameTooLongError, IrcBadNicknameError, \
-    IrcYouCantUseABotAfterQuittingItError
+    IrcYouCantUseABotAfterQuittingItError, EncryptionHandshakeTimeoutError
 
 from my.irctools.jaracorocks.vanilla import VanillaBot
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, A_TICK
+from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, A_TICK, STARTUP_TIMEOUT, HANDSHAKE_TIMEOUT
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
 from cryptography.fernet import Fernet
 import base64
