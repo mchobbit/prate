@@ -368,7 +368,7 @@ class VanillaBot:
 
     @property
     def should_we_quit(self):
-        """Have I been intructed to start quitting?"""
+        """Have I been instructed to start quitting?"""
         self.__should_we_quit_lock.acquire_read()
         try:
             retval = self.__should_we_quit
