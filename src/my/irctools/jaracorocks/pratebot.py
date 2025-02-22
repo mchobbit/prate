@@ -89,6 +89,8 @@ class PrateBot(VanillaBot):
             disconnection occur. If False, don't.
         strictly_nick (bool): If True, and the nickname is
             rejected by the IRC server for being a dupe, abort.
+        autohandshake (bool): If True, start handshaking ASAP.
+            Otherwise, the programmer will have to initiate it.
 
     Example:
         $ my_rsa_key1 = RSA.generate(2048)
@@ -106,7 +108,7 @@ class PrateBot(VanillaBot):
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
                  startup_timeout=10, maximum_reconnections=2,
-                 autoreconnect=True, strictly_nick=True):
+                 autoreconnect=True, strictly_nick=True, autohandshake=True):
         self.__strictly_nick = strictly_nick
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
             raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
@@ -117,6 +119,7 @@ class PrateBot(VanillaBot):
                          maximum_reconnections=maximum_reconnections,
                          autoreconnect=autoreconnect, strictly_nick=strictly_nick)
         self.rsa_key = rsa_key
+        self.__autohandshake = autohandshake
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
         self.__crypto_rx_queue = Queue()
@@ -126,6 +129,20 @@ class PrateBot(VanillaBot):
         assert(not hasattr(self, '__my_main_loop'))
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        pk = self.rsa_key
+        if pk is not None:
+            pk = squeeze_da_keez(pk)
+            pk = "%s..." % (pk[:16])
+        return f"{class_name}channels={self.channels!r}, nickname={self.nickname!r}, irc_server={self.irc_server!r}, \
+port={self.port!r}, rsa_key={pk!r}, startup_timeout={self.startup_timeout!r}, maximum_reconnections={self.maximum_reconnections!r}, \
+autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, autohandshake={self.autohandshake!r})"
+
+    @property
+    def autohandshake(self):
+        return self.__autohandshake
 
     @property
     def pubkeys(self):
@@ -153,10 +170,11 @@ class PrateBot(VanillaBot):
         sleep(3)
         while True:
             if self.should_we_quit:
-#                print("Quitting before we could finish handshaking")
-                break
+                break  # print("Quitting before we could finish handshaking")
             elif self.paused:
                 sleep(A_TICK)
+            elif not self.autohandshake:
+                break
             else:
                 try:
                     self.trigger_handshaking()
@@ -253,26 +271,31 @@ class PrateBot(VanillaBot):
 #            print("%s: %s: bad nickname. Ignoring." % (self.irc_server, user))
             return False
 
-    def trigger_handshaking(self):
+    def trigger_handshaking(self, user=None):
+        """Initiate handshaking for all users, *or* just the specified user."""
         if not self.ready:
             print("I choose not to try to trigger handshaking with other users: I'm not even online/joinedroom yet.")
-        else:
+        elif user is None:
             for user in self.users:
-                try:
-                    if self.is_this_user_validly_fingerprinted(user):
-                        if self.homies[user].pubkey is None:
-                            print("%s: %s: I lack %s's public key. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
-                            self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
-                        elif self.homies[user].fernetkey is None:
-                            print("%s: %s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
-                            self.put(user, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(user)))
-                        elif self.homies[user].ipaddr is None:
-                            print("%s: %s: I lack %s's IP address. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
-                            self.put(user, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(user)))
-                        else:
-                            print("%s: %s: %s is kosher." % (self.irc_server, self.nickname, user))
-                except (IrcBadNicknameError, IrcNicknameTooLongError):
-                    pass  # print("%s is a crappy username. Ignoring" % user)
+                self.trigger_handshaking(user)
+        elif type(user) is not str:
+            raise ValueError("trigger_handshaking() takes user=str, not {t}".format(t=type(user)))
+        else:
+            try:
+                if self.is_this_user_validly_fingerprinted(user):
+                    if self.homies[user].pubkey is None:
+                        print("%s: %s: I lack %s's public key. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
+                        self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
+                    elif self.homies[user].fernetkey is None:
+                        print("%s: %s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
+                        self.put(user, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(user)))
+                    elif self.homies[user].ipaddr is None:
+                        print("%s: %s: I lack %s's IP address. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
+                        self.put(user, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(user)))
+                    else:
+                        print("%s: %s: %s is kosher." % (self.irc_server, self.nickname, user))
+            except (IrcBadNicknameError, IrcNicknameTooLongError):
+                pass  # print("%s is a crappy username. Ignoring" % user)
 
     def my_encrypted_ipaddr(self, user):
         """Encrypt our IP address w/ the user's fernet key."""

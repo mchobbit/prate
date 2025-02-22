@@ -387,7 +387,8 @@ class HaremOfPrateBots:
                                    rsa_key=self.rsa_key,
                                    startup_timeout=self.startup_timeout,
                                    maximum_reconnections=self.maximum_reconnections,
-                                   strictly_nick=False)
+                                   strictly_nick=False,
+                                   autohandshake=False)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             pass  # print("Failed to join", k)
         else:
