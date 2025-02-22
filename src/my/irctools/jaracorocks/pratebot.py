@@ -107,7 +107,7 @@ class PrateBot(VanillaBot):
     """
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
-                 startup_timeout=10, maximum_reconnections=2,
+                 startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=2,
                  autoreconnect=True, strictly_nick=True, autohandshake=True):
         self.__strictly_nick = strictly_nick
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
