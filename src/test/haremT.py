@@ -39,8 +39,8 @@ class TestHaremZero(unittest.TestCase):
 
     def testOneitemServerList(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
-        noof_channels = 1
-        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        noof_servers = 1
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
@@ -48,7 +48,7 @@ class TestHaremZero(unittest.TestCase):
         while not (h1.ready and h2.ready):
             sleep(1)
         noof_loops = 0
-        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels:
+        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers:
             sleep(1)
             noof_loops += 1
             if noof_loops > 180:
@@ -58,8 +58,8 @@ class TestHaremZero(unittest.TestCase):
 
     def testTwoitemsServerList(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
-        noof_channels = 2
-        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        noof_servers = 2
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
@@ -68,7 +68,7 @@ class TestHaremZero(unittest.TestCase):
             sleep(1)
         print("testTwoitemsServerList is waiting for handshaking to complete")
         noof_loops = 0
-        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels:
+        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers:
             sleep(1)
             noof_loops += 1
             if noof_loops > 180:
@@ -78,8 +78,8 @@ class TestHaremZero(unittest.TestCase):
 
     def testTwoitemsPLUStotallyUnecessaryTriggeringOfHandshaking(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
-        noof_channels = 2
-        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        noof_servers = 2
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
@@ -88,15 +88,15 @@ class TestHaremZero(unittest.TestCase):
             sleep(1)
         print("testTwoitemsPLUStotallyUnecessaryTriggeringOfHandshaking is waiting for handshaking to complete")
         noof_loops = 0
-        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels:
+        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers:
             sleep(1)
             noof_loops += 1
             if noof_loops > 180:
                 raise TimeoutError("testTwoitemsPLUStotallyUnecessaryTriggeringOfHandshaking() ran out of time")
-        # h1.trigger_handshaking()
-        # h2.trigger_handshaking()
+        h1.trigger_handshaking()
+        h2.trigger_handshaking()
         noof_loops = 0
-        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels:
+        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers:
             sleep(1)
             noof_loops += 1
             if noof_loops > 30:
@@ -107,7 +107,7 @@ class TestHaremZero(unittest.TestCase):
     def testServerListOfOneGoodAndOneNonexistent(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         list_of_all_irc_servers = ['cinqcent.local', 'rpi0irc99.local']
-        noof_channels = len(list_of_all_irc_servers)
+        noof_servers = len(list_of_all_irc_servers)
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
@@ -116,7 +116,7 @@ class TestHaremZero(unittest.TestCase):
             sleep(1)
         print("testServerListOfOneGoodAndOneNonexistent is waiting for handshaking to complete")
         noof_loops = 0
-        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels - 1 and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels - 1:
+        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers - 1 and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers - 1:
             sleep(1)
             noof_loops += 1
             if noof_loops > 180:
@@ -141,9 +141,9 @@ class TestHaremZero(unittest.TestCase):
 
     def testFouritemsServerList(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
-        noof_channels = 4
-        print("testFouritemsServerList with %d channels" % noof_channels)
-        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+        noof_servers = 4
+        print("testFouritemsServerList with %d channels" % noof_servers)
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
@@ -151,7 +151,7 @@ class TestHaremZero(unittest.TestCase):
         while not (h1.ready and h2.ready):
             sleep(1)
         print("testFouritemsServerList is waiting for handshaking to complete")
-        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels:
+        while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers:
             sleep(1)
         h1.quit()
         h2.quit()
@@ -170,10 +170,14 @@ class TestHaremHandshook(unittest.TestCase):
         list_of_all_irc_servers = ['rpi0irc1.local', 'rpi0irc2.local']
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
-        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
+        h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers,
+                              my_rsa_key1, startup_timeout=5, autohandshake=False)
+        h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers,
+                              my_rsa_key2, startup_timeout=5, autohandshake=False)
         while not (h1.ready and h2.ready):
             sleep(1)
+        h1.trigger_handshaking()
+        h2.trigger_handshaking()
         noof_loops = 0
         while len(h1.ipaddrs) + len(h2.ipaddrs) < 2:
             sleep(1)
@@ -229,15 +233,15 @@ class TestHaremHandshook(unittest.TestCase):
 
     # def testFullServerList(self):
     #     the_room = '#room' + generate_random_alphanumeric_string(5)
-    #     noof_channels = 4
-    #     print("testThreeandmoreitemsServerList with %d channels" % noof_channels)
-    #     list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_channels]
+    #     noof_servers = 4
+    #     print("testThreeandmoreitemsServerList with %d channels" % noof_servers)
+    #     list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
     #     alice_nick = 'alice%d' % randint(111, 999)
     #     bob_nick = 'bob%d' % randint(111, 999)
     #     h1 = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, my_rsa_key1, startup_timeout=5, maximum_reconnections=2)
     #     h2 = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, my_rsa_key2, startup_timeout=5, maximum_reconnections=2)
     #     print("testFullServerList is waiting for handshaking to complete")
-    #     while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_channels and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_channels:
+    #     while len(h1.find_nickname_by_pubkey(my_rsa_key2.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(my_rsa_key1.public_key())) < noof_servers:
     #         sleep(1)
     #     h1.quit()
     #     h2.quit()
