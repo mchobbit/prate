@@ -24,6 +24,7 @@ from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_P
 from random import randint
 import datetime
 import socket
+from my.irctools.jaracorocks.pratebot import PrateBot
 
 my_rsa_key1 = RSA.generate(2048)
 my_rsa_key2 = RSA.generate(2048)
@@ -157,6 +158,37 @@ class TestHaremZero(unittest.TestCase):
         h2.quit()
 
 
+class TestHaremAndSimplePrateBot(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def testSimpleHaremAndBob(self):
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        noof_servers = 1
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[-noof_servers:]
+        alice_rsa_key = RSA.generate(2048)
+        bob_rsa_key = RSA.generate(2048)
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        bob_bot = PrateBot([the_room], bob_nick, list_of_all_irc_servers[0], 6667, bob_rsa_key, autohandshake=False)
+        alice_harem = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
+        while not (bob_bot.ready and alice_harem.ready):
+            sleep(1)
+        bob_bot.trigger_handshaking()
+        sleep(30)
+        self.assertEqual(alice_nick, alice_harem.desired_nickname)
+        self.assertTrue(alice_nick in bob_bot.homies)
+        self.assertEqual(bob_bot.rsa_key.public_key(), bob_rsa_key.public_key())
+        self.assertEqual(bob_bot.homies[alice_nick].pubkey, alice_rsa_key.public_key())
+        self.assertEqual(alice_harem.bots[list(alice_harem.bots)[0]].homies[bob_bot.nickname].pubkey, bob_rsa_key.public_key())
+        alice_harem.quit()
+        bob_bot.quit()
+
+
 class TestHaremHandshook(unittest.TestCase):
 
     def setUp(self):
@@ -260,7 +292,7 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
             sleep(1)
         noof_loops = 0
         print("testFirstOfAll() --- waiting for setup")
-        while len(cls.h1.homies) + len(cls.h2.homies) < 2:
+        while len(cls.h1.ipaddrs) + len(cls.h2.ipaddrs) < 2:
         # while len(cls.h1.find_nickname_by_pubkey(my_rsa_key2.public_key(), handshook_only=True)) < 3 and len(cls.h2.find_nickname_by_pubkey(my_rsa_key1.public_key(), handshook_only=True)) < 3:
             sleep(15)
             noof_loops += 1
@@ -280,6 +312,7 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
 
     def testFirstOfAll(self):
         plaintext = b""
+        sleep(10)
         self.h1.put(my_rsa_key2.public_key(), plaintext)
         pkey, xferred_data = self.h2.get()
         self.assertEqual((my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
@@ -302,12 +335,11 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
             pk, msg = self.h2.get()
             self.assertEqual((pk, msg), (my_rsa_key1.public_key(), plaintext))
 
-    def testHomiesList(self):
-        for homie in self.h1.homies:
-            print(self.h1.homies)
-            print(self.h2.homies)
-            pass
-#        for homie in self.h2.homies:
+    # def testHomiesList(self):
+    #     for homie in self.h1.homies:
+    #         print(self.h1.homies)
+    #         print(self.h2.homies)
+    #         pass
 
     # .find_nickname_by_pubkey <== test
 

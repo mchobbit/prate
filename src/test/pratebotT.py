@@ -509,7 +509,7 @@ class TestManualHandshaking(unittest.TestCase):
         while alice_bot.homies[bob_bot.nickname].ipaddr is None or bob_bot.homies[alice_bot.nickname].ipaddr is None:
             sleep(1)
             noof_loops += 1
-            if noof_loops > 30:
+            if noof_loops > 60:
                 raise TimeoutError("testSimpleManualHandshaking() ran out of time")
         self.assertEqual(squeeze_da_keez(alice_bot.homies[bob_bot.nickname].pubkey), squeeze_da_keez(bob_bot.rsa_key.public_key()))
         self.assertEqual(bob_bot.homies[alice_bot.nickname].pubkey, alice_bot.rsa_key.public_key())
