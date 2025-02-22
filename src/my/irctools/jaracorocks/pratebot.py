@@ -205,16 +205,13 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
             except Empty:
                 return
             else:
-                if msg.startswith(_RQPK_):
-                    print("%s: %s: requesting public key from %s" % (self.irc_server, self.nickname, sender))
+                if msg.startswith(_RQPK_):  # print("%s: %s: requesting public key from %s" % (self.irc_server, self.nickname, sender))
                     self.put(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
-                elif msg.startswith(_TXPK_):
-                    print("%s: %s: sending my public key to %s reciprocally" % (self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TXPK_):  # print("%s: %s: sending my public key to %s reciprocally" % (self.irc_server, self.nickname, sender))
                     self.homies[sender].irc_server = self.irc_server  # just in case a Harem needs it
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
                     self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
-                elif msg.startswith(_RQFE_):
-                    print("%s: %s: requesting fernet key from %s" % (self.irc_server, self.nickname, sender))
+                elif msg.startswith(_RQFE_):  # print("%s: %s: requesting fernet key from %s" % (self.irc_server, self.nickname, sender))
                     if self.homies[sender].pubkey is None:
                         self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
                     else:
@@ -223,16 +220,14 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                             self.homies[sender].remotely_supplied_fernetkey = dc
 #                            print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                         self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
-                elif msg.startswith(_TXFE_):
-                    print("%s: %s: sending my fernet key to %s reciprocally" % (self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TXFE_):  # print("%s: %s: sending my fernet key to %s reciprocally" % (self.irc_server, self.nickname, sender))
                     dc = rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
                     if self.homies[sender].remotely_supplied_fernetkey != dc:
                         self.homies[sender].remotely_supplied_fernetkey = dc
 #                        print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                     if self.homies[sender].fernetkey is not None:
                         self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
-                elif msg.startswith(_RQIP_):
-                    print("%s: %s: requesting IP address from %s" % (self.irc_server, self.nickname, sender))
+                elif msg.startswith(_RQIP_):  # print("%s: %s: requesting IP address from %s" % (self.irc_server, self.nickname, sender))
                     try:
                         new_ipaddr = receive_and_decrypt_message(msg[len(_RQIP_):], self.homies[sender].fernetkey).decode()
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
@@ -242,8 +237,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                         if self.homies[sender].ipaddr != new_ipaddr:
                             self.homies[sender].ipaddr = new_ipaddr
                         self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
-                elif msg.startswith(_TXIP_):
-                    print("%s: %s: sending my IP address from %s reciprocally" % (self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TXIP_):  # print("%s: %s: sending my IP address from %s reciprocally" % (self.irc_server, self.nickname, sender))
                     try:
                         new_ipaddr = receive_and_decrypt_message(msg[len(_TXIP_):], self.homies[sender].fernetkey).decode()
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
