@@ -19,13 +19,15 @@ import requests
 from Crypto.PublicKey import RSA
 from my.pybase122 import b122encode, b122decode
 VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "
-SENSIBLE_TIMEOUT = 30
 SENSIBLE_NOOF_RECONNECTIONS = 2
-ANTIOVERLOAD_CACHE_TIME = SENSIBLE_TIMEOUT
-DEFAULT_WHOIS_TIMEOUT = SENSIBLE_TIMEOUT
+JOINPARTCHAN_TIMEOUT = 15
+STARTUP_TIMEOUT = 30
+ANTIOVERLOAD_CACHE_TIME = 20  # pings, dupe msgs, etc.
+DEFAULT_WHOIS_TIMEOUT = 10  # how long should we wait for a response to a /whois call?
 MAX_NICKNAME_LENGTH = 9  # From mIRC's manual.
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
 MAX_CHANNEL_LENGTH = 10  # I made it up.
+ENDTHREAD_TIMEOUT = 3
 MAX_CRYPTO_MSG_LENGTH = int((MAX_PRIVMSG_LENGTH - MAX_NICKNAME_LENGTH) * 0.618)
 A_TICK = 0.1  # ... as in, 'hold on a tick!'
 

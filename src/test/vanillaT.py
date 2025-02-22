@@ -91,6 +91,7 @@ from queue import Empty
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES
 from random import randint
 from my.classes.exceptions import IrcDuplicateNicknameError, IrcInitialConnectionTimeoutError, IrcAlreadyDisconnectedError
+from time import sleep
 
 
 class TestVanillaBot(unittest.TestCase):
@@ -189,9 +190,11 @@ class TestVanillaBot(unittest.TestCase):
         self.assertFalse(alice_nick in bob_bot.users)
         self.assertFalse(bob_nick in alice_bot.users)
         alice_bot.quit()
+        sleep(5)
         self.assertFalse(alice_nick in bob_bot.users)
         self.assertFalse(alice_nick in charlie_bot.users)
         bob_bot.quit()
+        sleep(5)
         self.assertFalse(bob_nick in charlie_bot.users)
         self.assertEqual(charlie_bot.users, [charlie_nick])
         charlie_bot.quit()

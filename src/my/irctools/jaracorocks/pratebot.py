@@ -34,7 +34,8 @@ from threading import Thread
 
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
-                            IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
+                            IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, IrcNicknameTooLongError, IrcBadNicknameError, \
+    IrcYouCantUseABotAfterQuittingItError
 
 from my.irctools.jaracorocks.vanilla import VanillaBot
 from time import sleep
@@ -119,11 +120,21 @@ class PrateBot(VanillaBot):
         self.__homies = HomiesDct()
         self.__homies_lock = ReadWriteLock()
         self.__crypto_rx_queue = Queue()
-        self.paused = False
+        self.__paused = False
+        self.__paused_lock = ReadWriteLock()
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
+
+    @property
+    def pubkeys(self):
+        retval = []
+        for user in [u for u in self.users]:
+            pubkey = self.homies[user].pubkey
+            if pubkey is not None and pubkey not in retval:
+                retval += [pubkey]
+        return retval
 
     @property
     def strictly_nick(self):
@@ -150,11 +161,11 @@ class PrateBot(VanillaBot):
                 try:
                     self.trigger_handshaking()
                 except IrcStillConnectingError:
-                    print("Warning -- %s is not ready for handshaking yet." % self.irc_server)
+                    print("%s: I'm not ready for handshaking yet (I'm still connecting)." % self.irc_server)
                 except IrcIAmNotInTheChannelError:
-                    print("Warning -- %s cannot contact other users of %s in %s: I'm not even in there." % (self.nickname, self.channels, self.irc_server))
+                    print("%s: I'm not ready for handshaking yet (I'm not in the channel yet)." % self.irc_server)
                 else:
-#                     print("%s on %s has triggered the first handshakinging " % (self.nickname, self.irc_server))
+                    print("%s: first handshake(s) initiated" % self.irc_server)
                     break
         while not self.should_we_quit:
             sleep(A_TICK)
@@ -177,11 +188,15 @@ class PrateBot(VanillaBot):
                 return
             else:
                 if msg.startswith(_RQPK_):
+                    print("%s: %s: requesting public key from %s" % (self.irc_server, self.nickname, sender))
                     self.put(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
                 elif msg.startswith(_TXPK_):
+                    print("%s: %s: sending my public key to %s reciprocally" % (self.irc_server, self.nickname, sender))
+                    self.homies[sender].irc_server = self.irc_server  # just in case a Harem needs it
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
                     self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_RQFE_):
+                    print("%s: %s: requesting fernet key from %s" % (self.irc_server, self.nickname, sender))
                     if self.homies[sender].pubkey is None:
                         self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
                     else:
@@ -191,6 +206,7 @@ class PrateBot(VanillaBot):
 #                            print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                         self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
                 elif msg.startswith(_TXFE_):
+                    print("%s: %s: sending my fernet key to %s reciprocally" % (self.irc_server, self.nickname, sender))
                     dc = rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
                     if self.homies[sender].remotely_supplied_fernetkey != dc:
                         self.homies[sender].remotely_supplied_fernetkey = dc
@@ -198,33 +214,65 @@ class PrateBot(VanillaBot):
                     if self.homies[sender].fernetkey is not None:
                         self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
                 elif msg.startswith(_RQIP_):
-                    cipher_suite = Fernet(self.homies[sender].fernetkey)
-                    decoded_msg = cipher_suite.decrypt(msg[len(_RQIP_):])
-                    new_ipaddr = decoded_msg.decode()
-                    if self.homies[sender].ipaddr != new_ipaddr:
-                        self.homies[sender].ipaddr = new_ipaddr
-                    self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
+                    print("%s: %s: requesting IP address from %s" % (self.irc_server, self.nickname, sender))
+                    try:
+                        new_ipaddr = receive_and_decrypt_message(msg[len(_RQIP_):], self.homies[sender].fernetkey).decode()
+                    except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
+                        print("%s: %s: unable to decode %s's IP address, re RQIP: fernet key issue? I'll send an RQIP to *them* and see what happens." % (self.irc_server, self.nickname, sender))
+                        self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
+                    else:
+                        if self.homies[sender].ipaddr != new_ipaddr:
+                            self.homies[sender].ipaddr = new_ipaddr
+                        self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
                 elif msg.startswith(_TXIP_):
-                    cipher_suite = Fernet(self.homies[sender].fernetkey)
-                    decoded_msg = cipher_suite.decrypt(msg[len(_TXIP_):])
-                    new_ipaddr = decoded_msg.decode()
-                    if self.homies[sender].ipaddr != new_ipaddr:
-                        self.homies[sender].ipaddr = new_ipaddr
+                    print("%s: %s: sending my IP address from %s reciprocally" % (self.irc_server, self.nickname, sender))
+                    try:
+                        new_ipaddr = receive_and_decrypt_message(msg[len(_TXIP_):], self.homies[sender].fernetkey).decode()
+                    except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
+                        print("%s: %s: unable to decode %s's IP address re TXIP: fernet key issue? I'll send an RQIP to *them* and see what happens." % (self.irc_server, self.nickname, sender))
+                        self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
+                    else:
+                        if self.homies[sender].ipaddr != new_ipaddr:
+                            self.homies[sender].ipaddr = new_ipaddr
                         print("%s: %s and %s are connected." % (self.irc_server, self.nickname, sender,))
                 elif msg.startswith(_TXTX_):
-                    self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
+                    try:
+                        self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TXTX_):], self.homies[sender].fernetkey)))
+                    except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
+                        print("%s: %s: unable to receive encrypted message from %s: fernet key issue?" % (self.irc_server, self.nickname, sender))
                 else:
-                    print("??? %s: %s" % (sender, msg))
+                    print("??? %s: %s: %s" % (self.irc_server, sender, msg))
+
+    def is_this_user_validly_fingerprinted(self, user):
+        try:
+            return True if user != self.nickname \
+                            and self.whois(user) is not None \
+                            and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1] \
+                            else False
+        except (IrcBadNicknameError, IrcYouCantUseABotAfterQuittingItError):
+#            print("%s: %s: bad nickname. Ignoring." % (self.irc_server, user))
+            return False
 
     def trigger_handshaking(self):
         if not self.ready:
             print("I choose not to try to trigger handshaking with other users: I'm not even online/joinedroom yet.")
         else:
             for user in self.users:
-                if user != self.nickname and self.whois(user) is not None and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1]:
-                    if self.homies[user].pubkey is None:
-#                        print("I, %s, do not possess %s's public key. Therefore, I am triggering a handshake on %s" % (self.nickname, user, self.irc_server))
-                        self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
+                try:
+                    if self.is_this_user_validly_fingerprinted(user):
+                        if self.homies[user].pubkey is None:
+                            print("%s: %s: I lack %s's public key. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
+                            self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
+                        elif self.homies[user].fernetkey is None:
+                            print("%s: %s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
+                            self.put(user, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(user)))
+                        elif self.homies[user].ipaddr is None:
+                            print("%s: %s: I lack %s's IP address. Therefore, I'll ask for a copy." % (self.irc_server, self.nickname, user))
+                            self.put(user, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(user)))
+                        else:
+                            print("%s: %s: %s is kosher." % (self.irc_server, self.nickname, user))
+                except (IrcBadNicknameError, IrcNicknameTooLongError):
+                    pass  # print("%s is a crappy username. Ignoring" % user)
 
     def my_encrypted_ipaddr(self, user):
         """Encrypt our IP address w/ the user's fernet key."""
@@ -260,6 +308,23 @@ class PrateBot(VanillaBot):
             self.__homies_lock.release_write()
 
     @property
+    def paused(self):
+        self.__paused_lock.acquire_read()
+        try:
+            retval = self.__paused
+            return retval
+        finally:
+            self.__paused_lock.release_read()
+
+    @paused.setter
+    def paused(self, value):
+        self.__paused_lock.acquire_write()
+        try:
+            self.__paused = value
+        finally:
+            self.__paused_lock.release_write()
+
+    @property
     def crypto_rx_queue(self):
         return self.__crypto_rx_queue
 
@@ -280,10 +345,12 @@ class PrateBot(VanillaBot):
         """Write an encrypted message to this user via a private message on IRC."""
         if type(byteblock) is not bytes:
             raise ValueError("I cannot send a non-binary message to %s. The byteblock must be composed of bytes!" % user)
-        elif self.homies[user].pubkey is None:
-            raise PublicKeyUnknownError("I do not know %s's public key." % user)
+        elif type(user) is not str:
+            raise ValueError("crypto_put() --- user must be a string")
         elif self.homies[user].fernetkey is None:
             raise FernetKeyIsUnknownError("I have not negotiated a fernet key with %s yet." % user)
+        elif self.homies[user].pubkey is None:
+            raise PublicKeyUnknownError("I do not know %s's public key." % user)
         elif len(byteblock) > MAX_CRYPTO_MSG_LENGTH:
             raise IrcPrivateMessageTooLongError("The encrypted message will be too long")
         else:

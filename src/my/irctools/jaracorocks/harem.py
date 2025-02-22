@@ -37,16 +37,17 @@ from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum, skinny_key
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, MAXIMUM_HAREM_BLOCK_SIZE
+from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_NOOF_RECONNECTIONS, MAXIMUM_HAREM_BLOCK_SIZE, ENDTHREAD_TIMEOUT, STARTUP_TIMEOUT
 import datetime
 from my.classes import MyTTLCache
-from random import choice, shuffle
+from random import choice, shuffle, randint
+from my.classes.readwritelock import ReadWriteLock
 
 
 class HaremOfPrateBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channels, desired_nickname , list_of_all_irc_servers, rsa_key, startup_timeout=SENSIBLE_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS):
+    def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key, startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS):
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         if len(desired_nickname) > MAX_NICKNAME_LENGTH:
@@ -57,6 +58,8 @@ class HaremOfPrateBots:
         self.__maximum_reconnections = maximum_reconnections
         self.__list_of_all_irc_servers = list_of_all_irc_servers
         self.__desired_nickname = desired_nickname  # "%s%d" % (generate_irc_handle(MAX_NICKNAME_LENGTH + 10, MAX_NICKNAME_LENGTH - 2), randint(11, 99))
+        self.__paused = False
+        self.__paused_lock = ReadWriteLock()
         self.port = 6667
         self.__bots = {}
         self.__ready = False
@@ -71,6 +74,23 @@ class HaremOfPrateBots:
         self.__gotta_quit = False
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
+
+    @property
+    def paused(self):
+        self.__paused_lock.acquire_read()
+        try:
+            retval = self.__paused
+            return retval
+        finally:
+            self.__paused_lock.release_read()
+
+    @paused.setter
+    def paused(self, value):
+        self.__paused_lock.acquire_write()
+        try:
+            self.__paused = value
+        finally:
+            self.__paused_lock.release_write()
 
     @property
     def privmsgs_from_harem_bots(self):
@@ -108,13 +128,15 @@ class HaremOfPrateBots:
         print("Waiting for bots to log in or timeout")
         while (datetime.datetime.now() - t).seconds < self.startup_timeout and False in [self.bots[k].ready for k in self.bots]:
             sleep(1)
-#        print("Triggering handshaking")
-#        self.trigger_handshaking()
+        print("Triggering handshaking now.")
+        sleep(5)
+        self.trigger_handshaking()
         self.__ready = True
         while not self.gotta_quit:
             sleep(A_TICK)
-            self.process_incoming_buffer()
-        msgthr.join(timeout=SENSIBLE_TIMEOUT)
+            if not self.paused:
+                self.process_incoming_buffer()
+        msgthr.join(timeout=ENDTHREAD_TIMEOUT)
 
     def keep_piping_the_privmsgs_out_of_bots_and_into_our_queue(self):
         while not self.gotta_quit:
@@ -160,11 +182,13 @@ class HaremOfPrateBots:
     #     return self.find_field_by_pubkey(pubkey, 'ipaddr')
 
     def put(self, pubkey, datablock):
+        if self.paused:
+            raise ValueError("Set paused=False and try again.")
         # FIXME: If receiving party requests a copy of a cached packet from <255 ago, that's just too bad.
         assert(type(pubkey) is RSA.RsaKey)
         assert(type(datablock) is bytes)
-        cryptoputs = self.get_cryptoputs(pubkey)
-        if 0 == len(cryptoputs):
+        useful_homies = [h for h in self.homies if h.pubkey is not None and h.pubkey == pubkey]
+        if 0 == len(useful_homies):
             raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
         outpackets_lst = self.generate_packets_list_for_transmission(pubkey, datablock)
         print("OK. Transmitting the outpackets.")
@@ -173,17 +197,20 @@ class HaremOfPrateBots:
         shuffle(order_of_transmission_groupA)
         shuffle(order_of_transmission_groupB)
         order_of_transmission = order_of_transmission_groupA + order_of_transmission_groupB
+        botno_offset = randint(0, 100)
         for i in range(0, len(outpackets_lst)):
-            botno = i % len(cryptoputs)
+            botno = (i + botno_offset) % len(useful_homies)
             pktno = order_of_transmission[i]
-            cryptoputs[botno](bytes(outpackets_lst[pktno]))
+            self.bots[useful_homies[botno].irc_server].crypto_put(
+                user=useful_homies[botno].nickname, byteblock=bytes(outpackets_lst[pktno]))
 
     def process_incoming_buffer(self):
         final_packetnumber = -1
         pubkey = None
-        while final_packetnumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1) if self.our_getq_cache[i % 65536] is None]:
+        while not self.paused and not self.gotta_quit and \
+        (final_packetnumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1) if self.our_getq_cache[i % 65536] is None]):
             # FIXME: Prone to lockups and gridlock because it'll wait indefinitely for a missing packet.
-            if self.gotta_quit:
+            if self.gotta_quit or self.paused:
                 return
             else:
                 try:
@@ -238,14 +265,6 @@ class HaremOfPrateBots:
     def find_nickname_by_pubkey(self, pubkey, handshook_only=False):
         return self.find_field_by_pubkey(pubkey, 'nickname', handshook_only)
 
-    def get_cryptoputs(self, pubkey):
-        dct = self.find_nickname_by_pubkey(pubkey, True)
-        outlst = []
-        for k in dct:
-            this_cryptoput = partial(self.bots[k].crypto_put, dct[k])
-            outlst += [this_cryptoput]
-        return outlst
-
     def generate_packets_list_for_transmission(self, pubkey, datablock):
         outpackets_lst = []
         bytes_remaining = len(datablock)
@@ -280,8 +299,18 @@ class HaremOfPrateBots:
         """Users in our chatroom(s). THAT INCLUDES US: being in there is mandatory whereas being a homie is optional."""
         retval = []
         for k in self.bots:
-            retval += [u for u in self.bots[k].users]
+            for u in self.bots[k].users:
+                if u not in retval:
+                    retval.append(u)
         return list(set(retval))
+
+    @property
+    def homies(self):
+        retval = []
+        for k in self.bots:
+            for h in self.bots[k].homies:
+                retval.append(self.bots[k].homies[h])
+        return retval
 
     @property
     def ipaddrs(self):
@@ -299,10 +328,9 @@ class HaremOfPrateBots:
         """Pubkeys of homies in our chatroom(s)."""
         retval = []
         for k in self.bots:
-            for user in [u for u in self.bots[k].users]:
-                pubkey = self.bots[k].homies[user].pubkey
-                if pubkey is not None and pubkey not in retval:
-                    retval += [pubkey]
+            for pk in self.bots[k].pubkeys:
+                if pk not in retval:
+                    retval.append(pk)
         return retval
 
     def empty(self):
@@ -348,7 +376,7 @@ class HaremOfPrateBots:
         for t in pratestartup_threads_lst:
             if self.gotta_quit:
                 break
-            t.join(timeout=SENSIBLE_TIMEOUT)  # Wait until the connection attempt completes (success?failure?doesn't matter)
+            t.join(timeout=ENDTHREAD_TIMEOUT)  # Wait until the connection attempt completes (success?failure?doesn't matter)
 
     def try_to_log_into_this_IRC_server(self, k):
         try:

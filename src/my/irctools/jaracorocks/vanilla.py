@@ -37,7 +37,7 @@ from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcIniti
     IrcStillConnectingError, IrcNicknameTooLongError, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcRanOutOfReconnectionsError, IrcBadNicknameError, \
     IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError, IrcAlreadyDisconnectedError, IrcYouCantUseABotAfterQuittingItError
 from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
-from my.globals import MAX_NICKNAME_LENGTH, SENSIBLE_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK
+from my.globals import MAX_NICKNAME_LENGTH, JOINPARTCHAN_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK
 
 
 class VanillaBot:
@@ -207,7 +207,7 @@ class VanillaBot:
     def join(self, channel):
         """Join this IRC channel."""
         self._client.connection.join(channel)
-        for _ in range(0, SENSIBLE_TIMEOUT * 10):
+        for _ in range(0, JOINPARTCHAN_TIMEOUT * 10):
             sleep(A_TICK)
             if channel in list(self.channels.keys()):
                 return
@@ -216,7 +216,7 @@ class VanillaBot:
     def part(self, channel):
         """Leave this IRC channel."""
         self._client.connection.part(channel)
-        for _ in range(0, SENSIBLE_TIMEOUT * 10):
+        for _ in range(0, JOINPARTCHAN_TIMEOUT * 10):
             sleep(A_TICK)
             if channel not in list(self.channels.keys()):
                 return
@@ -389,7 +389,7 @@ class VanillaBot:
         if self.quitted:
             raise IrcYouCantUseABotAfterQuittingItError("%s was quitted. You can't use it after that." % self.irc_server)
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
-            raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
+            raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
         return self._client.call_whois_and_wait_for_response(user, timeout)
 
     @property
@@ -409,9 +409,9 @@ class VanillaBot:
     def put(self, user, msg):
         """Send a private message to the specified user on the IRC server."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
-            raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
+            raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
         if len(user) > MAX_NICKNAME_LENGTH:
-            raise IrcNicknameTooLongError("Nickname is too long")
+            raise IrcNicknameTooLongError("Nickname %s is too long" % user)
         if self._client is None or not self._client.ready:
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
@@ -447,7 +447,7 @@ class VanillaBot:
         else:
             return self._client.ready
 
-    def quit(self, yes_even_the_reactor_thread=False, timeout=10):
+    def quit(self, yes_even_the_reactor_thread=False, timeout=5):
         """Quit this bot."""
         if self.quitted:
             raise IrcAlreadyDisconnectedError("Trying to quit %s twice. This should be unnecessary." % self.irc_server)
@@ -461,6 +461,5 @@ class VanillaBot:
                 sleep(A_TICK)
         if yes_even_the_reactor_thread:
             self.__my_client_start_thread.join(timeout)  # jaraco
-        sleep(1)
         self.__quitted = True
 

@@ -33,6 +33,7 @@ from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
 from my.classes.exceptions import IrcBadNicknameError, PublicKeyBadKeyError, IrcNicknameTooLongError
 from my.globals import MAX_NICKNAME_LENGTH
+from my.irctools.cryptoish import squeeze_da_keez, sha1
 
 
 class Homie:
@@ -50,11 +51,13 @@ class Homie:
         ipadd (str): The IP address of the user.
     """
 
-    def __init__(self, nickname, pubkey=None, remotely_supplied_fernetkey=None, ipaddr=None):
+    def __init__(self, nickname, irc_server=None, pubkey=None, remotely_supplied_fernetkey=None, ipaddr=None):
         self.__nickname_lock = ReadWriteLock()
         self.__pubkey_lock = ReadWriteLock()
         self.__fernetkey_lock = ReadWriteLock()
         self.__ipaddr_lock = ReadWriteLock()
+        self.__irc_server = irc_server
+        self.__irc_server_lock = ReadWriteLock()
         self.__nickname = nickname
         self.__pubkey = pubkey
         self.__remotely_supplied_fernetkey = remotely_supplied_fernetkey
@@ -63,6 +66,38 @@ class Homie:
         self.__locally_generated_fernetkey_lock = ReadWriteLock()
         self.__ipaddr = ipaddr
         super().__init__()
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        pk = self.pubkey
+        if pk is not None:
+            pk = squeeze_da_keez(pk)
+            pk = "%s..." % (pk[:16])
+        fk = self.fernetkey
+        if fk is not None:
+            fk = "%s..." % str(fk)[:12]
+        return f"{class_name}(irc_server={self.irc_server!r}, nickname={self.nickname!r}, pubkey={pk!r}, fernetkey={fk!r}, ipaddr={self.ipaddr!r})"
+
+#    def __str__(self):
+#        return f'"{self.title}" by {self.author}'
+
+    @property
+    def irc_server(self):
+        """irc_server (str: The irc_server that is associated with this record."""
+        self.__irc_server_lock.acquire_read()
+        try:
+            retval = self.__irc_server
+            return retval
+        finally:
+            self.__irc_server_lock.release_read()
+
+    @irc_server.setter
+    def irc_server(self, value):
+        self.__irc_server_lock.acquire_write()
+        try:
+            self.__irc_server = value
+        finally:
+            self.__irc_server_lock.release_write()
 
     @property
     def remotely_supplied_fernetkey(self):
@@ -114,7 +149,7 @@ class Homie:
             if value is not None and type(value) is not str:
                 raise IrcBadNicknameError("When setting nickname, specify a string & not a {t}".format(t=str(type(value))))
             if len(value) > MAX_NICKNAME_LENGTH:
-                raise IrcNicknameTooLongError("Nickname is too long")
+                raise IrcNicknameTooLongError("Nickname %s is too long" % value)
             self.__nickname = value
         finally:
             self.__nickname_lock.release_write()

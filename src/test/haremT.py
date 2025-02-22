@@ -14,17 +14,13 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from queue import Empty
 
 
-
-
-
-
 '''
 import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.irctools.jaracorocks.harem import HaremOfPrateBots
 from my.stringtools import generate_random_alphanumeric_string
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES
 from random import randint
 import datetime
 import socket
@@ -258,11 +254,9 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
         cls.h2 = HaremOfPrateBots(['#lokinbaa'], bob_nick, list_of_all_irc_servers, my_rsa_key2)
         while not (cls.h1.ready and cls.h2.ready):
             sleep(1)
-        k1 = my_rsa_key1.public_key()
-        k2 = my_rsa_key2.public_key()
         noof_loops = 0
         print("testFirstOfAll() --- waiting for setup")
-        while len(cls.h1.get_cryptoputs(k2)) + len(cls.h2.get_cryptoputs(k1)) < 2:
+        while len(cls.h1.homies) + len(cls.h2.homies) < 2:
         # while len(cls.h1.find_nickname_by_pubkey(my_rsa_key2.public_key(), handshook_only=True)) < 3 and len(cls.h2.find_nickname_by_pubkey(my_rsa_key1.public_key(), handshook_only=True)) < 3:
             sleep(15)
             noof_loops += 1
@@ -303,6 +297,13 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
             self.h1.put(my_rsa_key2.public_key(), plaintext)
             pk, msg = self.h2.get()
             self.assertEqual((pk, msg), (my_rsa_key1.public_key(), plaintext))
+
+    def testHomiesList(self):
+        for homie in self.h1.homies:
+            print(self.h1.homies)
+            print(self.h2.homies)
+            pass
+#        for homie in self.h2.homies:
 
     # .find_nickname_by_pubkey <== test
 

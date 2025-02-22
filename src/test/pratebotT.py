@@ -122,7 +122,7 @@ class TestGroupTwo(unittest.TestCase):
         bot2.quit()
 
     def testTwoBots(self):
-        my_room = '#prate'  # + generate_irc_handle(7, 9)
+        my_room = '#pratjbqy'  # + generate_irc_handle(7, 9)
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
@@ -130,6 +130,8 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        self.assertEqual([my_rsa_key1.public_key()], bot2.pubkeys)
+        self.assertEqual([my_rsa_key2.public_key()], bot1.pubkeys)
         the_message = get_word_salad()[:400]
         bot1.put(bot1.nickname, the_message)
         sleep(1)
@@ -376,15 +378,6 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bot2.quit()
 
     def testDoesChannelUserlistUpdateAutomatically(self):
-        '''
-        from Crypto.PublicKey import RSA
-        from time import sleep
-        from my.stringtools import *
-        from random import randint
-        from my.irctools.jaracorocks.pratebot import PrateBot
-        from my.globals import *
-        from my.classes.exceptions import *
-        '''
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
@@ -405,15 +398,6 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bot2.quit()
 
     def testSlowlyJoinAndLeave(self):
-        '''
-        from Crypto.PublicKey import RSA
-        from time import sleep
-        from my.stringtools import *
-        from random import randint
-        from my.irctools.jaracorocks.pratebot import PrateBot
-        from my.globals import *
-        from my.classes.exceptions import *
-        '''
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(2048)
@@ -494,6 +478,39 @@ class TestHugeNumberOfUsers(unittest.TestCase):
             sleep(5)
         for k in bots:
             bots[k].quit()
+
+
+class TestFernetKeyMismatches(unittest.TestCase):
+
+    def testSimpleFernetKeyMismatch(self):
+        my_room = '#pratexx'  # + generate_irc_handle(7, 9)
+        nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        self.assertNotEqual(nick1, nick2)
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        the_message = get_word_salad()[:400]
+        bot1.put(bot1.nickname, the_message)
+        sleep(1)
+        self.assertEqual(bot1.get_nowait(), (bot1.nickname, the_message))
+        self.assertEqual(bot1.homies[nick2].fernetkey, bot2.homies[nick1].fernetkey)
+        bot1.quit()
+        bot2.quit()
+
+    # def testTenUsersAtOnce(self):
+    #     noof_nicks = 10
+    #     bots = {}
+    #     keys = {}
+    #     for i in range(0, noof_nicks):
+    #         nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
+    #         keys[nickname] = RSA.generate(2048)
+    #         bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
+    #     while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
+    #         sleep(5)
+    #     for k in bots:
+    #         bots[k].quit()
 
 
 if __name__ == "__main__":

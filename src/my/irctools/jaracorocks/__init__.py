@@ -33,7 +33,7 @@ import irc.bot
 from time import sleep
 from my.classes import MyTTLCache
 from my.globals import ANTIOVERLOAD_CACHE_TIME, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, \
-    MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, SENSIBLE_TIMEOUT, A_TICK
+    MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, A_TICK
 from irc.client import ServerNotConnectedError
 from queue import Queue
 from my.classes.readwritelock import ReadWriteLock
@@ -229,9 +229,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def call_whois_and_wait_for_response(self, user, timeout=DEFAULT_WHOIS_TIMEOUT):
         """Call /whois, and use __whois_request_cache to get answer."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
-            raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
-        if len(user) > MAX_NICKNAME_LENGTH:
-            raise IrcNicknameTooLongError("Nickname is too long")
+            raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
+        # if len(user) > MAX_NICKNAME_LENGTH:
+        #     raise IrcNicknameTooLongError("Nickname %s is too long" % user)
         if self.__whois_request_cache.get(user) is None:
             self.__whois_request_c_hits_v_misses[1] += 1
             try:
@@ -249,9 +249,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def __call_whois_and_wait_for_response(self, user, timeout):
         """Sends a /whois to the server. Waits for a response. Returns the response."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
-            raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
-        if len(user) > MAX_NICKNAME_LENGTH:
-            raise IrcNicknameTooLongError("Nickname is too long")
+            raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
+        # if len(user) > MAX_NICKNAME_LENGTH:
+        #     raise IrcNicknameTooLongError("Nickname is too long")
 #        with self.__whois_request_cache_mutex:
         if not self.connected:
             raise TimeoutError("I cannot /whois, because I am not connected. Please connect to the server and try again.")
@@ -267,9 +267,9 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
     def privmsg(self, user, msg):
         """Send a private message on IRC. Then, pause; don't overload the server."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
-            raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
+            raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
         if len(user) > MAX_NICKNAME_LENGTH:
-            raise IrcNicknameTooLongError("Nickname is too long")
+            raise IrcNicknameTooLongError("Nickname %s is too long" % user)
         if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
             raise IrcPrivateMessageContainsBadCharsError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. => %s" % str(msg))
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
@@ -287,7 +287,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
                 self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
                 retval = len(msg)
             except ServerNotConnectedError:
-                print("WARNING --- unable to send %s to %s: server is no connected" % (msg, user))
+                print("%s: %s: can't send msg to %s: server is not connected" % (self.irc_server, self.nickname, user))
                 retval = -1
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
         else:
@@ -410,9 +410,9 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
 
     def put(self, user, msg):
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
-            raise IrcBadNicknameError("Nickname is bad (non-string, empty, starts with a digit, too short)")
+            raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
         if len(user) > MAX_NICKNAME_LENGTH:
-            raise IrcNicknameTooLongError("Nickname is too long")
+            raise IrcNicknameTooLongError("Nickname %s is too long" % user)
         if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
             raise IrcPrivateMessageContainsBadCharsError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. => %s" % str(msg))
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
