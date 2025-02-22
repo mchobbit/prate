@@ -130,12 +130,13 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        sleep(5)
         self.assertEqual([my_rsa_key1.public_key()], bot2.pubkeys)
         self.assertEqual([my_rsa_key2.public_key()], bot1.pubkeys)
-        the_message = get_word_salad()[:400]
-        bot1.put(bot1.nickname, the_message)
-        sleep(1)
-        self.assertEqual(bot1.get_nowait(), (bot1.nickname, the_message))
+        the_message = get_word_salad()[:200]
+        bot1.crypto_put(bot2.nickname, the_message.encode())
+        sleep(2)
+        self.assertEqual(bot2.crypto_get_nowait(), (bot1.nickname, the_message))
         bot1.quit()
         bot2.quit()
 
