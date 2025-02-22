@@ -47,7 +47,9 @@ from my.classes.readwritelock import ReadWriteLock
 class HaremOfPrateBots:
 # Eventually, make it threaded!
 
-    def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key, startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS):
+    def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key,
+                 startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS,
+                 autohandshake=True):
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         if len(desired_nickname) > MAX_NICKNAME_LENGTH:
@@ -62,6 +64,7 @@ class HaremOfPrateBots:
         self.__paused_lock = ReadWriteLock()
         self.port = 6667
         self.__bots = {}
+        self.__autohandshake = autohandshake
         self.__ready = False
 #        self.__outgoing_caches_dct = {}
         self.__outgoing_packetnumbers_dct = {}
@@ -74,6 +77,10 @@ class HaremOfPrateBots:
         self.__gotta_quit = False
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
+
+    @property
+    def autohandshake(self):
+        return self.__autohandshake
 
     @property
     def paused(self):
@@ -128,9 +135,9 @@ class HaremOfPrateBots:
         print("Waiting for bots to log in or timeout")
         while (datetime.datetime.now() - t).seconds < self.startup_timeout and False in [self.bots[k].ready for k in self.bots]:
             sleep(1)
-        print("Triggering handshaking now.")
-        sleep(5)
-        self.trigger_handshaking()
+        if self.autohandshake:
+            print("Triggering handshaking now.")
+            self.trigger_handshaking()
         self.__ready = True
         while not self.gotta_quit:
             sleep(A_TICK)
