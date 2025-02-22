@@ -42,6 +42,7 @@ import datetime
 from my.classes import MyTTLCache
 from random import choice, shuffle, randint
 from my.classes.readwritelock import ReadWriteLock
+from my.stringtools import s_now
 
 
 class HaremOfPrateBots:
@@ -66,7 +67,6 @@ class HaremOfPrateBots:
         self.__bots = {}
         self.__autohandshake = autohandshake
         self.__ready = False
-#        self.__outgoing_caches_dct = {}
         self.__outgoing_packetnumbers_dct = {}
         self.__privmsgs_from_harem_bots = Queue()
         self.__our_getqueue = Queue()
@@ -132,12 +132,13 @@ class HaremOfPrateBots:
         self.log_into_all_functional_IRC_servers()
         msgthr = Thread(target=self.keep_piping_the_privmsgs_out_of_bots_and_into_our_queue, daemon=True)
         msgthr.start()
-        print("Waiting for bots to log in or timeout")
+        print("%s %s: waiting for bots to log in or timeout" % (s_now(), self.desired_nickname))
         while (datetime.datetime.now() - t).seconds < self.startup_timeout and False in [self.bots[k].ready for k in self.bots]:
             sleep(1)
         if self.autohandshake:
-            print("Triggering handshaking now.")
+            print("%s %s: triggering handshake now" % (s_now(), self.desired_nickname))
             self.trigger_handshaking()
+        print("%s %s: All bots in my harem are ready to be addressed. (I'm not promising they're connected, though.)" % (s_now(), self.desired_nickname))
         self.__ready = True
         while not self.gotta_quit:
             sleep(A_TICK)
@@ -150,8 +151,8 @@ class HaremOfPrateBots:
             try:
                 the_bots = list(set(self.bots))
             except Exception as e:
-                print("Did the dictionary change? =>", e)
-                sleep(.1)
+                print("%s %s: did the dictionary change? =>" % (s_now(), self.desired_nickname), e)
+                sleep(A_TICK)
                 continue
             else:
                 for k in the_bots:
@@ -159,7 +160,7 @@ class HaremOfPrateBots:
                         src, msg = self.bots[k].crypto_get_nowait()
                         self.privmsgs_from_harem_bots.put((src, k, msg))
                     except Empty:
-                        pass
+                        sleep(A_TICK)
 
     @property
     def our_getqueue(self):
@@ -177,16 +178,9 @@ class HaremOfPrateBots:
     def our_getq_alreadyspatout(self, value):
         self.__our_getq_alreadyspatout = value
 
-    # @property
-    # def outgoing_caches_dct(self):
-    #     return self.__outgoing_caches_dct
-
     @property
     def outgoing_packetnumbers_dct(self):
         return self.__outgoing_packetnumbers_dct
-
-    # def find_ipaddr_by_pubkey(self, pubkey):
-    #     return self.find_field_by_pubkey(pubkey, 'ipaddr')
 
     def put(self, pubkey, datablock):
         if self.paused:
@@ -198,7 +192,7 @@ class HaremOfPrateBots:
         if 0 == len(useful_homies):
             raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
         outpackets_lst = self.generate_packets_list_for_transmission(pubkey, datablock)
-        print("OK. Transmitting the outpackets.")
+        print("%s %s: okay. Transmitting the outpackets." % (s_now(), self.desired_nickname))
         order_of_transmission_groupA = list(range(0, len(outpackets_lst)))
         order_of_transmission_groupB = list(range(0, len(outpackets_lst)))
         shuffle(order_of_transmission_groupA)
@@ -229,18 +223,18 @@ class HaremOfPrateBots:
                 else:
                     packetno = int.from_bytes(frame[0:4], 'little')
                     if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge
-                        print("I think we've wrapped around.")
+                        print("%s %s: I think we've wrapped around." % (s_now(), self.desired_nickname))
                         self.our_getq_alreadyspatout = 0
                     if packetno < self.our_getq_alreadyspatout:
-                        print("Ignoring packet#%d: it's a duplicate" % packetno)
+                        print("%s %s: ignoring packet#%d, as it's a duplicate" % (s_now(), self.desired_nickname, packetno))
                     else:
                         assert(packetno < 256 * 256 * 256 * 127)  # FIXME: PROGRAM A WRAPAROUND.
                         self.our_getq_cache[packetno % 65536] = frame
                         framelength = int.from_bytes(frame[4:6], 'little')
                         checksum = frame[framelength + 6:framelength + 14]
-                        print("Rx'd pkt#%d of %d bytes" % (packetno, len(frame)))
+                        print("%s %s: rx'd pkt#%d of %d bytes" % (s_now(), self.desired_nickname, packetno, len(frame)))
                         if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
-                            print("Bad checksum for packet #%d. You should request a fresh copy." % packetno)
+                            print("%s %s: bad checksum for pkt#%d. You should request a fresh copy." % (s_now(), self.desired_nickname, packetno))
                             # for i in range(6, 6 + framelength):
                             #     frame[i] = 0  # FIXME: ugly kludge
                         if framelength == 0:
@@ -291,9 +285,8 @@ class HaremOfPrateBots:
             frame += len(our_block).to_bytes(2, 'little')  # length
             frame += our_block  # data block
             frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
-            # self.outgoing_caches_dct[squeezed_pk][self.outgoing_packetnumbers_dct[squeezed_pk] % 256] = frame
             outpackets_lst.append(frame)
-#             print("Sent pkt#%d of %d bytes" % (self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
+            print("%s %s: sent pkt#%d of %d bytes" % (s_now(), self.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
             bytes_remaining -= bytes_for_this_frame
             pos += bytes_for_this_frame
             self.outgoing_packetnumbers_dct[squeezed_pk] += 1
@@ -354,8 +347,20 @@ class HaremOfPrateBots:
         return self.__bots
 
     def trigger_handshaking(self):
+        print("%s %s: triggering handshaking" % (s_now(), self.desired_nickname))
+        # for k in self.bots:
+        #     self.bots[k].trigger_handshaking()
+        my_threads = []
+#        print("Triggering handshaking")
         for k in self.bots:
-            self.bots[k].trigger_handshaking()
+            my_threads += [Thread(target=self.bots[k].trigger_handshaking, daemon=True)]  # args=[k]
+#        print("Starting handshaking")
+        for thr in my_threads:
+            thr.start()
+#        print("Joining handshaking")
+        for thr in my_threads:
+            thr.join()
+#        print("Exiting handshaking")
 
     @property
     def list_of_all_irc_servers(self):
@@ -375,8 +380,8 @@ class HaremOfPrateBots:
 
     def log_into_all_functional_IRC_servers(self):
         pratestartup_threads_lst = []
-#        print("Trying all IRC servers")
         for k in self.list_of_all_irc_servers:
+#             self.try_to_log_into_this_IRC_server(k)
             pratestartup_threads_lst += [Thread(target=self.try_to_log_into_this_IRC_server, args=[k], daemon=True)]
         for t in pratestartup_threads_lst:
             t.start()
@@ -395,12 +400,12 @@ class HaremOfPrateBots:
                                    startup_timeout=self.startup_timeout,
                                    maximum_reconnections=self.maximum_reconnections,
                                    strictly_nick=False,
-                                   autohandshake=False)
+                                   autohandshake=self.autohandshake)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
             pass  # print("Failed to join", k)
         else:
 #            print("Connected to", k)
-            self.bots[k] = bot
+            self.bots[k] = bot  # FIXME: NOT THREADSAFE!
 
     def quit(self):
         for k in self.bots:
