@@ -40,7 +40,6 @@ from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_NOOF_RECONNECTIONS,
 import datetime
 from my.classes import MyTTLCache
 from random import choice, shuffle, randint
-from my.classes.readwritelock import ReadWriteLock
 from my.stringtools import s_now
 
 
@@ -61,7 +60,6 @@ class HaremOfPrateBots:
         self.__list_of_all_irc_servers = list_of_all_irc_servers
         self.__desired_nickname = desired_nickname  # "%s%d" % (generate_irc_handle(MAX_NICKNAME_LENGTH + 10, MAX_NICKNAME_LENGTH - 2), randint(11, 99))
         self.__paused = False
-        self.__paused_lock = ReadWriteLock()
         self.port = 6667
         self.__bots = {}
         self.__autohandshake = autohandshake
@@ -347,19 +345,20 @@ class HaremOfPrateBots:
 
     def trigger_handshaking(self):
         print("%s %s: triggering handshaking" % (s_now(), self.desired_nickname))
-        # for k in self.bots:
-        #     self.bots[k].trigger_handshaking()
         my_threads = []
-#        print("Triggering handshaking")
+        print("Starting handshaking")
         for k in self.bots:
-            my_threads += [Thread(target=self.bots[k].trigger_handshaking, daemon=True)]  # args=[k]
-#        print("Starting handshaking")
+            bot = self.bots[k]
+            if k == self.bots[k].nickname:
+                print("%s %s: %s: no need to trigger handshaking w/ %s" % (s_now(), bot.irc_server, bot.nickname, k))
+            else:
+                my_threads += [Thread(target=self.bots[k].trigger_handshaking, daemon=True)]  # args=[k]
         for thr in my_threads:
             thr.start()
-#        print("Joining handshaking")
+        print("Joining handshaking")
         for thr in my_threads:
-            thr.join()
-#        print("Exiting handshaking")
+            thr.join(timeout=ENDTHREAD_TIMEOUT)
+        print("Exiting handshaking")
 
     @property
     def list_of_all_irc_servers(self):
