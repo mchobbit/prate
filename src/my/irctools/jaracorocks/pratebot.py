@@ -123,10 +123,8 @@ class PrateBot(VanillaBot):
         self.rsa_key = rsa_key
         self.__autohandshake = autohandshake
         self.__homies = HomiesDct()
-        self.__homies_lock = ReadWriteLock()
         self.__crypto_rx_queue = Queue()
         self.__paused = False
-        self.__paused_lock = ReadWriteLock()
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
@@ -324,37 +322,16 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
     @property
     def homies(self):
         """Dictionary of relevant IRC users."""
-        self.__homies_lock.acquire_read()
-        try:
-            retval = self.__homies
-            return retval
-        finally:
-            self.__homies_lock.release_read()
-
-    @homies.setter
-    def homies(self, value):
-        self.__homies_lock.acquire_write()
-        try:
-            self.__homies = value
-        finally:
-            self.__homies_lock.release_write()
+        return self.__homies
 
     @property
     def paused(self):
-        self.__paused_lock.acquire_read()
-        try:
-            retval = self.__paused
-            return retval
-        finally:
-            self.__paused_lock.release_read()
+        retval = self.__paused
+        return retval
 
     @paused.setter
     def paused(self, value):
-        self.__paused_lock.acquire_write()
-        try:
-            self.__paused = value
-        finally:
-            self.__paused_lock.release_write()
+        self.__paused = value
 
     @property
     def crypto_rx_queue(self):
