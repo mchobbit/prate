@@ -205,41 +205,31 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
             except Empty:
                 return
             else:
-                if msg.startswith(_RQPK_):
-#                     print("%s %s: %s: requesting public key from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                if msg.startswith(_RQPK_):  # print("%s %s: %s: requesting public key from %s" % (s_now(), self.irc_server, self.nickname, sender))
                     self.put(sender, "%s%s" % (_TXPK_, squeeze_da_keez(self.rsa_key.public_key())))
-                elif msg.startswith(_TXPK_):
-#                     print("%s %s: %s: sending my public key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TXPK_):  # print("%s %s: %s: sending my public key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
                     self.homies[sender].irc_server = self.irc_server  # just in case a Harem needs it
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TXPK_):])
                     self.put(sender, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
-                elif msg.startswith(_RQFE_):
-#                     print("%s %s: %s: requesting fernet key from %s" % (s_now(), self.irc_server, self.nickname, sender))
-                    if self.homies[sender].pubkey is None:
-#                         print("%s %s: %s: I'm being asked for my fernet key, but I don't have %s's public key yet. I'll ask for it now." % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_RQFE_):  # print("%s %s: %s: requesting fernet key from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                    if self.homies[sender].pubkey is None:  # print("%s %s: %s: I'm being asked for my fernet key, but I don't have %s's public key yet. I'll ask for it now." % (s_now(), self.irc_server, self.nickname, sender))
                         self.put(sender, "%s%s" % (_RQPK_, squeeze_da_keez(self.rsa_key.public_key())))
-                    else:
-#                         print("%s %s: %s: I'm about to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, sender))
+                    else:  # print("%s %s: %s: I'm about to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, sender))
                         t1 = datetime.datetime.now()
                         dc = rsa_decrypt(base64.b64decode(msg[len(_RQFE_):]), self.rsa_key)
                         t2 = datetime.datetime.now()
                         print("%s %s: %s: it took %d seconds to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, (t2 - t1).seconds, sender))
-                        if self.homies[sender].remotely_supplied_fernetkey != dc:
+                        if self.homies[sender].remotely_supplied_fernetkey != dc:  # print("%s %s: saving %s's new fernet key for %s" % (s_now(), self.irc_server, sender, self.nickname))
                             self.homies[sender].remotely_supplied_fernetkey = dc
-                            print("%s %s: saving %s's new fernet key for %s" % (s_now(), self.irc_server, sender, self.nickname))
                         self.put(sender, "%s%s" % (_TXFE_, self.my_encrypted_fernetkey_for_this_user(sender)))
 #                         print("%s %s: %s: I have encrypted and sent my fernet key to %s." % (s_now(), self.irc_server, self.nickname, sender))
-                elif msg.startswith(_TXFE_):
-#                     print("%s %s: %s: sending my fernet key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TXFE_):  # print("%s %s: %s: sending my fernet key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
                     dc = rsa_decrypt(base64.b64decode(msg[len(_TXFE_):]), self.rsa_key)
-                    if self.homies[sender].remotely_supplied_fernetkey != dc:
+                    if self.homies[sender].remotely_supplied_fernetkey != dc:  # print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                         self.homies[sender].remotely_supplied_fernetkey = dc
-#                        print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                     if self.homies[sender].fernetkey is not None:
-                        self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))
-#                         print("%s %s: %s: I have sent my fernet key to %s reciprocally." % (s_now(), self.irc_server, self.nickname, sender))
-                elif msg.startswith(_RQIP_):
-#                     print("%s %s: %s: requesting IP address from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                        self.put(sender, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(sender)))  # print("%s %s: %s: I have sent my fernet key to %s reciprocally." % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_RQIP_):  # print("%s %s: %s: requesting IP address from %s" % (s_now(), self.irc_server, self.nickname, sender))
                     try:
                         new_ipaddr = receive_and_decrypt_message(msg[len(_RQIP_):], self.homies[sender].fernetkey).decode()
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
@@ -249,8 +239,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                         if self.homies[sender].ipaddr != new_ipaddr:
                             self.homies[sender].ipaddr = new_ipaddr
                         self.put(sender, "%s%s" % (_TXIP_, self.my_encrypted_ipaddr(sender)))
-                elif msg.startswith(_TXIP_):
-#                     print("%s %s: %s: sending my IP address from %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TXIP_):  # print("%s %s: %s: sending my IP address from %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
                     try:
                         new_ipaddr = receive_and_decrypt_message(msg[len(_TXIP_):], self.homies[sender].fernetkey).decode()
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
@@ -290,11 +279,11 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
         else:
             try:
                 if self.is_this_user_validly_fingerprinted(user):
-                    if self.homies[user].pubkey is None: # print("%s %s: %s: I lack %s's public key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
+                    if self.homies[user].pubkey is None:  # print("%s %s: %s: I lack %s's public key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
                         self.put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_RQPK_, user, self.nickname))
-                    elif self.homies[user].fernetkey is None: # print("%s %s: %s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
+                    elif self.homies[user].fernetkey is None:  # print("%s %s: %s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
                         self.put(user, "%s%s" % (_RQFE_, self.my_encrypted_fernetkey_for_this_user(user)))
-                    elif self.homies[user].ipaddr is None: # print("%s %s: %s: I lack %s's IP address. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
+                    elif self.homies[user].ipaddr is None:  # print("%s %s: %s: I lack %s's IP address. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
                         self.put(user, "%s%s" % (_RQIP_, self.my_encrypted_ipaddr(user)))
                     else:
                         print("%s %s: %s: %s is kosher." % (s_now(), self.irc_server, self.nickname, user))
