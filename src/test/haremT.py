@@ -224,6 +224,7 @@ class TestHaremHandshook(unittest.TestCase):
         self.assertEqual(len(h1.ipaddrs), 1)
         self.assertEqual(len(h2.ipaddrs), 1)
         h2.quit()
+        sleep(5)
         self.assertEqual(len(h1.users), 1)
         self.assertEqual(len(h1.pubkeys), 0)
         self.assertEqual(len(h1.ipaddrs), 0)
