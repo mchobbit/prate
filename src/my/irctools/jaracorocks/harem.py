@@ -62,6 +62,7 @@ class HaremOfPrateBots:
         self.__paused = False
         self.port = 6667
         self.__bots = {}
+        self.__pk_homies = {}
         self.__autohandshake = autohandshake
         self.__ready = False
         self.__outgoing_packetnumbers_dct = {}
@@ -80,22 +81,18 @@ class HaremOfPrateBots:
         return self.__autohandshake
 
     @property
-    def paused(self):
-        self.__paused_lock.acquire_read()
-        try:
-            retval = self.__paused
-            return retval
-        finally:
-            self.__paused_lock.release_read()
+    def pk_homies(self):  # FIXME: not threadsafe
+        return self.__pk_homies
 
+    @property
+    def paused(self):
+        retval = self.__paused
+        return retval
+ 
     @paused.setter
     def paused(self, value):
-        self.__paused_lock.acquire_write()
-        try:
-            self.__paused = value
-        finally:
-            self.__paused_lock.release_write()
-
+        self.__paused = value
+ 
     @property
     def privmsgs_from_harem_bots(self):
         return self.__privmsgs_from_harem_bots
@@ -185,7 +182,19 @@ class HaremOfPrateBots:
         # FIXME: If receiving party requests a copy of a cached packet from <255 ago, that's just too bad.
         assert(type(pubkey) is RSA.RsaKey)
         assert(type(datablock) is bytes)
-        useful_homies = [h for h in self.homies if h.pubkey is not None and h.pubkey == pubkey]
+        import cProfile
+        from pstats import Stats
+        pr = cProfile.Profile()
+        pr.enable()
+        pk_hash = squeeze_da_keez(pubkey)
+        try:
+            useful_homies = self.pk_homies[pk_hash]
+        except KeyError:
+            useful_homies = [h for h in self.homies if h.pubkey is not None and h.pubkey == pubkey]
+            self.pk_homies[pk_hash] = useful_homies
+        pr.disable()
+        stats = Stats(pr)
+        stats.sort_stats('cumtime').print_stats(10)
         if 0 == len(useful_homies):
             raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
         outpackets_lst = self.generate_packets_list_for_transmission(pubkey, datablock)
