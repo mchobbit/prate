@@ -11,16 +11,18 @@ Created on Feb 9, 2025
 import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
-from my.stringtools import generate_irc_handle, get_word_salad
+from my.stringtools import generate_irc_handle, get_word_salad, s_now
 from my.globals import MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, MAX_CRYPTO_MSG_LENGTH
 from test.myttlcacheT import generate_random_alphanumeric_string
 from queue import Empty
-from my.irctools.jaracorocks.pratebot import PrateBot
+from my.irctools.jaracorocks.pratebot import PrateBot, _TRANSMIT_PLAINTEXT_
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageContainsBadCharsError, IrcBadNicknameError, IrcChannelNameTooLongError, IrcBadChannelNameError, \
     IrcNicknameTooLongError, IrcBadServerPortError, IrcBadServerNameError
 from random import randint
 from my.stringtools import flatten
 from my.irctools.cryptoish import squeeze_da_keez
+import datetime
+import base64
 
 
 class TestGroupOne(unittest.TestCase):
@@ -90,8 +92,7 @@ class TestGroupOne(unittest.TestCase):
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
         bot.put(bot.nickname, "HELLO")
-        sleep(1)
-        self.assertEqual(bot.get_nowait(), (bot.nickname, 'HELLO'))
+        self.assertEqual(bot.get(timeout=10), (bot.nickname, 'HELLO'))
         bot.quit()
 
     def testHomiesShouldNotIncludeMe(self):
@@ -180,9 +181,9 @@ class TestGroupTwo(unittest.TestCase):
             my_rsa_key2 = RSA.generate(2048)
             try:
                 bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
-                bot1.paused = True
+#                bot1.paused = True
                 bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-                bot2.paused = True
+#                bot2.paused = True
                 self.assertTrue(bot1.ready)
                 self.assertTrue(bot2.ready)
                 assert(len(bot1.nickname) <= MAX_NICKNAME_LENGTH)
@@ -190,14 +191,14 @@ class TestGroupTwo(unittest.TestCase):
                 bot1.put(bot1.nickname, msg)
                 retvals = bot1.get(timeout=8)
                 self.assertEqual(retvals, (bot1.nickname, msg))
+                self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, b'h9in0x')
+                self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, None)
+                self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, 3)
+                self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, '')
             finally:
                 bot1.quit()
                 bot2.quit()
 
-        self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, b'h9in0x')
-        self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, None)
-        self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, 3)
-        self.assertRaises(IrcPrivateMessageContainsBadCharsError, send_test_msg, '')
         # self.assertRaises(IrcPrivateMessageTooLongError, send_test_msg, generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH + 2))
         # self.assertRaises(IrcPrivateMessageTooLongError, send_test_msg, generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH + 1))
         # for _ in range(0, 5):
@@ -213,8 +214,8 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        bot1.paused = True
-        bot2.paused = True
+#        bot1.paused = True
+#        bot2.paused = True
         bot1.quit()
         bot2.quit()
 
@@ -228,8 +229,8 @@ class TestGroupTwo(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        bot1.paused = True
-        bot2.paused = True
+#        bot1.paused = True
+#        bot2.paused = True
         self.assertEqual(bot1.nickname, nick1)
         self.assertEqual(bot2.nickname, nick2)
         bot1.quit()
@@ -239,11 +240,11 @@ class TestGroupTwo(unittest.TestCase):
         desired_nick = 'A' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
         my_rsa_key = RSA.generate(2048)
         bot1 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key)
-        bot1.paused = True
+#        bot1.paused = True
         self.assertTrue(bot1.ready)
         self.assertEqual(bot1.nickname, desired_nick)
         bot2 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key, strictly_nick=False)  # To allow the automatic renaming of the nickname
-        bot2.paused = True
+#        bot2.paused = True
         self.assertTrue(bot2.ready)
         try:
             while True:
@@ -257,12 +258,12 @@ class TestGroupTwo(unittest.TestCase):
             pass
         self.assertNotEqual(bot2.nickname, desired_nick)
         self.assertNotEqual(bot2.nickname, bot1.nickname)
-        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname))
+        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname) - len(_TRANSMIT_PLAINTEXT_))
         bot1.put(bot2.nickname, msg)
-        self.assertEqual(bot2.get(timeout=8), (bot1.nickname, msg))
-        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot1.nickname))
+        self.assertEqual(bot2.get(timeout=10), (bot1.nickname, msg))
+        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot1.nickname) - len(_TRANSMIT_PLAINTEXT_))
         bot2.put(bot1.nickname, msg)
-        self.assertEqual(bot1.get(timeout=8), (bot2.nickname, msg))
+        self.assertEqual(bot1.get(timeout=10), (bot2.nickname, msg))
         bot1.quit()
         bot2.quit()
 
@@ -285,9 +286,9 @@ class TestGroupThree(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        bot1.paused = True
-        bot2.paused = True
-        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(nick2))
+        # bot1.paused = True
+        # bot2.paused = True
+        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname) - len(_TRANSMIT_PLAINTEXT_))
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, "Hello, world.")
         bot1.put(bot2.nickname, msg)
@@ -298,7 +299,6 @@ class TestGroupThree(unittest.TestCase):
         bot1.quit()
         bot2.quit()
 
-#
     def testSendingSameMessageTwice_parttwo(self):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
@@ -309,9 +309,9 @@ class TestGroupThree(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        bot1.paused = True
-        bot2.paused = True
-        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(nick2))
+        # bot1.paused = True
+        # bot2.paused = True
+        msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(nick2) - len(_TRANSMIT_PLAINTEXT_))
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, "Hello, world.")
@@ -549,9 +549,68 @@ class TestFernetKeyMismatches(unittest.TestCase):
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         the_message = get_word_salad()[:400]
         bot1.put(bot1.nickname, the_message)
-        sleep(1)
+        sleep(3)
         self.assertEqual(bot1.get_nowait(), (bot1.nickname, the_message))
         self.assertEqual(bot1.homies[nick2].fernetkey, bot2.homies[nick1].fernetkey)
+        bot1.quit()
+        bot2.quit()
+
+
+class TestPlaintextStuff(unittest.TestCase):
+
+    def testSimpleSendAndReceivePlaintext(self):
+        my_room = '#pratelick'
+        nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        self.assertNotEqual(nick1, nick2)
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        while not (bot1.ready and bot2.ready):
+            sleep(1)
+        sleep(10)
+        for i in range(0, 10):
+            print("Loop %d" % i)
+            t = datetime.datetime.now()
+            msg_to_send = "HELLO " + generate_random_alphanumeric_string(10)
+            bot1.put(nick2, msg_to_send)
+            u = datetime.datetime.now()
+            print("It took %1.4f seconds to send block" % float((u - t).microseconds / 1000000))
+            sender, sentmsg = bot2.get()
+            v = datetime.datetime.now()
+            print("It took %1.4f seconds to recv block" % float((v - u).microseconds / 1000000))
+            self.assertEqual(sender, nick1)
+            self.assertEqual(sentmsg, msg_to_send)
+        bot1.quit()
+        bot2.quit()
+
+    def testSimpleSendAndReceiveCiphertext(self):
+        my_room = '#pratelwqj'
+        nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        self.assertNotEqual(nick1, nick2)
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        while not (bot1.ready and bot2.ready):
+            sleep(1)
+        sleep(10)
+        for i in range(0, 10):
+            print("Loop %d" % i)
+            t = datetime.datetime.now()
+            msg_to_send = "HELLO " + generate_random_alphanumeric_string(10)
+            byteblock_to_send = base64.b85encode(msg_to_send.encode())
+            bot1.crypto_put(nick2, byteblock_to_send)
+            u = datetime.datetime.now()
+            print("It took %1.4f seconds to send block" % float((u - t).microseconds / 1000000))
+            sender, sent_bb = bot2.crypto_get()
+            v = datetime.datetime.now()
+            print("It took %1.4f seconds to recv block" % float((v - u).microseconds / 1000000))
+            self.assertEqual(sender, nick1)
+            self.assertEqual(sent_bb, byteblock_to_send)
+            self.assertEqual(base64.b85decode(sent_bb).decode(), msg_to_send)
         bot1.quit()
         bot2.quit()
 

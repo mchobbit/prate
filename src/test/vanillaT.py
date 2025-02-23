@@ -179,6 +179,7 @@ class TestVanillaBot(unittest.TestCase):
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
         self.assertTrue(charlie_bot.ready)
+        sleep(5)
         self.assertEqual(2, len(alice_bot.users))
         self.assertEqual(2, len(bob_bot.users))
         self.assertEqual(3, len(charlie_bot.users))
