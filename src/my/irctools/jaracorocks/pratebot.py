@@ -147,7 +147,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
     @property
     def pubkeys(self):
         retval = []
-        for user in [u for u in self.users]:
+        for user in [u for u in self.users if u != self.nickname]:
             pubkey = self.homies[user].pubkey
             if pubkey is not None and pubkey not in retval:
                 retval += [pubkey]
@@ -283,7 +283,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
         if not self.ready:
             print("I choose not to try to trigger handshaking with other users: I'm not even online/joinedroom yet.")
         elif user is None:
-            for user in self.users:
+            for user in [u for u in self.users if u != self.nickname]:
                 self.trigger_handshaking(user)
         elif type(user) is not str:
             raise ValueError("trigger_handshaking() takes user=str, not {t}".format(t=type(user)))
