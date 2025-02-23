@@ -5,6 +5,7 @@ Created on Jan 22, 2025
 @author: mchobbit
 '''
 import os
+from Crypto.PublicKey import RSA
 import paramiko
 import sys
 from my.stringtools import generate_irc_handle, get_word_salad, get_bits_to_be_encoded, encode_via_steg, decode_via_steg, \
@@ -30,12 +31,10 @@ from pydub import AudioSegment
 import pyaudio
 from random import shuffle, randint
 from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string
-from Crypto.PublicKey import RSA
 from my.globals import PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES
 from time import sleep
 from queue import Queue, Full
 
-from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import *
 from my.globals import *
