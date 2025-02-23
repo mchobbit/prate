@@ -283,7 +283,7 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:4]
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         cls.h1 = HaremOfPrateBots(['#lokinbaa'], alice_nick, list_of_all_irc_servers, my_rsa_key1)

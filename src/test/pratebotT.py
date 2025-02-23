@@ -102,6 +102,7 @@ class TestGroupOne(unittest.TestCase):
         bob_bot = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
+        sleep(5)
         self.assertFalse(alice_nick in alice_bot.homies)
         self.assertFalse(bob_nick in bob_bot.homies)
         self.assertTrue(alice_nick in bob_bot.homies)
