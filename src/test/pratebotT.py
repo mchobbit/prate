@@ -92,6 +92,22 @@ class TestGroupOne(unittest.TestCase):
         bot.put(bot.nickname, "HELLO")
         sleep(1)
         self.assertEqual(bot.get_nowait(), (bot.nickname, 'HELLO'))
+        bot.quit()
+
+    def testHomiesShouldNotIncludeMe(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        my_rsa_key = RSA.generate(2048)
+        alice_bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
+        bob_bot = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key)
+        self.assertTrue(alice_bot.ready)
+        self.assertTrue(bob_bot.ready)
+        self.assertFalse(alice_nick in alice_bot.homies)
+        self.assertFalse(bob_nick in bob_bot.homies)
+        self.assertTrue(alice_nick in bob_bot.homies)
+        self.assertTrue(bob_nick in alice_bot.homies)
+        alice_bot.quit()
+        bob_bot.quit()
 
 
 class TestGroupTwo(unittest.TestCase):
