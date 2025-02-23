@@ -30,7 +30,6 @@ Example:
 
 from threading import Thread
 from functools import partial
-
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError, IrcNicknameTooLongError, PublicKeyUnknownError
 from time import sleep

@@ -31,7 +31,6 @@ Example:
 
 import sys
 from threading import Thread
-
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
                             IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, IrcNicknameTooLongError, IrcBadNicknameError, \

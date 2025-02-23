@@ -14,7 +14,6 @@ base64.b85encode(hashlib.sha1(nickname.encode()).digest())
 '''
 
 from random import choice
-
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import base64
@@ -190,3 +189,4 @@ def int_64bit_cksum(byteblock):
 
 def bytes_64bit_cksum(byteblock):
     return hashlib.sha256(byteblock).digest()[:8]
+
