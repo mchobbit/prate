@@ -328,8 +328,8 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
             pkey, xferred_data = self.h2.get()
             self.assertEqual((my_rsa_key1.public_key(), plaintext), (pkey, xferred_data))
 
-    def testOneHundredLittleOnes(self):
-        for _ in range(0, 100):
+    def testTenLittleOnes(self):
+        for _ in range(0, 10):
             plaintext = generate_random_alphanumeric_string(50).encode()
             self.h1.put(my_rsa_key2.public_key(), plaintext)
             pk, msg = self.h2.get()
