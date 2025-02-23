@@ -281,7 +281,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
     def trigger_handshaking(self, user=None):
         """Initiate handshaking for all users, *or* just the specified user."""
         if not self.ready:
-            print("I choose not to try to trigger handshaking with other users: I'm not even online/joinedroom yet.")
+            raise IrcStillConnectingError("I cannot trigger handshaking with other users: I'm not even online/joinedroom yet.")
         elif user is None:
             for user in [u for u in self.users if u != self.nickname]:
                 self.trigger_handshaking(user)
