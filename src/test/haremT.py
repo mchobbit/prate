@@ -217,6 +217,7 @@ class TestHaremHandshook(unittest.TestCase):
             if noof_loops > 180:
                 raise TimeoutError("testHaremUsersPubkeysAndIpaddrs() ran out of time")
         print("Waiting for handshaking to complete")
+        sleep(5)
         self.assertEqual(len(h1.users), 2)
         self.assertEqual(len(h2.users), 2)
         self.assertEqual(len(h1.pubkeys), 1)
@@ -241,9 +242,7 @@ class TestHaremHandshook(unittest.TestCase):
         while not (alice_harem.ready and bob_harem.ready):
             sleep(1)
         print("Opening harems")
-        while len(alice_harem.users) < 2 and len(bob_harem.users) < 2:
-            sleep(1)
-        while len(alice_harem.ipaddrs) < 1 and len(bob_harem.ipaddrs) < 1:
+        while len(alice_harem.connected_homies_lst) + len(bob_harem.connected_homies_lst) < 2:
             sleep(1)
 
         for length in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000):
@@ -291,14 +290,13 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
         cls.h2 = HaremOfPrateBots(['#lokinbaa'], bob_nick, list_of_all_irc_servers, my_rsa_key2)
         while not (cls.h1.ready and cls.h2.ready):
             sleep(1)
+        print("TestSendFileBetweenTwoUserViaHarems() --- waiting for setup")
         noof_loops = 0
-        print("testFirstOfAll() --- waiting for setup")
-        while len(cls.h1.ipaddrs) + len(cls.h2.ipaddrs) < 2:
-        # while len(cls.h1.find_nickname_by_pubkey(my_rsa_key2.public_key(), handshook_only=True)) < 3 and len(cls.h2.find_nickname_by_pubkey(my_rsa_key1.public_key(), handshook_only=True)) < 3:
-            sleep(15)
+        while len(cls.h1.connected_homies_lst) + len(cls.h2.connected_homies_lst) < 2:
+            sleep(1)
             noof_loops += 1
             if noof_loops > 180:
-                raise TimeoutError("testFirstOfAll() ran out of time")
+                raise TimeoutError("TestSendFileBetweenTwoUserViaHarems() ran out of time")
 
     @classmethod
     def tearDownClass(cls):

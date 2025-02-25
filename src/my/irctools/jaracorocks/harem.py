@@ -31,16 +31,23 @@ Example:
 from threading import Thread
 from functools import partial
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError, IrcNicknameTooLongError, PublicKeyUnknownError
+from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcStillConnectingError, IrcNicknameTooLongError, PublicKeyUnknownError, \
+    FernetKeyIsInvalidError
 from time import sleep
-from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum, skinny_key
+from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum, skinny_key, sha1
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_NOOF_RECONNECTIONS, MAXIMUM_HAREM_BLOCK_SIZE, ENDTHREAD_TIMEOUT, STARTUP_TIMEOUT
+from my.globals import A_TICK, MAX_NICKNAME_LENGTH, SENSIBLE_NOOF_RECONNECTIONS, MAXIMUM_HAREM_BLOCK_SIZE, ENDTHREAD_TIMEOUT, STARTUP_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, \
+    ALL_REALWORLD_IRC_NETWORK_NAMES
 import datetime
 from my.classes import MyTTLCache
 from random import choice, shuffle, randint
-from my.stringtools import s_now
+from my.stringtools import s_now, generate_random_alphanumeric_string
+import cProfile
+from pstats import Stats
+import base64
+import hashlib
+import os
 
 
 class HaremOfPrateBots:
@@ -62,7 +69,6 @@ class HaremOfPrateBots:
         self.__paused = False
         self.port = 6667
         self.__bots = {}
-        self.__pk_homies = {}
         self.__autohandshake = autohandshake
         self.__ready = False
         self.__outgoing_packetnumbers_dct = {}
@@ -81,18 +87,14 @@ class HaremOfPrateBots:
         return self.__autohandshake
 
     @property
-    def pk_homies(self):  # FIXME: not threadsafe
-        return self.__pk_homies
-
-    @property
     def paused(self):
         retval = self.__paused
         return retval
- 
+
     @paused.setter
     def paused(self, value):
         self.__paused = value
- 
+
     @property
     def privmsgs_from_harem_bots(self):
         return self.__privmsgs_from_harem_bots
@@ -179,37 +181,60 @@ class HaremOfPrateBots:
     def put(self, pubkey, datablock):
         if self.paused:
             raise ValueError("Set paused=False and try again.")
-        # FIXME: If receiving party requests a copy of a cached packet from <255 ago, that's just too bad.
         assert(type(pubkey) is RSA.RsaKey)
         assert(type(datablock) is bytes)
-        import cProfile
-        from pstats import Stats
-        pr = cProfile.Profile()
-        pr.enable()
-        pk_hash = squeeze_da_keez(pubkey)
-        try:
-            useful_homies = self.pk_homies[pk_hash]
-        except KeyError:
-            useful_homies = [h for h in self.homies if h.pubkey is not None and h.pubkey == pubkey]
-            self.pk_homies[pk_hash] = useful_homies
-        pr.disable()
-        stats = Stats(pr)
-        stats.sort_stats('cumtime').print_stats(10)
-        if 0 == len(useful_homies):
-            raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
         outpackets_lst = self.generate_packets_list_for_transmission(pubkey, datablock)
+        packetnum_offset = self.outgoing_packetnumbers_dct[squeeze_da_keez(pubkey)] - len(outpackets_lst)
         print("%s %s: okay. Transmitting the outpackets." % (s_now(), self.desired_nickname))
-        order_of_transmission_groupA = list(range(0, len(outpackets_lst)))
-        order_of_transmission_groupB = list(range(0, len(outpackets_lst)))
-        shuffle(order_of_transmission_groupA)
-        shuffle(order_of_transmission_groupB)
-        order_of_transmission = order_of_transmission_groupA + order_of_transmission_groupB
-        botno_offset = randint(0, 100)
-        for i in range(0, len(outpackets_lst)):
-            botno = (i + botno_offset) % len(useful_homies)
-            pktno = order_of_transmission[i]
-            self.bots[useful_homies[botno].irc_server].crypto_put(
-                user=useful_homies[botno].nickname, byteblock=bytes(outpackets_lst[pktno]))
+        our_homies = [h for h in self.connected_homies_lst if h.pubkey == pubkey]
+        if 0 == len(our_homies):
+            raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
+        noof_packets = len(outpackets_lst)
+        noof_homies = len(our_homies)
+        packetstatuses = {}
+        is_homie_busy = [False] * noof_homies
+        el = 0
+        # Send a packet to every homie, in order.
+        while el < noof_packets or True in is_homie_busy:
+            sleep(.1)
+            if el < noof_packets:
+                frame = bytes(outpackets_lst[el])
+                for homieno in range(0, noof_homies):
+                    if not is_homie_busy[homieno]:
+                        is_homie_busy[homieno] = True
+                        homie = our_homies[homieno]
+                        frameno = int.from_bytes(frame[0:4], 'little')
+                        print("Sending frame #%d to %s via %s" % (frameno, homie.nickname, homie.irc_server))
+                        packetstatuses[frameno] = [homie.irc_server, datetime.datetime.now(), None]
+                        self.bots[homie.irc_server].crypto_put(homie.nickname, frame)
+                        el += 1
+            for homieno in range(0, noof_homies):
+                if is_homie_busy[homieno]:
+                    try:
+                        (src, rxd) = self.bots[self.homies_lst[homieno].irc_server].get_nowait()
+                    except Empty:
+                        pass
+                    else:
+                        receipt_packetno = int(rxd.split(' ')[0])
+                        receipt_irc_server = rxd.split(' ')[1]
+                        receipt_cksum = rxd.split(' ')[2]
+                        if receipt_irc_server != our_homies[homieno].irc_server:
+                            raise ValueError("I think I've mistakenly handled a packet that was from a different destination.")
+#                        if our_pktno < len(outpackets_lst):
+                        assert(receipt_cksum == base64.b85encode(hashlib.sha1(bytes(outpackets_lst[receipt_packetno - packetnum_offset])).digest()).decode())
+                        if packetnum_offset > 0:
+                            print("packetnum_offset =", packetnum_offset)
+                        assert(packetstatuses[receipt_packetno][1] is not None)
+                        assert(packetstatuses[receipt_packetno][2] is None)
+                        homie = our_homies[homieno]
+                        if src != homie.nickname:
+                            raise ValueError("WARNING -- src was not %s. Should I reinsert it in rx queue?" % homie.nickname)
+                        #     self.bots[homie.irc_server].reinsert((src, rxd))
+                        # else:
+                        packetstatuses[receipt_packetno][2] = datetime.datetime.now()
+                        print("CONFIRM packet #%d to %s via %s rx'd okay" % (receipt_packetno, homie.nickname, homie.irc_server))
+                        is_homie_busy[homieno] = False
+                        print("%s is now free." % homie.irc_server)
 
     def process_incoming_buffer(self):
         final_packetnumber = -1
@@ -222,10 +247,10 @@ class HaremOfPrateBots:
             else:
                 try:
                     user, irc_server, frame = self.privmsgs_from_harem_bots.get_nowait()
-                    if pubkey is None:
-                        pubkey = self.bots[irc_server].homies[user].pubkey  # else assert(pubkey == self.bots[irc_server].homies[user].pubkey)
+#                    if pubkey is None:
+                    pubkey = self.bots[irc_server].homies[user].pubkey  # else assert(pubkey == self.bots[irc_server].homies[user].pubkey)
                 except Empty:
-                    pass  # sleep(A_TICK)
+                    sleep(A_TICK)  # pass
                 else:
                     packetno = int.from_bytes(frame[0:4], 'little')
                     if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge
@@ -245,6 +270,9 @@ class HaremOfPrateBots:
                             #     frame[i] = 0  # FIXME: ugly kludge
                         if framelength == 0:
                             final_packetnumber = packetno
+                        our_cksum = base64.b85encode(hashlib.sha1(bytes(frame)).digest()).decode()
+                        print("Confirming receipt of packet #%d from %s; cksum %s" % (packetno, irc_server, our_cksum))
+                        self.bots[irc_server].put(user, "%d %s %s" % (packetno, irc_server, our_cksum))
         data_to_be_returned = bytearray()
         for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1):
             data_to_be_returned += self.our_getq_cache[i][6:-8]
@@ -291,8 +319,7 @@ class HaremOfPrateBots:
             frame += len(our_block).to_bytes(2, 'little')  # length
             frame += our_block  # data block
             frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
-            outpackets_lst.append(frame)
-            print("%s %s: sent pkt#%d of %d bytes" % (s_now(), self.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
+            outpackets_lst.append(frame)  # print("%s %s: sent pkt#%d of %d bytes" % (s_now(), self.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
             bytes_remaining -= bytes_for_this_frame
             pos += bytes_for_this_frame
             self.outgoing_packetnumbers_dct[squeezed_pk] += 1
@@ -310,24 +337,25 @@ class HaremOfPrateBots:
                     retval.append(u)
         return list(set(retval))
 
-    @property
-    def homies(self):
+    def get_homies_list(self, demand_ipaddr=False):
         retval = []
-        for k in self.bots:
-            for h in self.bots[k].homies:
-                retval.append(self.bots[k].homies[h])
+        for bot in [self.bots[k] for k in self.bots]:
+            for homie in [bot.homies[h] for h in bot.homies]:
+                if demand_ipaddr is False or homie.ipaddr is not None:
+                    retval.append(homie)
         return retval
 
     @property
+    def homies_lst(self):
+        return self.get_homies_list()
+
+    @property
+    def connected_homies_lst(self):
+        return self.get_homies_list(demand_ipaddr=True)
+
+    @property
     def ipaddrs(self):
-        """IP addresses of homies in our chatroom(s)."""
-        retval = []
-        for k in self.bots:
-            for user in [u for u in self.bots[k].users]:
-                ipaddr = self.bots[k].homies[user].ipaddr
-                if ipaddr is not None:
-                    retval += [ipaddr]
-        return list(set(retval))
+        return [r.ipaddr for r in self.get_homies_list(demand_ipaddr=True) if r.ipaddr is not None]
 
     @property
     def pubkeys(self):
@@ -361,12 +389,13 @@ class HaremOfPrateBots:
             if k == self.bots[k].nickname:
                 print("%s %s: %s: no need to trigger handshaking w/ %s" % (s_now(), bot.irc_server, bot.nickname, k))
             else:
-                my_threads += [Thread(target=self.bots[k].trigger_handshaking, daemon=True)]  # args=[k]
-        for thr in my_threads:
-            thr.start()
-        print("Joining handshaking")
-        for thr in my_threads:
-            thr.join(timeout=ENDTHREAD_TIMEOUT)
+                self.bots[k].trigger_handshaking()
+        #         my_threads += [Thread(target=self.bots[k].trigger_handshaking, daemon=True)]  # args=[k]
+        # for thr in my_threads:
+        #     thr.start()
+        # print("Joining handshaking")
+        # for thr in my_threads:
+        #     thr.join(timeout=ENDTHREAD_TIMEOUT)
         print("Exiting handshaking")
 
     @property
@@ -424,10 +453,50 @@ class HaremOfPrateBots:
 
 if __name__ == "__main__":
     print("Hi.")
-    # my_rsa_key1 = RSA.generate(2048)
-    # my_rsa_key2 = RSA.generate(2048)
-    #
-    # h1 = HaremOfPrateBots(['#prate'], 'mac3333', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key1, startup_timeout=30, maximum_reconnections=2)
-    # h2 = HaremOfPrateBots(['#prate'], 'mac4444', ALL_SANDBOX_IRC_NETWORK_NAMES, my_rsa_key2, startup_timeout=30, maximum_reconnections=2)
-    # print("Yay.")
-    # print("<fin?")
+    the_room = '#room' + generate_random_alphanumeric_string(5)
+    list_of_all_irc_servers = ALL_REALWORLD_IRC_NETWORK_NAMES[:1]  # ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
+    noof_servers = len(list_of_all_irc_servers)
+    alice_rsa_key = RSA.generate(2048)
+    bob_rsa_key = RSA.generate(2048)
+    alice_pk = alice_rsa_key.public_key()
+    bob_pk = bob_rsa_key.public_key()
+    alice_nick = 'alice%d' % randint(111, 999)
+    bob_nick = 'bob%d' % randint(111, 999)
+    alice_harem = HaremOfPrateBots([the_room], alice_nick, list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
+    bob_harem = HaremOfPrateBots([the_room], bob_nick, list_of_all_irc_servers, bob_rsa_key, autohandshake=False)
+    while not (alice_harem.ready and bob_harem.ready):
+        sleep(1)
+
+    alice_harem.trigger_handshaking()
+    bob_harem.trigger_handshaking()
+    the_noof_homies = -1
+    while the_noof_homies != len(alice_harem.connected_homies_lst):
+        the_noof_homies = len(alice_harem.connected_homies_lst)
+        sleep(STARTUP_TIMEOUT)
+
+    fname = "/Users/mchobbit/Downloads/top_panel.stl"  # pi_holder.stl"
+    filelen = os.path.getsize(fname)
+    with open(fname, "rb") as f:
+        the_data = f.read()
+
+    t1 = datetime.datetime.now()
+
+    import cProfile
+    from pstats import Stats
+    pr = cProfile.Profile()
+    pr.enable()
+
+    alice_harem.put(bob_pk, the_data)
+    the_src, the_rxd = bob_harem.get()
+
+    pr.disable()
+    stats = Stats(pr)
+    stats.sort_stats('cumtime').print_stats(10)  # tottime
+
+    assert(the_src == alice_pk)
+    assert(the_rxd == the_data)
+    t2 = datetime.datetime.now()
+    timedur = (t2 - t1).microseconds
+    xfer_rate = filelen / (timedur / 1000000)
+    print("%s: it took %1.4f seconds to send %d bytes via %d servers. That is %1.4f bytes per second." % (s_now(), timedur // 1000000, filelen, len(alice_harem.homies_lst), xfer_rate))
+    pass
