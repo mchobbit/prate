@@ -345,6 +345,9 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
     def get(self, block=True, timeout=None):
         return self.plain_rx_queue.get(block, timeout)
 
+    def reinsert(self, value):
+        self.plain_rx_queue.put(value)
+
     def get_nowait(self):
         return self.plain_rx_queue.get_nowait()
 
