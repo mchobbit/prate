@@ -150,7 +150,6 @@ irc.rizon.net
 irc.hybridirc.com
 irc.efnet.org
 irc.chatzona.org
-irc.dal.net
 irc.quakenet.org
 irc.azirc.net
 irc.freeunibg.eu
@@ -246,17 +245,18 @@ irc.dairc.net
 irc.darkmyst.org
 irc.darkscience.net
 irc.digitalirc.org
-irc.underworld.no
 irc.entropynet.net
 irc.interlinked.me
 irc.irc4fun.net
 irc.othernet.org
+irc.spotchat.org
+irc.dal.net
+irc.underworld.no
+irc.freenode.net
+irc.evochat.id
+irc.choopa.net
+irc.geekshed.net
 """
-# irc.spotchat.org
-# irc.freenode.net
-# irc.evochat.id
-# irc.choopa.net
-# irc.geekshed.net
 
 ALL_REALWORLD_IRC_NETWORK_NAMES = [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if r != '']
 
