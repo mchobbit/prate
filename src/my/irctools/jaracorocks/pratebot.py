@@ -255,8 +255,8 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                 elif msg.startswith(_TRANSMITCIPHERTEXT_):
                     try:
                         self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TRANSMITCIPHERTEXT_):], self.homies[sender].fernetkey)))
-                    except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
-                        print("%s %s: %s: unable to receive encrypted message from %s: fernet key issue?" % (s_now(), self.irc_server, self.nickname, sender))
+                    except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError) as e:
+                        print("%s %s: %s: unable to receive encrypted message from %s: fernet key issue? =>" % (s_now(), self.irc_server, self.nickname, sender, str(e)))
                 elif msg.startswith(_TRANSMIT_PLAINTEXT_):
                     try:
                         self.plain_rx_queue.put((sender, msg[len(_TRANSMIT_PLAINTEXT_):]))
