@@ -50,6 +50,22 @@ ENCRYPTED_MSG_BLOCK_SIZE_INSIDE_OVERALL_FRAME = 288
 
 
 class Corridor:
+    """Handle for reading from and writing to another SmartHarem via IRC servers.
+
+    Example:-
+    >>> k1 = RSAKey.generate(2048)
+    >>> k2 = RSAKey.generate(2048)
+    >>> h1 = SmartHarem(['#prate'], 'alice123', ['rpi0irc1.local','rpi0irc2.local'], k1, autohandshake=False)
+    >>> h2 = SmartHarem(['#prate'], 'bob456', ['rpi0irc1.local','rpi0irc2.local'], k2, autohandshake=False)
+    >>> while not (h1.ready and h2.ready) or len(h1.true_homies) + len(h2.true_homies) < 2:
+    ...     sleep(5)
+    >>> c1 = h1.open(k2.public_key())
+    >>> c1.write(b"HELLO WORLD")
+    >>> c2 = h2.open(h1.public_key())
+    >>> assert(c2.read() == (k1.public_key(), b"HELLO WORLD"))
+    >>> c1.close()
+    >>> c2.close()
+    """
 
     def __init__(self, harem, destination, uid=None):
         self.__uid = uid
