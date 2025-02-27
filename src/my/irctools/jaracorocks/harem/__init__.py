@@ -58,6 +58,8 @@ class Harem(PrateRookery):  # smart rookery
                          startup_timeout, maximum_reconnections, autohandshake)
         self.__corridors = []
         self.__corridors_lock = ReadWriteLock()
+        assert(not hasattr(self, '__my_harem_thread'))
+        assert(not hasattr(self, '__my_harem_loop'))
         self.__my_harem_thread = Thread(target=self.__my_harem_loop, daemon=True)
         self.__my_harem_thread.start()
 
