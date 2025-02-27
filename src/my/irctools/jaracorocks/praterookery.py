@@ -319,8 +319,9 @@ class PrateRookery:
                                    strictly_nick=False,
                                    autohandshake=self.autohandshake)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
-            pass  # print("Failed to join", k)
-        else:  # print("Connected to", k)
+            print("%s %-20s              Failed to log into %s" % (s_now(), self.desired_nickname, k))
+        else:
+            print("%s %-20s              Yay! I logged into %s" % (s_now(), self.desired_nickname, k))
             with self.__log_into_all_functional_IRC_servers_mutex:
                 self.bots[k] = bot
 
@@ -329,7 +330,7 @@ class PrateRookery:
             try:
                 self.bots[k].quit()
             except Exception as e:  # pylint: disable=broad-exception-caught
-                print("Exception while quitting", k, "==>", e)
+                print("%s %-20s              Exception while quitting:" % (s_now(), self.desired_nickname), e)
 
 ########################################################################################################
 
@@ -346,13 +347,13 @@ if __name__ == "__main__":
     alice_nick = 'alice%d' % randint(111, 999)
     bob_nick = 'bob%d' % randint(111, 999)
 
-    print("Creating rookerys for Alice and Bob")
+    print("Creating rookeries for Alice and Bob")
     alice_rookery = PrateRookery([the_room], alice_nick, my_list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
     bob_rookery = PrateRookery([the_room], bob_nick, my_list_of_all_irc_servers, bob_rsa_key, autohandshake=False)
     while not (alice_rookery.ready and bob_rookery.ready):
         sleep(1)
 
-    print("Waiting for rookerys to shake hands")
+    print("Waiting for rookeries to shake hands")
     alice_rookery.trigger_handshaking()
     bob_rookery.trigger_handshaking()
     the_noof_homies = -1
