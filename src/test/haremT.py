@@ -11,21 +11,21 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_random_alphanumeric_string
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES, RSA_KEY_SIZE
 from random import randint
 import datetime
 import socket
 from my.irctools.jaracorocks.pratebot import PrateBot
 from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError
-from my.irctools.jaracorocks.smartharem import SmartHarem
+from my.irctools.jaracorocks.harem import Harem
 
-alices_rsa_key = RSA.generate(2048)
-bobs_rsa_key = RSA.generate(2048)
-carols_rsa_key = RSA.generate(2048)
+alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
+bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
+carols_rsa_key = RSA.generate(RSA_KEY_SIZE)
 alices_PK = alices_rsa_key.public_key()
 bobs_PK = bobs_rsa_key.public_key()
 carols_PK = carols_rsa_key.public_key()
-some_random_rsa_key = RSA.generate(2048)
+some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
 
 
@@ -43,8 +43,8 @@ class TestHaremZero(unittest.TestCase):
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
         while not (h1.ready and h2.ready):
             sleep(1)
         noof_loops = 0
@@ -62,8 +62,8 @@ class TestHaremZero(unittest.TestCase):
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
         while not (h1.ready and h2.ready):
             sleep(1)
         print("testTwoitemsServerList is waiting for handshaking to complete")
@@ -82,8 +82,8 @@ class TestHaremZero(unittest.TestCase):
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
         while not (h1.ready and h2.ready):
             sleep(1)
         print("testTwoitemsPLUStotallyUnecessaryTriggeringOfHandshaking is waiting for handshaking to complete")
@@ -110,8 +110,8 @@ class TestHaremZero(unittest.TestCase):
         noof_servers = len(list_of_all_irc_servers)
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
         while not (h1.ready and h2.ready):
             sleep(1)
         print("testServerListOfOneGoodAndOneNonexistent is waiting for handshaking to complete")
@@ -129,8 +129,8 @@ class TestHaremZero(unittest.TestCase):
         list_of_all_irc_servers = ['rpi0irc98.local', 'rpi0irc99.local']
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
         while not (h1.ready and h2.ready):
             sleep(1)
         sleep(5)
@@ -146,8 +146,8 @@ class TestHaremZero(unittest.TestCase):
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
         while not (h1.ready and h2.ready):
             sleep(1)
         print("testFouritemsServerList is waiting for handshaking to complete")
@@ -169,12 +169,12 @@ class TestHaremAndSimplePrateBot(unittest.TestCase):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         noof_servers = 1
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[-noof_servers:]
-        alice_rsa_key = RSA.generate(2048)
-        bob_rsa_key = RSA.generate(2048)
+        alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+        bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         bob_bot = PrateBot([the_room], bob_nick, list_of_all_irc_servers[0], 6667, bob_rsa_key, autohandshake=False)
-        alice_harem = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
+        alice_harem = Harem([the_room], alice_nick, list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
         while not (bob_bot.ready and alice_harem.ready):
             sleep(1)
         bob_bot.trigger_handshaking()
@@ -201,9 +201,9 @@ class TestHaremHandshook(unittest.TestCase):
         list_of_all_irc_servers = ['rpi0irc1.local', 'rpi0irc2.local']
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers,
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers,
                               alices_rsa_key, startup_timeout=5, autohandshake=False)
-        h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers,
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers,
                               bobs_rsa_key, startup_timeout=5, autohandshake=False)
         while not (h1.ready and h2.ready):
             sleep(1)
@@ -232,11 +232,11 @@ class TestHaremHandshook(unittest.TestCase):
     def TestHaremHelloWordlSimple(self):
         my_nickname = socket.gethostname().replace('.', '_')[:MAX_NICKNAME_LENGTH]
         the_room = "#prattling"
-        alice_rsa_key = RSA.generate(2048)
-        bob_rsa_key = RSA.generate(2048)
+        alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+        bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
         the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES
-        alice_harem = SmartHarem([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
-        bob_harem = SmartHarem([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)
+        alice_harem = Harem([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
+        bob_harem = Harem([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)
         while not (alice_harem.ready and bob_harem.ready):
             sleep(1)
         print("Opening harems")
@@ -268,8 +268,8 @@ class TestHaremHandshook(unittest.TestCase):
     #     list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
     #     alice_nick = 'alice%d' % randint(111, 999)
     #     bob_nick = 'bob%d' % randint(111, 999)
-    #     h1 = SmartHarem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-    #     h2 = SmartHarem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+    #     h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+    #     h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
     #     print("testFullServerList is waiting for handshaking to complete")
     #     while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
     #         sleep(1)
@@ -284,8 +284,8 @@ class TestSendFileBetweenTwoUserViaHarems(unittest.TestCase):
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        cls.h1 = SmartHarem(['#lokinbaa'], alice_nick, list_of_all_irc_servers, alices_rsa_key)
-        cls.h2 = SmartHarem(['#lokinbaa'], bob_nick, list_of_all_irc_servers, bobs_rsa_key)
+        cls.h1 = Harem(['#lokinbaa'], alice_nick, list_of_all_irc_servers, alices_rsa_key)
+        cls.h2 = Harem(['#lokinbaa'], bob_nick, list_of_all_irc_servers, bobs_rsa_key)
         while not (cls.h1.ready and cls.h2.ready):
             sleep(1)
         print("TestSendFileBetweenTwoUserViaHarems() --- waiting for setup")
@@ -354,8 +354,8 @@ class TestSimpleOpenAndClose(unittest.TestCase):
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:1]
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        cls.h1 = SmartHarem(['#lokinbee'], alice_nick, list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
-        cls.h2 = SmartHarem(['#lokinbee'], bob_nick, list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
+        cls.h1 = Harem(['#lokinbee'], alice_nick, list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
+        cls.h2 = Harem(['#lokinbee'], bob_nick, list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
         print("TestSimpleOpenAndClose() --- waiting for setup")
         while not (cls.h1.ready and cls.h2.ready):
             sleep(1)
@@ -427,9 +427,9 @@ class TestSimpleWriteAndRead(unittest.TestCase):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         carol_nick = 'carol%d' % randint(111, 999)
-        cls.h1 = SmartHarem(['#lokinbee'], alice_nick, list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
-        cls.h2 = SmartHarem(['#lokinbee'], bob_nick, list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
-        cls.h3 = SmartHarem(['#lokinbee'], carol_nick, list_of_all_irc_servers, carols_rsa_key, autohandshake=False)
+        cls.h1 = Harem(['#lokinbee'], alice_nick, list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
+        cls.h2 = Harem(['#lokinbee'], bob_nick, list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
+        cls.h3 = Harem(['#lokinbee'], carol_nick, list_of_all_irc_servers, carols_rsa_key, autohandshake=False)
         while not (cls.h1.ready and cls.h2.ready and cls.h3.ready):
             sleep(1)
         [h.trigger_handshaking() for h in (cls.h1, cls.h2, cls.h3)]  # pylint: disable=expression-not-assigned

@@ -37,8 +37,8 @@ from random import randint
 from my.globals import ALL_REALWORLD_IRC_NETWORK_NAMES
 
 the_room = '#room' + generate_random_alphanumeric_string(5)
-alice_rsa_key = RSA.generate(2048)
-bob_rsa_key = RSA.generate(2048)
+alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
 alice_pk = alice_rsa_key.public_key()
 bob_pk = bob_rsa_key.public_key()
 # for i in range(0, len(ALL_REALWORLD_IRC_NETWORK_NAMES)):

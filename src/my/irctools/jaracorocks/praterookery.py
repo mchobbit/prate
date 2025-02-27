@@ -340,8 +340,8 @@ if __name__ == "__main__":
     the_room = '#room' + generate_random_alphanumeric_string(5)
     my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES[:1]  # ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
     noof_servers = len(my_list_of_all_irc_servers)
-    alice_rsa_key = RSA.generate(2048)
-    bob_rsa_key = RSA.generate(2048)
+    alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+    bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
     alice_pk = alice_rsa_key.public_key()
     bob_pk = bob_rsa_key.public_key()
     alice_nick = 'alice%d' % randint(111, 999)

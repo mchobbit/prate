@@ -19,19 +19,19 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_random_alphanumeric_string
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
 from random import randint
 import socket
 from my.irctools.jaracorocks.pratebot import PrateBot
 from my.irctools.jaracorocks.praterookery import PrateRookery
 
-alices_rsa_key = RSA.generate(2048)
-bobs_rsa_key = RSA.generate(2048)
-carols_rsa_key = RSA.generate(2048)
+alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
+bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
+carols_rsa_key = RSA.generate(RSA_KEY_SIZE)
 alices_PK = alices_rsa_key.public_key()
 bobs_PK = bobs_rsa_key.public_key()
 carols_PK = carols_rsa_key.public_key()
-some_random_rsa_key = RSA.generate(2048)
+some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
 
 
@@ -182,8 +182,8 @@ class TestRookeryAndSimplePrateBot(unittest.TestCase):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         noof_servers = 1
         list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[-noof_servers:]
-        alice_rsa_key = RSA.generate(2048)
-        bob_rsa_key = RSA.generate(2048)
+        alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+        bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         bob_bot = PrateBot([the_room], bob_nick, list_of_all_irc_servers[0], 6667, bob_rsa_key, autohandshake=False)
@@ -248,8 +248,8 @@ class TestRookeryHandshook(unittest.TestCase):
         """Launch two rookies. Send some short messages between them."""
         my_nickname = socket.gethostname().replace('.', '_')[:MAX_NICKNAME_LENGTH]
         the_room = "#prattling"
-        alice_rsa_key = RSA.generate(2048)
-        bob_rsa_key = RSA.generate(2048)
+        alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+        bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
         the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES
         alice_rookery = PrateRookery([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
         bob_rookery = PrateRookery([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)

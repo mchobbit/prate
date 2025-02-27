@@ -22,8 +22,8 @@ from my.irctools.jaracorocks.praterookery import PrateRookery
 alices_preferred_nickname = 'alice123'
 bobs_preferred_nickname = 'bob456'
 the_room = "#prankrr"
-alice_rsa_key = RSA.generate(2048)
-bob_rsa_key = RSA.generate(2048)
+alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
 the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
 # alice_bot = PrateBot([the_room], alices_preferred_nickname, "irc.libera.chat", 6667, alice_rsa_key)
 # bob_bot = PrateBot([the_room], bobs_preferred_nickname, "irc.libera.chat", 6667, bob_rsa_key)

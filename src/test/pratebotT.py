@@ -10,7 +10,7 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_irc_handle, get_word_salad, s_now
-from my.globals import MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, MAX_CRYPTO_MSG_LENGTH
+from my.globals import MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, MAX_CHANNEL_LENGTH, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
 from test.myttlcacheT import generate_random_alphanumeric_string
 from queue import Empty
 from my.irctools.jaracorocks.pratebot import PrateBot, _TRANSMIT_PLAINTEXT_
@@ -32,7 +32,7 @@ class TestGroupOne(unittest.TestCase):
         pass
 
     def testGoofyParams(self):
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         alice_nick = 'alice%d' % randint(111, 999)
         self.assertRaises(IrcBadChannelNameError, PrateBot, None, alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertRaises(IrcBadChannelNameError, PrateBot, [''], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
@@ -62,7 +62,7 @@ class TestGroupOne(unittest.TestCase):
 
     def testSimpleLogin(self):
         alice_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
         bot.quit()
@@ -70,7 +70,7 @@ class TestGroupOne(unittest.TestCase):
 #
     def testReady(self):
         alice_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
         self.assertTrue(bot._client.ready)  # Should be the same as bot.ready pylint: disable=protected-access
@@ -78,7 +78,7 @@ class TestGroupOne(unittest.TestCase):
 
     def testSimpleWhois(self):
         alice_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
         self.assertEqual(bot.whois(alice_nick).split('* ', 1)[-1], bot.fingerprint)
@@ -86,7 +86,7 @@ class TestGroupOne(unittest.TestCase):
 
     def testSimpleCallResponse(self):
         alice_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(bot.ready)
         bot.put(bot.nickname, "HELLO")
@@ -96,7 +96,7 @@ class TestGroupOne(unittest.TestCase):
     def testHomiesShouldNotIncludeMe(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         alice_bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         bob_bot = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(alice_bot.ready)
@@ -122,8 +122,8 @@ class TestGroupTwo(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         my_room = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
@@ -143,8 +143,8 @@ class TestGroupTwo(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         noof_loops = 0
@@ -175,8 +175,8 @@ class TestGroupTwo(unittest.TestCase):
             if not nick2:
                 nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
             self.assertNotEqual(nick1, nick2)
-            my_rsa_key1 = RSA.generate(2048)
-            my_rsa_key2 = RSA.generate(2048)
+            my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+            my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
             try:
                 bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
 #                bot1.paused = True
@@ -208,8 +208,8 @@ class TestGroupTwo(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         sleep(5)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
@@ -222,8 +222,8 @@ class TestGroupTwo(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.quit()
@@ -235,8 +235,8 @@ class TestGroupTwo(unittest.TestCase):
         room1 = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         room2 = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
 #        bot1.paused = True
@@ -248,7 +248,7 @@ class TestGroupTwo(unittest.TestCase):
 
     def testNicknameCollision(self):
         desired_nick = 'A' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
-        my_rsa_key = RSA.generate(2048)
+        my_rsa_key = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key)
 #        bot1.paused = True
         self.assertTrue(bot1.ready)
@@ -292,8 +292,8 @@ class TestGroupThree(unittest.TestCase):
         room1 = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         room2 = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         # bot1.paused = True
@@ -315,8 +315,8 @@ class TestGroupThree(unittest.TestCase):
         room1 = '#prate'  # + generate_irc_handle(7, 9)
         room2 = '#prate'  # + generate_irc_handle(7, 9)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         # bot1.paused = True
@@ -348,8 +348,8 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
     def testOne(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         while bot1.homies[bot2.nickname].ipaddr is None and bot2.homies[bot1.nickname].ipaddr is None:
@@ -365,7 +365,7 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
         for _ in range(0, noofbots):
             nick = generate_irc_handle()
             dct[nick] = {}
-            dct[nick]['rsa key'] = RSA.generate(2048)
+            dct[nick]['rsa key'] = RSA.generate(RSA_KEY_SIZE)
             dct[nick]['pratebot'] = PrateBot(['#prate'], nick, 'cinqcent.local', 6667, dct[nick]['rsa key'])
         while [dct[r]['pratebot'].ready for r in dct].count(False) > 0:
             sleep(1)
@@ -396,8 +396,8 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
     def testSimpleEncryptedTransferOf100Bytes(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         while bot1.homies[bot2.nickname].ipaddr is None or bot2.homies[bot1.nickname].ipaddr is None:
@@ -418,8 +418,8 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
     def testDoesChannelUserlistUpdateAutomatically(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         lou1 = bot1.users
         lou1.sort()
@@ -438,8 +438,8 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
     def testSlowlyJoinAndLeave(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         lou1 = bot1.users
         bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
@@ -458,8 +458,8 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
         the_room = '#room' + generate_random_alphanumeric_string(5)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([the_room], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot(['#prate234'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         self.assertFalse(bot1.nickname in bot2.users)
@@ -509,7 +509,7 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
 #         keys = {}
 #         for i in range(0, noof_nicks):
 #             nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
-#             keys[nickname] = RSA.generate(2048)
+#             keys[nickname] = RSA.generate(RSA_KEY_SIZE)
 #             bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
 #         while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
 #             sleep(5)
@@ -527,7 +527,7 @@ class TestManualHandshaking(unittest.TestCase):
             nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
         #    self.assertFalse(nickname in rsakeys)
         #    self.assertFalse(nickname in bots)
-            rsakeys[nickname] = RSA.generate(2048)
+            rsakeys[nickname] = RSA.generate(RSA_KEY_SIZE)
             bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, rsakeys[nickname], autohandshake=False)
         alice_bot = bots[list(bots)[0]]
         bob_bot = bots[list(bots)[1]]
@@ -553,8 +553,8 @@ class TestFernetKeyMismatches(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         while not (bot1.ready and bot2.ready):
@@ -576,8 +576,8 @@ class TestPlaintextStuff(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         while not (bot1.ready and bot2.ready):
@@ -603,8 +603,8 @@ class TestPlaintextStuff(unittest.TestCase):
         nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
-        my_rsa_key1 = RSA.generate(2048)
-        my_rsa_key2 = RSA.generate(2048)
+        my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         while not (bot1.ready and bot2.ready):

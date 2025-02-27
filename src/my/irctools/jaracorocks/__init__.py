@@ -41,7 +41,7 @@ from queue import Empty
 import datetime
 import validators
 
-from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string  # @UnusedImport
+from my.stringtools import generate_irc_handle, generate_random_alphanumeric_string, s_now  # @UnusedImport
 from my.classes.exceptions import IrcBadNicknameError, IrcPrivateMessageContainsBadCharsError, IrcPrivateMessageTooLongError, \
     IrcFingerprintMismatchCausedByServer, IrcInitialConnectionTimeoutError, IrcBadServerNameError, IrcBadChannelNameError, IrcChannelNameTooLongError, IrcBadServerPortError, \
     IrcStillConnectingError, IrcNicknameTooLongError, IrcNicknameChangedByServer, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcDuplicateNicknameError, \
@@ -177,7 +177,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
                 raise IrcNicknameTooLongError("WTF")
             return self.call_whois_and_wait_for_response(sn).split(' ', 4)[-1]
         except (AttributeError, TimeoutError):
-            print("There is no realname: I'm offline.")
+            print("%s %-20s: %-10s: There is no realname: I'm offline." % (s_now(), self.irc_server, self.nickname))
             return None
 
     @property
@@ -241,7 +241,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
             if self.__whois_request_c_hits_v_misses[0] % 2000 == 0:
                 hits, misses = self.__whois_request_c_hits_v_misses
                 percentage = hits * 100 / (hits + misses)
-                print("Our whois cache has a %d%% hit rate" % percentage)
+                print("%s %-20s: %-10s: Our whois cache has a %d%% hit rate" % (s_now(), self.irc_server, self.nickname, percentage))
         return self.__whois_request_cache.get(user)
 
     def __call_whois_and_wait_for_response(self, user, timeout):
@@ -279,20 +279,20 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         if self.__privmsg_cache.get(cached_data) is None:
             self.__privmsg_cache.set(cached_data, cached_data)
             if self.__privmsg_c_hits_dct[user] > 3:
-                print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg, user))
+                print("%s %-20s: %-10s: Cached %d x %s=>%s" % (s_now(), self.irc_server, self.nickname, self.__privmsg_c_hits_dct[user], msg, user))
             self.__privmsg_c_hits_dct[user] = 0
             try:
                 self.connection.privmsg(user, msg)  # Don't send the same message more than once every N seconds
                 retval = len(msg)
             except ServerNotConnectedError:
-                print("%s: %s: can't send msg to %s: server is not connected" % (self.irc_server, self.nickname, user))
+                print("%s %-20s: %-10s: Can't send msg to %s: server is not connected." % (s_now(), self.irc_server, self.nickname, user))
                 retval = -1
             sleep(randint(16, 20) / 10.)  # 20 per 30s... or 2/3 per 1s... or 1s per 3/2... or 1.5 per second.
         else:
             self.__privmsg_c_hits_dct[user] += 1
             retval = 0
             if self.__privmsg_c_hits_dct[user] in (2, 5, 10, 20, 50, 100, 200, 500, 1000):
-                print("Cached %d x %s=>%s" % (self.__privmsg_c_hits_dct[user], msg, user))
+                print("%s %-20s: %-10s: Cached %d x %s=>%s" % (s_now(), self.irc_server, self.nickname, self.__privmsg_c_hits_dct[user], msg, user))
             else:
                 pass
         return retval
@@ -345,8 +345,7 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
         try:
             self.disconnect('Bye')
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print("Exception occurred while disconnecting:", e)
-#        print("DualQueuedSingleServerIRCBotWithWhoisSupport is quitting.")
+            print("%s %-20s: %-10s: Exception occurred while disconnecting:" % (s_now(), self.irc_server, self.nickname), e)
 
     def quit(self):  # Do we need this?
         """Quit this bot."""

@@ -51,8 +51,8 @@ from my.irctools.jaracorocks.praterookery import PrateRookery
 def loopback_audio_transmission_and_reception_over_IRC_harem():
     my_nickname = 'me%s' % generate_random_alphanumeric_string(6)  # my_nickname = socket.gethostname().replace('.', '_')[:MAX_NICKNAME_LENGTH]
     the_room = "#prattling"
-    alice_rsa_key = RSA.generate(2048)
-    bob_rsa_key = RSA.generate(2048)
+    alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
+    bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
     the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
     alice_harem = PrateRookery([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
     bob_harem = PrateRookery([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)

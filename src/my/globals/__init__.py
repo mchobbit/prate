@@ -24,7 +24,7 @@ STARTUP_TIMEOUT = 30
 HANDSHAKE_TIMEOUT = 30
 ANTIOVERLOAD_CACHE_TIME = 10  # pings, dupe msgs, etc.
 DEFAULT_WHOIS_TIMEOUT = 10  # how long should we wait for a response to a /whois call?
-
+RSA_KEY_SIZE = 1024  # 2048 is normal
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
 MAX_CHANNEL_LENGTH = 10  # I made it up.
 ENDTHREAD_TIMEOUT = 8
