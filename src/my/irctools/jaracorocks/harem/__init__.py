@@ -128,6 +128,18 @@ class Harem(PrateRookery):  # smart rookery
             self.__corridors += [corridor]
             return corridor
 
+    def empty(self):
+        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+
+    def get(self, block=True, timeout=None):
+        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+
+    def get_nowait(self):
+        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+
+    def put(self, pubkey, datablock, irc_server=None):
+        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+
     def quit(self):
         for corridor in self.corridors:
             corridor.quit()
