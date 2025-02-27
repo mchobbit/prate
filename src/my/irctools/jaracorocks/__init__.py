@@ -8,6 +8,11 @@ Created on Jan 30, 2025
 This module contains classes for creating a Jaraco-style class of bot
 that monitors an IRC server and sets up secure comms between users.
 
+Classes:-
+    irc.bot.SingleServerIRCBot (declared elsewhere)
+        SingleServerIRCBotWithWhoisSupport
+            DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
+
 Todo:
     * Better docs
     * Detect if users' nicknames change
@@ -30,7 +35,7 @@ Example:
 from random import randint
 import irc.bot
 from time import sleep
-from my.classes import MyTTLCache
+from my.classes.myttlcache import MyTTLCache
 from my.globals import ANTIOVERLOAD_CACHE_TIME, MAX_PRIVMSG_LENGTH, MAX_NICKNAME_LENGTH, \
     MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, A_TICK
 from irc.client import ServerNotConnectedError
@@ -408,6 +413,7 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
         return self.received_queue.not_empty
 
     def put(self, user, msg):
+        """Send private message (of text) to the specified user."""
         if type(user) is not str or len(user) < 2 or not user[0].isalpha():
             raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
         if len(user) > MAX_NICKNAME_LENGTH:
@@ -416,6 +422,5 @@ class DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport(SingleServerIRCB
             raise IrcPrivateMessageContainsBadCharsError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. => %s" % str(msg))
         if len(msg) + len(user) > MAX_PRIVMSG_LENGTH:
             raise IrcPrivateMessageTooLongError("I cannot send this message: the combined length of the nickname and the message would exceed the IRC server's limit.")
-
         self.transmit_queue.put((user, msg))
 

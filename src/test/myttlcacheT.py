@@ -8,7 +8,7 @@ Test MyTTLCache
 """
 
 import unittest
-from my.classes import MyTTLCache
+from my.classes.myttlcache import MyTTLCache
 from time import sleep
 from random import randint, choice
 import string

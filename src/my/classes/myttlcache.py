@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Misc classes that Prate uses.
+"""Class TTLCache.
 
 Created on Feb 4, 2025
 
 @author: mchobbit
 
-This module contains miscellaneous classes that Prate uses. For example, MyTTLCache
-offers a cache whose data expires (ceases to be cached) after N seconds. This offers
-advantages over traditional caching, especially... Anyway, see below.
+This module contains the MyTTLCache class. This class offers a cache
+whose data expires (ceases to be cached) after N seconds.
 
 Example:
     Here is how to use one of these classes, for example::
 
     $ python3.12
     >>> from time import sleep
-    >>> from my.classes.myttlcache import MyTTLCache
+    >>> from my.classes.ttlcache import MyTTLCache
     >>> cache = MyTTLCache(10)
     >>> cache.set('foo', 69)
     >>> cache.get('foo')
@@ -75,6 +74,7 @@ class MyTTLCache:
 
     @property
     def cache(self):
+        """Cache itself."""
         self.__cache_lock.acquire_read()
         try:
             retval = self.__cache
