@@ -197,7 +197,7 @@ class PrateRookery:
         return self.get_homies_list(True)
 
     def put(self, pubkey, datablock, irc_server=None):
-        """Using the specified IRC server (or, if none specified, one chosen at random), transmit packet."""
+        """Using the specified IRC server (or, if none specified, one chosen at random) to transmit packet."""
         if self.paused:
             raise ValueError("Set paused=False and try again.")
         if type(pubkey) is not RSA.RsaKey:
