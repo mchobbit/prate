@@ -217,7 +217,7 @@ class PrateRookery:
             homie = [h for h in connected_homies if h.irc_server == irc_server][0]
         except IndexError as e:
             raise RookeryCorridorNotOpenYetError("I cannot find a compatible IRC server for the specified public key.") from e
-        print("%s %-20s              %3d bytes TX'd => %-9s on %s" % (s_now(), self.desired_nickname, len(datablock), homie.nickname, homie.irc_server))
+        print("%s %-20s              %3d bytes TX'd   to %-9s on %s" % (s_now(), self.desired_nickname, len(datablock), homie.nickname, homie.irc_server))
         self.bots[homie.irc_server].crypto_put(
                 user=homie.nickname, byteblock=datablock)
 
@@ -228,7 +228,7 @@ class PrateRookery:
         except Empty:
             pass
         else:
-            print("%s %-20s              %3d bytes RX'd <= %-9s on %s" % (s_now(), self.desired_nickname, len(datablock), user, irc_server))
+            print("%s %-20s              %3d bytes RX'd from %-9s on %s" % (s_now(), self.desired_nickname, len(datablock), user, irc_server))
             self.our_getqueue.put((pubkey, datablock))
 
     @property
