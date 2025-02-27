@@ -48,6 +48,7 @@ class TestVanillaBot(unittest.TestCase):
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
         alice_bot.quit()
+        sleep(2)
         self.assertTrue(alice_nick not in bob_bot.users)
         bob_bot.quit()
 

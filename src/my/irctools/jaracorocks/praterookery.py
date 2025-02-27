@@ -51,7 +51,7 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 import datetime
 from random import randint, choice
 from my.stringtools import s_now, generate_random_alphanumeric_string, MAX_NICKNAME_LENGTH
-from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH
+from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
 # from my.classes.readwritelock import ReadWriteLock
 
 

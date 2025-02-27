@@ -76,31 +76,31 @@ class Corridor:
         return self.__gotta_quit
 
     def __my_main_loop(self):
-        self.harem.put(self.destination, ("OPENCORRIDOR %s" % self.uid).encode())
-        print("I am handling a corridor from %s to %s" % (self.harem.desired_nickname, "%s..." % squeeze_da_keez(self.destination)[:16]))
+        self.harem.put(self.harem.destination, ("OPENCORRIDOR %s" % self.uid).encode())
+        print("%s %-20s              Starts main loop corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
         while not self.gotta_quit:
             sleep(A_TICK)
-        print("I have been asked to close my corridor from %s to %s" % (self.harem.desired_nickname, "%s..." % squeeze_da_keez(self.destination)[:16]))
+        print("%s %-20s              Ending main loop corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
 
     def close(self):
         if self.__closed:
             raise RookeryCorridorAlreadyClosedError("Corridor %s is already closed" % self.uid)
         else:
             self.__closed = True
-            self.harem.put(self.destination, ("CLOSECORRIDOR %s" % self.uid).encode())
+            self.harem.put(self.harem.destination, ("CLOSECORRIDOR %s" % self.uid).encode())
             self.quit()
         sleep(1)
 
     def quit(self, timeout=ENDTHREAD_TIMEOUT):
-        print("%s-%s corridor closing." % (self.harem.desired_nickname, "%s..." % squeeze_da_keez(self.destination)[:16]))
+        print("%s %-20s              I am closing the corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
         try:
             the_corridor_to_be_deleted = [e for e in self.harem.corridors if e.uid == self.uid][0]
             self.harem.corridors.remove(the_corridor_to_be_deleted)
         except (KeyError, IndexError):
-            print("Failed to delete corridor %s from %s's list of corridors" % (self.uid, self.harem.desired_nickname))
+            print("%s %-20s              Failed to delete corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
         self.__gotta_quit = True
         self.__my_main_thread.join(timeout=timeout)
-        print("%s-%s corridor closed." % (self.harem.desired_nickname, "%s..." % squeeze_da_keez(self.destination)[:16]))
+        print("%s %-20s              I have closed th'corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
 
     @property
     def harem(self):
