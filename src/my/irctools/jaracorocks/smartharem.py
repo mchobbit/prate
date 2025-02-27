@@ -32,7 +32,7 @@ Example:
 
 from threading import Thread
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, HaremCorridorAlreadyClosedError, PublicKeyUnknownError
+from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, sha1, bytes_64bit_cksum
 from queue import Empty
@@ -44,6 +44,8 @@ from my.irctools.jaracorocks.praterookery import PrateRookery
 import datetime
 import hashlib
 import base64
+
+ENCRYPTED_MSG_BLOCK_SIZE_INSIDE_OVERALL_FRAME = 288
 
 
 class Corridor:
@@ -80,7 +82,7 @@ class Corridor:
 
     def close(self):
         if self.__closed:
-            raise HaremCorridorAlreadyClosedError("Corridor %s is already closed" % self.uid)
+            raise RookeryCorridorAlreadyClosedError("Corridor %s is already closed" % self.uid)
         else:
             self.__closed = True
             self.harem.put(self.destination, ("CLOSECORRIDOR %s" % self.uid).encode())
@@ -193,12 +195,39 @@ class SmartHarem(PrateRookery):  # smart rookery
             self.__corridors += [corridor]
             return corridor
 
+    def FKDUP_generate_packets_list_for_transmission(self, pubkey, datablock):
+        outpackets_lst = []
+        bytes_remaining = len(datablock)
+        pos = 0
+        squeezed_pk = squeeze_da_keez(pubkey)
+        # if squeezed_pk not in self.outgoing_caches_dct:
+        #     self.outgoing_caches_dct[squeezed_pk] = [None] * 256
+        if squeezed_pk not in self.outgoing_packetnumbers_dct:
+            self.outgoing_packetnumbers_dct[squeezed_pk] = 0
+        if self.outgoing_packetnumbers_dct[squeezed_pk] >= 256 * 256 * 256 * 127:
+            self.outgoing_packetnumbers_dct[squeezed_pk] -= 256 * 256 * 256 * 127
+        while True:
+            bytes_for_this_frame = min(ENCRYPTED_MSG_BLOCK_SIZE_INSIDE_OVERALL_FRAME, bytes_remaining)
+            our_block = datablock[pos:pos + bytes_for_this_frame]
+            frame = bytearray()
+            frame += self.outgoing_packetnumbers_dct[squeezed_pk].to_bytes(4, 'little')  # packet#
+            frame += len(our_block).to_bytes(2, 'little')  # length
+            frame += our_block  # data block
+            frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
+            outpackets_lst.append(frame)  # print("%s %-20s              Sent pkt#%d of %d bytes" % (s_now(), self.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
+            bytes_remaining -= bytes_for_this_frame
+            pos += bytes_for_this_frame
+            self.outgoing_packetnumbers_dct[squeezed_pk] += 1
+            if bytes_for_this_frame == 0:
+                break
+        return outpackets_lst
+
     def FKDUP_put(self, pubkey, datablock):
         if self.paused:
             raise ValueError("Set paused=False and try again.")
         assert(type(pubkey) is RSA.RsaKey)
         assert(type(datablock) is bytes)
-        outpackets_lst = self.generate_packets_list_for_transmission(pubkey, datablock)
+        outpackets_lst = self.FKDUP_generate_packets_list_for_transmission(pubkey, datablock)
         packetnum_offset = self.outgoing_packetnumbers_dct[squeeze_da_keez(pubkey)] - len(outpackets_lst)
         print("%s %s: okay. Transmitting the outpackets." % (s_now(), self.desired_nickname))
         our_homies = [h for h in self.get_homies_list(True) if h.pubkey == pubkey]
@@ -257,7 +286,7 @@ class SmartHarem(PrateRookery):  # smart rookery
         pubkey = None
         while not self.paused and not self.gotta_quit and \
         (final_packetnumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1) if self.our_getq_cache[i % 65536] is None]):
-            # FIXME: Prone to lockups and gridlock because it'll wait indefinitely for a missing packet.
+            # Prone to lockups and gridlock because it'll wait indefinitely for a missing packet.
             if self.gotta_quit or self.paused:
                 return
             else:
@@ -269,21 +298,19 @@ class SmartHarem(PrateRookery):  # smart rookery
                     sleep(A_TICK)  # pass
                 else:
                     packetno = int.from_bytes(frame[0:4], 'little')
-                    if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  # FIXME: ugly kludge
+                    if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  #  ugly kludge
                         print("%s %s: I think we've wrapped around." % (s_now(), self.desired_nickname))
                         self.our_getq_alreadyspatout = 0
                     if packetno < self.our_getq_alreadyspatout:
                         print("%s %s: ignoring packet#%d, as it's a duplicate" % (s_now(), self.desired_nickname, packetno))
                     else:
-                        assert(packetno < 256 * 256 * 256 * 127)  # FIXME: PROGRAM A WRAPAROUND.
+                        assert(packetno < 256 * 256 * 256 * 127)  # PROGRAM A WRAPAROUND.
                         self.our_getq_cache[packetno % 65536] = frame
                         framelength = int.from_bytes(frame[4:6], 'little')
                         checksum = frame[framelength + 6:framelength + 14]
                         print("%s %s: rx'd pkt#%d of %d bytes" % (s_now(), self.desired_nickname, packetno, len(frame)))
                         if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
                             print("%s %s: bad checksum for pkt#%d. You should request a fresh copy." % (s_now(), self.desired_nickname, packetno))
-                            # for i in range(6, 6 + framelength):
-                            #     frame[i] = 0  # FIXME: ugly kludge
                         if framelength == 0:
                             final_packetnumber = packetno
                         our_cksum = base64.b85encode(hashlib.sha1(bytes(frame)).digest()).decode()

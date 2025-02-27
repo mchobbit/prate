@@ -338,7 +338,7 @@ class TestSendFileBetweenTwoUserViaRookeries(unittest.TestCase):
         pkey, xferred_data = self.h2.get()
         self.assertEqual((alices_rsa_key.public_key(), plaintext), (pkey, xferred_data))
 
-        for length in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000):
+        for length in (10, 20, 50, 100, 200, 400):
             plaintext = generate_random_alphanumeric_string(length).encode()
             self.h1.put(bobs_rsa_key.public_key(), plaintext)
             pkey, xferred_data = self.h2.get()

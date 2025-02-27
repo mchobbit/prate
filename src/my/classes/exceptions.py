@@ -62,10 +62,10 @@ Error
             FernetKeyError
                 FernetKeyIsUnknownError
                 FernetKeyIsInvalidError
-    HaremError
-        HaremCorridorError
-            HaremCorridorAlreadyClosedError
-            HaremCorridorNotOpenYetError
+    RookeryError
+        RookeryCorridorError
+            RookeryCorridorAlreadyClosedError
+            RookeryCorridorNotOpenYetError
 
 Example:
     n/a
@@ -547,23 +547,23 @@ class FernetKeyIsInvalidError(EncryptionError):
         super().__init__(message)
 
 
-class HaremError(Error):
-    """Class for all HaremError"""
+class RookeryError(Error):
+    """Class for all RookeryError"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class HaremCorridorError(HaremError):
-    """Class for all HaremCorridorError"""
+class RookeryCorridorError(RookeryError):
+    """Class for all RookeryCorridorError"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class HaremCorridorAlreadyClosedError(HaremCorridorError):
+class RookeryCorridorAlreadyClosedError(RookeryCorridorError):
     """"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -571,7 +571,7 @@ class HaremCorridorAlreadyClosedError(HaremCorridorError):
         super().__init__(message)
 
 
-class HaremCorridorNotOpenYetError(HaremCorridorError):
+class RookeryCorridorNotOpenYetError(RookeryCorridorError):
     """"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation

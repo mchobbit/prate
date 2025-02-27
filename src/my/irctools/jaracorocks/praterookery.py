@@ -48,17 +48,17 @@ Example:
 
 from threading import Thread, Lock
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcNicknameTooLongError, PublicKeyUnknownError
+from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcNicknameTooLongError, PublicKeyUnknownError, \
+    IrcPrivateMessageTooLongError, RookeryCorridorNotOpenYetError
 from time import sleep
-from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
+from my.irctools.cryptoish import squeeze_da_keez  # , bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
 import datetime
-from random import shuffle, randint
+from random import randint, choice
 from my.stringtools import s_now, generate_random_alphanumeric_string, MAX_NICKNAME_LENGTH
-from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES
+from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH
 # from my.classes.readwritelock import ReadWriteLock
-MAXIMUM_ENCRYPTED_MSG_BLOCK_SIZE = 288
 
 
 class PrateRookery:
@@ -196,64 +196,40 @@ class PrateRookery:
         """Homies with whom we have exchanged public keys, fernet keys, and IP addresses."""
         return self.get_homies_list(True)
 
-    def put(self, pubkey, datablock):
+    def put(self, pubkey, datablock, irc_server=None):
+        """Using the specified IRC server (or, if none specified, one chosen at random), transmit packet."""
         if self.paused:
             raise ValueError("Set paused=False and try again.")
-        # FIXME: If receiving party requests a copy of a cached packet from <255 ago, that's just too bad.
-        assert(type(pubkey) is RSA.RsaKey)
-        assert(type(datablock) is bytes)
-        connected_homies = self.get_homies_list(True)
+        if type(pubkey) is not RSA.RsaKey:
+            raise ValueError("pubkey should be a public key")
+        elif type(datablock) is not bytes:
+            raise ValueError("datablock should be bytes")
+        elif len(datablock) > MAX_CRYPTO_MSG_LENGTH:
+            raise IrcPrivateMessageTooLongError("datablock is too long")
+        connected_homies = self.true_homies
         if 0 == len(connected_homies):
-            raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
-        outpackets_lst = self.generate_packets_list_for_transmission(pubkey, datablock)
-        print("%s %-20s              Okay. Transmitting the outpackets." % (s_now(), self.desired_nickname))
-        order_of_transmission = list(range(0, len(outpackets_lst)))
-        shuffle(order_of_transmission)
-        botno_offset = randint(0, 100)
-        for i in range(0, len(outpackets_lst)):
-            botno = (i + botno_offset) % len(connected_homies)
-            pktno = order_of_transmission[i]
-            self.bots[connected_homies[botno].irc_server].crypto_put(
-                user=connected_homies[botno].nickname, byteblock=bytes(outpackets_lst[pktno]))
+            raise PublicKeyUnknownError("You are trying to send a message to an unrecognized public key.")
+        if irc_server is None:
+            irc_server = choice(connected_homies).irc_server
+        if irc_server not in [h.irc_server for h in connected_homies]:
+            raise RookeryCorridorNotOpenYetError("You specified an IRC server that has no corridor between me and the owner of the public key you specified.")
+        try:
+            homie = [h for h in connected_homies if h.irc_server == irc_server][0]
+        except IndexError as e:
+            raise RookeryCorridorNotOpenYetError("I cannot find a compatible IRC server for the specified public key.") from e
+        print("%s %-20s              %3d bytes TX'd => %-9s on %s" % (s_now(), self.desired_nickname, len(datablock), homie.nickname, homie.irc_server))
+        self.bots[homie.irc_server].crypto_put(
+                user=homie.nickname, byteblock=datablock)
 
     def process_incoming_buffer(self):
-        final_packetnumber = -1
-        pubkey = None
-        while not self.paused and not self.gotta_quit and \
-        (final_packetnumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1) if self.our_getq_cache[i % 65536] is None]):
-            # FIXME: Prone to gridlock: it'll wait indefinitely for a missing packet.
-            if self.gotta_quit or self.paused:
-                return
-            else:
-                try:
-                    user, irc_server, frame = self.privmsgs_from_rookery_bots.get_nowait()
-                    if pubkey is None:
-                        pubkey = self.bots[irc_server].homies[user].pubkey  # else assert(pubkey == self.bots[irc_server].homies[user].pubkey)
-                except Empty:
-                    sleep(A_TICK)
-                else:
-                    packetno = int.from_bytes(frame[0:4], 'little')
-                    if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:
-                        print("%s %-20s              I think we've wrapped around." % (s_now(), self.desired_nickname))
-                        self.our_getq_alreadyspatout = 0
-                    if packetno < self.our_getq_alreadyspatout:
-                        print("%s %-20s              Ignoring packet#%d, as it's a duplicate" % (s_now(), self.desired_nickname, packetno))
-                    else:
-                        assert(packetno < 256 * 256 * 256 * 127)  # FIXME: PROGRAM A WRAPAROUND. Oh, and the '256*256*64' thing is an ugly kludge, too.
-                        self.our_getq_cache[packetno % 65536] = frame
-                        framelength = int.from_bytes(frame[4:6], 'little')
-                        checksum = frame[framelength + 6:framelength + 14]
-                        print("%s %-20s              Rx'd pkt#%d of %d bytes" % (s_now(), self.desired_nickname, packetno, len(frame)))
-                        if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
-                            print("%s %-20s              FIXME Bad checksum for pkt#%d. FIXME request a fresh copy. FIXME" % (s_now(), self.desired_nickname, packetno))
-                        if framelength == 0:
-                            final_packetnumber = packetno
-        data_to_be_returned = bytearray()
-        for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1):
-            data_to_be_returned += self.our_getq_cache[i][6:-8]
-            self.our_getq_cache[i] = None
-        self.our_getq_alreadyspatout = final_packetnumber + 1
-        self.our_getqueue.put((pubkey, data_to_be_returned))
+        try:
+            user, irc_server, datablock = self.privmsgs_from_rookery_bots.get_nowait()
+            pubkey = self.bots[irc_server].homies[user].pubkey
+        except Empty:
+            pass
+        else:
+            print("%s %-20s              %3d bytes RX'd <= %-9s on %s" % (s_now(), self.desired_nickname, len(datablock), user, irc_server))
+            self.our_getqueue.put((pubkey, datablock))
 
     @property
     def not_empty(self):
@@ -274,33 +250,6 @@ class PrateRookery:
 
     def find_nickname_by_pubkey(self, pubkey, handshook_only=False):
         return self.find_field_by_pubkey(pubkey, 'nickname', handshook_only)
-
-    def generate_packets_list_for_transmission(self, pubkey, datablock):
-        outpackets_lst = []
-        bytes_remaining = len(datablock)
-        pos = 0
-        squeezed_pk = squeeze_da_keez(pubkey)
-        # if squeezed_pk not in self.outgoing_caches_dct:
-        #     self.outgoing_caches_dct[squeezed_pk] = [None] * 256
-        if squeezed_pk not in self.outgoing_packetnumbers_dct:
-            self.outgoing_packetnumbers_dct[squeezed_pk] = 0
-        if self.outgoing_packetnumbers_dct[squeezed_pk] >= 256 * 256 * 256 * 127:
-            self.outgoing_packetnumbers_dct[squeezed_pk] -= 256 * 256 * 256 * 127
-        while True:
-            bytes_for_this_frame = min(MAXIMUM_ENCRYPTED_MSG_BLOCK_SIZE, bytes_remaining)
-            our_block = datablock[pos:pos + bytes_for_this_frame]
-            frame = bytearray()
-            frame += self.outgoing_packetnumbers_dct[squeezed_pk].to_bytes(4, 'little')  # packet#
-            frame += len(our_block).to_bytes(2, 'little')  # length
-            frame += our_block  # data block
-            frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
-            outpackets_lst.append(frame)  # print("%s %-20s              Sent pkt#%d of %d bytes" % (s_now(), self.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
-            bytes_remaining -= bytes_for_this_frame
-            pos += bytes_for_this_frame
-            self.outgoing_packetnumbers_dct[squeezed_pk] += 1
-            if bytes_for_this_frame == 0:
-                break
-        return outpackets_lst
 
     @property
     def users(self):

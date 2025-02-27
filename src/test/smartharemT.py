@@ -16,7 +16,7 @@ from random import randint
 import datetime
 import socket
 from my.irctools.jaracorocks.pratebot import PrateBot
-from my.classes.exceptions import PublicKeyBadKeyError, HaremCorridorAlreadyClosedError
+from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError
 from my.irctools.jaracorocks.smartharem import SmartHarem
 
 alices_rsa_key = RSA.generate(2048)
@@ -406,7 +406,7 @@ class TestSimpleOpenAndClose(unittest.TestCase):
         self.assertEqual([g], self.h1.corridors)
         g.close()
         self.assertEqual([], self.h1.corridors)
-        self.assertRaises(HaremCorridorAlreadyClosedError, g.close)
+        self.assertRaises(RookeryCorridorAlreadyClosedError, g.close)
         sleep(5)
 
     def testMakeTwocorridorsAndDeleteOne(self):
