@@ -19,7 +19,7 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_random_alphanumeric_string
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_CRYPTO_MSG_LENGTH
 from random import randint
 import socket
 from my.irctools.jaracorocks.pratebot import PrateBot
