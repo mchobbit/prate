@@ -32,19 +32,17 @@ Example:
 import sys
 from threading import Thread
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, IrcPrivateMessageTooLongError, PublicKeyUnknownError, \
-                            IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, IrcNicknameTooLongError, IrcBadNicknameError, \
-    IrcYouCantUseABotAfterQuittingItError, EncryptionHandshakeTimeoutError
+from my.classes.exceptions import PublicKeyBadKeyError, IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, \
+                IrcNicknameTooLongError, IrcBadNicknameError, IrcYouCantUseABotAfterQuittingItError, IrcPrivateMessageTooLongError, PublicKeyUnknownError
 
 from time import sleep
-from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, A_TICK, STARTUP_TIMEOUT, HANDSHAKE_TIMEOUT
+from my.globals import MY_IP_ADDRESS, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, A_TICK, STARTUP_TIMEOUT, ENDTHREAD_TIMEOUT
 from my.irctools.cryptoish import generate_fingerprint, squeeze_da_keez, rsa_encrypt, unsqueeze_da_keez, rsa_decrypt, receive_and_decrypt_message
 from cryptography.fernet import Fernet
 import base64
-from my.classes.readwritelock import ReadWriteLock
+# from my.classes.readwritelock import ReadWriteLock
 from my.classes.homies import HomiesDct
 from queue import Queue, Empty
-import os
 import datetime
 from my.stringtools import s_now
 from my.irctools.jaracorocks.vanilla import VanillaBot
@@ -167,6 +165,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
             return False
 
     def __my_main_loop(self):
+        """The main loop of this PrateBot: login, join, handshake (maybe), service messages, and (eventually) signout&quit."""
         while not self.ready and not self.should_we_quit:
             sleep(A_TICK)
         sleep(3)
@@ -181,11 +180,11 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                 try:
                     self.trigger_handshaking()
                 except IrcStillConnectingError:
-                    print("%s: I'm not ready for handshaking yet (I'm still connecting)." % self.irc_server)
+                    print("%s %-20s: %-10s: I'm not ready for handshaking yet (I'm still connecting)." % (s_now(), self.irc_server, self.nickname))
                 except IrcIAmNotInTheChannelError:
-                    print("%s: I'm not ready for handshaking yet (I'm not in the channel yet)." % self.irc_server)
+                    print("%s %-20s: %-10s: I'm not ready for handshaking yet (I'm not in the channel yet)" % (s_now(), self.irc_server, self.nickname))
                 else:
-                    print("%s: first handshake(s) initiated" % self.irc_server)
+                    print("%s %-20s: %-10s: Handshaking initiated." % (s_now(), self.irc_server, self.nickname))
                     break
         while not self.should_we_quit:
             sleep(A_TICK)
@@ -197,82 +196,84 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                 except IrcStillConnectingError:
                     pass
                 except FernetKeyIsInvalidError:
-                    print("%s %s: %s: some kind of protocol error" % (s_now(), self.irc_server, self.nickname))
-#        print("main loop is quitting")
+                    print("%s %-20s: %-10s: fernet key is invalid, allegedly" % (s_now(), self.irc_server, self.nickname))
+        print("%s %-20s: %-10s: Main loop is quitting." % (s_now(), self.irc_server, self.nickname))
 
     def read_messages_from_users(self):
+        """Process private messages that other users sent to me via the IRC server."""
         while True:
             try:
                 (sender, msg) = super().get_nowait()
             except Empty:
                 return
             else:
-                if msg.startswith(_REQUEST_PUBLICKEY_):  # print("%s %s: %s: requesting public key from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                if msg.startswith(_REQUEST_PUBLICKEY_):  # print("%s %-20s: %-10s: requesting public key from %s" % (s_now(), self.irc_server, self.nickname, sender))
                     super().put(sender, "%s%s" % (_TRANSMIT_PUBLICKEY_, squeeze_da_keez(self.rsa_key.public_key())))
-                elif msg.startswith(_TRANSMIT_PUBLICKEY_):  # print("%s %s: %s: sending my public key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TRANSMIT_PUBLICKEY_):  # print("%s %-20s: %-10s: sending my public key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
                     self.homies[sender].irc_server = self.irc_server  # just in case a Harem needs it
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TRANSMIT_PUBLICKEY_):])
                     super().put(sender, "%s%s" % (_REQUEST__FERNETKEY_, self.my_encrypted_fernetkey_for_this_user(sender)))
-                elif msg.startswith(_REQUEST__FERNETKEY_):  # print("%s %s: %s: requesting fernet key from %s" % (s_now(), self.irc_server, self.nickname, sender))
-                    if self.homies[sender].pubkey is None:  # print("%s %s: %s: I'm being asked for my fernet key, but I don't have %s's public key yet. I'll ask for it now." % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_REQUEST__FERNETKEY_):  # print("%s %-20s: %-10s: requesting fernet key from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                    if self.homies[sender].pubkey is None:  # print("%s %-20s: %-10s: I'm being asked for my fernet key, but I don't have %s's public key yet. I'll ask for it now." % (s_now(), self.irc_server, self.nickname, sender))
                         super().put(sender, "%s%s" % (_REQUEST_PUBLICKEY_, squeeze_da_keez(self.rsa_key.public_key())))
-                    else:  # print("%s %s: %s: I'm about to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, sender))
+                    else:  # print("%s %-20s: %-10s: I'm about to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, sender))
                         t1 = datetime.datetime.now()
                         dc = rsa_decrypt(base64.b64decode(msg[len(_REQUEST__FERNETKEY_):]), self.rsa_key)
                         t2 = datetime.datetime.now()
                         if (t2 - t1).seconds > 1:
-                            print("%s %s: %s: it took %d seconds to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, (t2 - t1).seconds, sender))
+                            print("%s %-20s: %-10s: it took %d seconds to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, (t2 - t1).seconds, sender))
                         if self.homies[sender].remotely_supplied_fernetkey != dc:  # print("%s %s: saving %s's new fernet key for %s" % (s_now(), self.irc_server, sender, self.nickname))
                             self.homies[sender].remotely_supplied_fernetkey = dc
                         super().put(sender, "%s%s" % (_TRANSMIT_FERNETKEY_, self.my_encrypted_fernetkey_for_this_user(sender)))
-#                         print("%s %s: %s: I have encrypted and sent my fernet key to %s." % (s_now(), self.irc_server, self.nickname, sender))
-                elif msg.startswith(_TRANSMIT_FERNETKEY_):  # print("%s %s: %s: sending my fernet key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
+#                         print("%s %-20s: %-10s: I have encrypted and sent my fernet key to %s." % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TRANSMIT_FERNETKEY_):  # print("%s %-20s: %-10s: sending my fernet key to %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
                     dc = rsa_decrypt(base64.b64decode(msg[len(_TRANSMIT_FERNETKEY_):]), self.rsa_key)
                     if self.homies[sender].remotely_supplied_fernetkey != dc:  # print("Saving %s's new fernet key for %s on %s" % (sender, self.nickname, self.irc_server))
                         self.homies[sender].remotely_supplied_fernetkey = dc
                     if self.homies[sender].fernetkey is not None:
-                        super().put(sender, "%s%s" % (_REQUEST__IPADDRESS_, self.my_encrypted_ipaddr(sender)))  # print("%s %s: %s: I have sent my fernet key to %s reciprocally." % (s_now(), self.irc_server, self.nickname, sender))
-                elif msg.startswith(_REQUEST__IPADDRESS_):  # print("%s %s: %s: requesting IP address from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                        super().put(sender, "%s%s" % (_REQUEST__IPADDRESS_, self.my_encrypted_ipaddr(sender)))  # print("%s %-20s: %-10s: I have sent my fernet key to %s reciprocally." % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_REQUEST__IPADDRESS_):  # print("%s %-20s: %-10s: requesting IP address from %s" % (s_now(), self.irc_server, self.nickname, sender))
                     try:
                         new_ipaddr = receive_and_decrypt_message(msg[len(_REQUEST__IPADDRESS_):], self.homies[sender].fernetkey).decode()
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
-                        print("%s %s: %s: unable to decode %s's IP address, re RQIP: fernet key issue? I'll send an RQIP to *them* and see what happens." % (s_now(), self.irc_server, self.nickname, sender))
+                        print("%s %-20s: %-10s: unable to decode %s's IP address, re RQIP: fernet key issue? I'll send an RQIP to *them* and see what happens." % (s_now(), self.irc_server, self.nickname, sender))
                         super().put(sender, "%s%s" % (_REQUEST__IPADDRESS_, self.my_encrypted_ipaddr(sender)))
                     else:
                         if self.homies[sender].ipaddr != new_ipaddr:
                             self.homies[sender].ipaddr = new_ipaddr
                         super().put(sender, "%s%s" % (_TRANSMIT_IPADDRESS_, self.my_encrypted_ipaddr(sender)))
-                elif msg.startswith(_TRANSMIT_IPADDRESS_):  # print("%s %s: %s: sending my IP address from %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
+                elif msg.startswith(_TRANSMIT_IPADDRESS_):  # print("%s %-20s: %-10s: sending my IP address from %s reciprocally" % (s_now(), self.irc_server, self.nickname, sender))
                     try:
                         new_ipaddr = receive_and_decrypt_message(msg[len(_TRANSMIT_IPADDRESS_):], self.homies[sender].fernetkey).decode()
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError):
-                        print("%s %s: %s: unable to decode %s's IP address re TXIP: fernet key issue? I'll send an RQIP to *them* and see what happens." % (s_now(), self.irc_server, self.nickname, sender))
+                        print("%s %-20s: %-10s: unable to decode %s's IP address re TXIP: fernet key issue? I'll send an RQIP to *them* and see what happens." % (s_now(), self.irc_server, self.nickname, sender))
                         super().put(sender, "%s%s" % (_REQUEST__IPADDRESS_, self.my_encrypted_ipaddr(sender)))
                     else:
                         if self.homies[sender].ipaddr != new_ipaddr:
                             self.homies[sender].ipaddr = new_ipaddr
-                        print("%s %s: %s and %s are connected." % (s_now(), self.irc_server, self.nickname, sender,))
+                        print("%s %-20s: %-10s: I have shaken hands with %s." % (s_now(), self.irc_server, self.nickname, sender,))
                 elif msg.startswith(_TRANSMITCIPHERTEXT_):
                     try:
                         self.crypto_rx_queue.put((sender, receive_and_decrypt_message(msg[len(_TRANSMITCIPHERTEXT_):], self.homies[sender].fernetkey)))
                     except (ValueError, FernetKeyIsInvalidError, FernetKeyIsUnknownError) as e:
-                        print("%s %s: %s: unable to receive encrypted message from %s: fernet key issue? =>" % (s_now(), self.irc_server, self.nickname, sender, str(e)))
+                        print("%s %-20s: %-10s: unable to receive encrypted message from %s: fernet key issue? => %s" % (s_now(), self.irc_server, self.nickname, sender, str(e)))
                 elif msg.startswith(_TRANSMIT_PLAINTEXT_):
                     try:
                         self.plain_rx_queue.put((sender, msg[len(_TRANSMIT_PLAINTEXT_):]))
                     except ValueError:
-                        print("%s %s: %s: unable to receive plaintext message from %s" % (s_now(), self.irc_server, self.nickname, sender))
+                        print("%s %-20s: %-10s: unable to receive plaintext message from %s" % (s_now(), self.irc_server, self.nickname, sender))
                 else:
                     print("%s ??? %s: %s: %s" % (s_now(), self.irc_server, sender, msg))
 
     def is_this_user_validly_fingerprinted(self, user):
+        """Is this user's realname a hash of their nickname? If 'yes', they're a Prate user!"""
         try:
             return True if user != self.nickname \
                             and self.whois(user) is not None \
                             and generate_fingerprint(user) == self.whois(user).split('* ', 1)[-1] \
                             else False
         except (IrcBadNicknameError, IrcYouCantUseABotAfterQuittingItError):
-#            print("%s %s: %s: bad nickname. Ignoring." % (s_now(), self.irc_server, user))
+#            print("%s %-20s: %-10s: bad nickname. Ignoring." % (s_now(), self.irc_server, user))
             return False
 
     def trigger_handshaking(self, user=None):
@@ -291,14 +292,14 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
         else:
             try:
                 if self.is_this_user_validly_fingerprinted(user):
-                    if self.homies[user].pubkey is None:  # print("%s %s: %s: I lack %s's public key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
+                    if self.homies[user].pubkey is None:  # print("%s %-20s: %-10s: I lack %s's public key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
                         super().put(user, "%sllo, %s! I am %s. May I please have a copy of your public key?" % (_REQUEST_PUBLICKEY_, user, self.nickname))
-                    elif self.homies[user].fernetkey is None:  # print("%s %s: %s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
+                    elif self.homies[user].fernetkey is None:  # print("%s %-20s: %-10s: I lack %s's fernet key. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
                         super().put(user, "%s%s" % (_REQUEST__FERNETKEY_, self.my_encrypted_fernetkey_for_this_user(user)))
-                    elif self.homies[user].ipaddr is None:  # print("%s %s: %s: I lack %s's IP address. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
+                    elif self.homies[user].ipaddr is None:  # print("%s %-20s: %-10s: I lack %s's IP address. Therefore, I'll ask for a copy." % (s_now(), self.irc_server, self.nickname, user))
                         super().put(user, "%s%s" % (_REQUEST__IPADDRESS_, self.my_encrypted_ipaddr(user)))
                     else:
-                        print("%s %s: %s: %s is kosher." % (s_now(), self.irc_server, self.nickname, user))
+                        print("%s %-20s: %-10s: %s is kosher." % (s_now(), self.irc_server, self.nickname, user))
             except (IrcBadNicknameError, IrcNicknameTooLongError):
                 pass  # print("%s is a crappy username. Ignoring" % user)
 
@@ -400,11 +401,11 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                 raise IrcPrivateMessageTooLongError("Cannot send %s to %s: message is too long" % (outgoing_str, user))
             super().put(user, outgoing_str)
 
-    def quit(self, yes_even_the_reactor_thread=False, timeout=10):
+    def quit(self, yes_even_the_reactor_thread=False, timeout=ENDTHREAD_TIMEOUT):
         super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread, timeout=timeout)
         if hasattr(self, '__my_main_thread'):  # Is someone deleting it?
             print("HUZZAH! WE CAN CLOSE THE MAIN THREAD.")
-            self.__my_main_thread.join(timeout=10)
+            self.__my_main_thread.join(timeout=timeout)
 
 
 if __name__ == "__main__":

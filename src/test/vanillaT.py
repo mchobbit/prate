@@ -1,89 +1,11 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Created on Feb 9, 2025
 
 @author: mchobbit
 
+"""
 
-alice_nick = 'alice%d' % randint(111, 999)
-bob_nick = 'bob%d' % randint(111, 999)
-dupe_nick = alice_nick
-the_room = '#room' + generate_random_alphanumeric_string(5)
-alice_bot = VanillaBot(channels=[the_room],
-                 nickname=alice_nick,
-                 irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
-                 port=6667,
-                 startup_timeout=3,
-                 maximum_reconnections=2,
-                 autoreconnect=True,
-                 strictly_nick=True)
-bob_bot = VanillaBot(channels=[the_room],
-                 nickname=bob_nick,
-                 irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
-                 port=6667,
-                 startup_timeout=3,
-                 maximum_reconnections=2,
-                 autoreconnect=True,
-                 strictly_nick=True)
-self.assertTrue(alice_bot.ready)
-self.assertTrue(bob_bot.ready)
-self.assertRaises(IrcDuplicateNicknameError, VanillaBot, [the_room],
-                 dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 30, 3, True, True)
-alice_bot.quit()
-bob_bot.quit()
-
-
-vvv DO NOT USE THIS YET vvv
-        Xbots = {}
-        Ybots = {}
-        my_channel = '#platit'
-        X_desired_nickname = 'x%sx' % generate_random_alphanumeric_string(7)
-        Y_desired_nickname = 'y%sy' % generate_random_alphanumeric_string(7)
-
-        my_port = 6667
-        for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
-            Xbots[my_irc_server] = VanillaBot([my_channel], X_desired_nickname, my_irc_server, my_port)
-            Ybots[my_irc_server] = VanillaBot([my_channel], Y_desired_nickname, my_irc_server, my_port)
-
-elf, channels:list, nickname:str, irc_server:str, port:int,
-                 startup_timeout:int, maximum_reconnections:int, strictly_nick:bool, autoreconnect:bool
-
-
-        successes_thus_far = -1
-        while successes_thus_far < len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]):
-            successes_thus_far = len([k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready])
-            sleep(10)
-        readyKs = [k for k in ALL_SANDBOX_IRC_NETWORK_NAMES if Xbots[k].ready and Ybots[k].ready]
-        for k in readyKs:
-            for xy in (Xbots, Ybots):
-                try:
-                    while True:
-                        _ = xy[k].get_nowait()
-                except Empty:
-                    break
-        for k in readyKs:
-            print("Trying %s" % k)
-            if Xbots[k].ready and Ybots[k].ready:
-                p = "Hello there from %s" % k
-                Xbots[k].put(Y_desired_nickname, p)
-
-        defective_items = []
-        for k in readyKs:
-            p = "WORD UP FROM %s" % k
-            (src, msg) = Ybots[k].get()
-            if p != msg:
-                print("%s is defective" % k)
-                defective_items += [k]
-
-        for k in defective_items:
-            readyKs.remove(k)
-
-        for my_irc_server in ALL_SANDBOX_IRC_NETWORK_NAMES:
-            Xbots[my_irc_server].quit()
-            Ybots[my_irc_server].quit()
-
-^^^ DO NOT USE THIS YET ^^^
-
-'''
 import unittest
 from my.irctools.jaracorocks.vanilla import VanillaBot
 from my.stringtools import generate_random_alphanumeric_string
@@ -103,6 +25,7 @@ class TestVanillaBot(unittest.TestCase):
         pass
 
     def testSimpleCreationAndDeletion(self):
+        """Create two bots. Make them sign into a channel on an IRC server."""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         first_room = '#room' + generate_random_alphanumeric_string(5)
@@ -129,6 +52,7 @@ class TestVanillaBot(unittest.TestCase):
         bob_bot.quit()
 
     def testDoubleQuit(self):
+        """Find out what happens if you try to quit the same IRC server twice."""
         alice_nick = 'alice%d' % randint(111, 999)
         first_room = '#room' + generate_random_alphanumeric_string(5)
         alice_bot = VanillaBot(channels=[first_room],
@@ -147,6 +71,7 @@ class TestVanillaBot(unittest.TestCase):
         self.assertTrue(alice_bot.quitted)
 
     def testMultipleChannelsUserlist(self):
+        """Will the .users list reflect all members of all channels?"""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         charlie_nick = 'charl%d' % randint(111, 999)
@@ -201,6 +126,7 @@ class TestVanillaBot(unittest.TestCase):
         charlie_bot.quit()
 
     def testEnterAndLeaveRooms(self):
+        """If I leave a room, will the other bots notice?"""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         first_room = '#room' + generate_random_alphanumeric_string(5)
@@ -236,6 +162,7 @@ class TestVanillaBot(unittest.TestCase):
         bob_bot.quit()
 
     def testDisconnectAndReconnect(self):
+        """If I disconnect and reconnect, will other bots notice?"""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         first_room = '#room' + generate_random_alphanumeric_string(5)
@@ -272,6 +199,7 @@ class TestVanillaBot(unittest.TestCase):
         bob_bot.quit()
 
     def testDupeNicks(self):
+        """What happens if I try to log two bots in with the same username?"""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         dupe_nick = alice_nick
@@ -300,6 +228,7 @@ class TestVanillaBot(unittest.TestCase):
         bob_bot.quit()
 
     def testFingerprintSettingAndRecognizing(self):
+        """Am I able to retrieve and recognize the fingerprints (realnames) of bots?"""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         the_room = '#room' + generate_random_alphanumeric_string(5)
@@ -329,6 +258,7 @@ class TestVanillaBot(unittest.TestCase):
         bob_bot.quit()
 
     def testNickCollisionAndAuthorizedReconnect(self):
+        """Can I automatically reconnect, using a valid username, if this one is a dupe and I'm not 'strict'?"""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         dupe_nick = alice_nick
@@ -366,6 +296,7 @@ class TestVanillaBot(unittest.TestCase):
         dupe_bot.quit()
 
     def testNickCollisionWithNoRetry(self):
+        """This should cause me to fail."""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         dupe_nick = alice_nick
@@ -422,6 +353,7 @@ class TestNonex(unittest.TestCase):
 class TestTalk(unittest.TestCase):
 
     def testTalkToEachOther(self):
+        """Send simple (private) messages between the three bots."""
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
         the_room = '#room' + generate_random_alphanumeric_string(5)

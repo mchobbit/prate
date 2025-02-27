@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Jaraco-style IRC bot classes.
 
 Created on Jan 30, 2025
@@ -23,8 +24,6 @@ Todo:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 Example:
-
-
 
 """
 

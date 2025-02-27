@@ -62,6 +62,10 @@ Error
             FernetKeyError
                 FernetKeyIsUnknownError
                 FernetKeyIsInvalidError
+    HaremError
+        HaremCorridorError
+            HaremCorridorAlreadyClosedError
+            HaremCorridorNotOpenYetError
 
 Example:
     n/a
@@ -537,6 +541,38 @@ class FernetKeyIsUnknownError(PublicKeyError):
 
 class FernetKeyIsInvalidError(EncryptionError):
     """Fernet key is invalid"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class HaremError(Error):
+    """Class for all HaremError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class HaremCorridorError(HaremError):
+    """Class for all HaremCorridorError"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class HaremCorridorAlreadyClosedError(HaremCorridorError):
+    """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class HaremCorridorNotOpenYetError(HaremCorridorError):
+    """"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 

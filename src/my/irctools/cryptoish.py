@@ -1,17 +1,31 @@
-'''
+# -*- coding: utf-8 -*-
+"""Crypto-related subroutines.
+
 Created on Jan 30, 2025
 
 @author: mchobbit
 
+This module contains subroutines for handling Prate crypto. There is
+more to it than that, of course.
 
-from my.irctools.cryptoish import *
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-nickname = 'mac1'
-k = RSA.generate(2048)
-sha1_of_nickname(nickname)
-base64.b85encode(hashlib.sha1(nickname.encode()).digest())
-'''
+Todo:
+    * Better docs
+    * Detect if users' nicknames change
+    * Make the users' dictionary threadsafe
+    * Make the entire class threadsafe
+    * Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
+    * Turn the users' dictionary into a class
+    * Auto-check the nicknames whenever using a dictionary entry
+
+.. _Google Python Style Guide:
+   http://google.github.io/styleguide/pyguide.html
+
+.. _Napoleon Style Guide:
+   https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
+Example:
+
+"""
 
 from random import choice
 from Crypto.PublicKey import RSA

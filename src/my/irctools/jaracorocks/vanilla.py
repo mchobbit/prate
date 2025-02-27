@@ -37,7 +37,7 @@ from my.classes.exceptions import IrcFingerprintMismatchCausedByServer, IrcIniti
     IrcStillConnectingError, IrcNicknameTooLongError, IrcJoiningChannelTimeoutError, IrcPartingChannelTimeoutError, IrcRanOutOfReconnectionsError, IrcBadNicknameError, \
     IrcPrivateMessageTooLongError, IrcPrivateMessageContainsBadCharsError, IrcAlreadyDisconnectedError, IrcYouCantUseABotAfterQuittingItError
 from my.irctools.jaracorocks import DualQueuedFingerprintedSingleServerIRCBotWithWhoisSupport
-from my.globals import MAX_NICKNAME_LENGTH, JOINPARTCHAN_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK
+from my.globals import MAX_NICKNAME_LENGTH, JOINPARTCHAN_TIMEOUT, MAX_CHANNEL_LENGTH, DEFAULT_WHOIS_TIMEOUT, MAX_PRIVMSG_LENGTH, A_TICK, ENDTHREAD_TIMEOUT
 
 
 class VanillaBot:
@@ -447,7 +447,7 @@ class VanillaBot:
         else:
             return self._client.ready
 
-    def quit(self, yes_even_the_reactor_thread=False, timeout=5):
+    def quit(self, yes_even_the_reactor_thread=False, timeout=ENDTHREAD_TIMEOUT):
         """Quit this bot."""
         if self.quitted:
             raise IrcAlreadyDisconnectedError("Trying to quit %s twice. This should be unnecessary." % self.irc_server)

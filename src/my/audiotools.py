@@ -1,5 +1,7 @@
-'''
-Created on Feb 18, 2025
+# -*- coding: utf-8 -*-
+"""Audio tools for Prate.
+
+Created on Jan 30, 2025
 
 @author: mchobbit
 
@@ -8,23 +10,33 @@ https://www.codespeedy.com/record-voice-from-the-microphone-in-python-with-few-l
 https://stackoverflow.com/questions/62618934/pyaudio-how-to-access-stream-read-data-in-callback-non-blocking-mode
 https://stackoverflow.com/questions/19070290/pyaudio-listen-until-voice-is-detected-and-then-record-to-a-wav-file
 
+Todo:
+    * Better docs
+    * Detect if users' nicknames change
+    * Make the users' dictionary threadsafe
+    * Make the entire class threadsafe
+    * Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
+    * Turn the users' dictionary into a class
+    * Auto-check the nicknames whenever using a dictionary entry
 
-'''
-from io import BytesIO
+.. _Google Python Style Guide:
+   http://google.github.io/styleguide/pyguide.html
+
+.. _Napoleon Style Guide:
+   https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
+"""
+
 import pyaudio
-import wave
 from pydub import AudioSegment
-from my.stringtools import generate_random_alphanumeric_string
-import threading
-from array import array
-from queue import Queue, Full
-
-import pyaudio
-
-from threading import Event, Thread
-from queue import Empty
-from time import sleep
+from queue import Queue, Empty
+from io import BytesIO
+# import wave
+from threading import Thread
+import os
 from my.classes.readwritelock import ReadWriteLock
+from time import sleep
+from my.globals import ENDTHREAD_TIMEOUT
 
 SAMPLE_WIDTH = 2  # ...because paInt16 is 2x8
 DESIRED_AUDIO_FORMAT = pyaudio.paInt16
@@ -129,33 +141,25 @@ class MyMic:
 
     def quit(self):
         self.__should_we_quit = True
-        self.__my_main_thread.join(timeout=2)
+        self.__my_main_thread.join(timeout=ENDTHREAD_TIMEOUT)
 
-'''
-from my.audiotools import *
-import datetime
-from array import array
-from queue import Queue, Full, Empty
-from pydub import AudioSegment
-import os
-import pyaudio
 
-q = Queue()
-mic = MyMic(q, squelch=100)
-while not mic.ready:
-    sleep(0.1)
-print("Okay. Speak... or don't. I don't care. In ten seconds, I'll stop listening.")
-while True:
-    try:
-        audio_data = bytes(q.get_nowait())
-    except Empty:
-        sleep(.1)
-    else:
-        fname = "/tmp/simple.ogg"
-        with open(fname, "wb") as f:
-            f.write(audio_data)
-        print("ogg: %d KB" % (os.path.getsize(fname) // 1024))
-        os.system("/opt/homebrew/bin/mpv %s &" % fname)
-print("Fin.")
-pass
-'''
+def __main__():
+    q = Queue()
+    mic = MyMic(q, squelch=100)
+    while not mic.ready:
+        sleep(0.1)
+    print("Okay. Speak... or don't. I don't care. In ten seconds, I'll stop listening.")
+    while True:
+        try:
+            audio_data = bytes(q.get_nowait())
+        except Empty:
+            sleep(.1)
+        else:
+            fname = "/tmp/simple.ogg"
+            with open(fname, "wb") as f:
+                f.write(audio_data)
+            print("ogg: %d KB" % (os.path.getsize(fname) // 1024))
+            os.system("/opt/homebrew/bin/mpv %s &" % fname)
+    print("Fin.")
+

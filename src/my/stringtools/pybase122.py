@@ -1,11 +1,12 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Created on Jan 29, 2025
 
 @author: mchobbit
 
 Appropriated from here — https://github.com/Theelx/pybase122/blob/master/README.md
 
-'''
+"""
 
 import base64  # for converting b64 strings to b122
 
@@ -109,8 +110,7 @@ def b122decode(strData, warnings=True):
             push7(strData[i])
     return bytearray(decoded).decode("utf-8")
 
-
-# helper function for people already storing data in base64
-def encode_from_base64(base64str):
-    return encode(base64.b64decode(base64str))
+# # helper function for people already storing data in base64
+# def encode_from_base64(base64str):
+#     return encode(base64.b64decode(base64str))
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Array of relevant users of a given IRC network (usu. channel)
+"""Class for array of relevant users of an IRC network.
 
 Created on Jan 30, 2025
 
 @author: mchobbit
 
-This module contains classes for managing a list of users whose idents contain
-public keys, thus making them relevant to the class that uses these records.
+This module contains classes for managing a list of users whose idents reveal
+them to be Prate users (because the realname is a hash of the nickname).
 Each 'homie' record contains a nickname, a realname (usually a public key),
 a fernet key (symmetric), and a flag to say if the user actually *has* a public
 key.
@@ -33,7 +33,7 @@ from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
 from my.classes.exceptions import IrcBadNicknameError, PublicKeyBadKeyError, IrcNicknameTooLongError
 from my.globals import MAX_NICKNAME_LENGTH
-from my.irctools.cryptoish import squeeze_da_keez, sha1
+from my.irctools.cryptoish import squeeze_da_keez
 
 
 class Homie:
@@ -169,7 +169,7 @@ class Homie:
         self.__pubkey_lock.acquire_write()
         try:
             if value is not None and type(value) is not RSA.RsaKey:
-                PublicKeyBadKeyError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
+                raise PublicKeyBadKeyError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
             self.noof_fingerprinting_failures = 0
             self.__pubkey = value
         finally:

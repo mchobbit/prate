@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Created on Jan 21, 2025
 
 @author: mchobbit
 
 # print(key.get_base64())  # print public key
 # key.write_private_key(sys.stdout)
-'''
+"""
 
 from Crypto.PublicKey import RSA
 from my.stringtools import *
 from my.globals import *
-from my.irctools.jaracorocks.harem import HaremOfPrateBots
 from time import sleep
 from my.irctools.jaracorocks.pratebot import PrateBot
 import datetime
 from queue import Queue, Empty
 from my.audiotools import MyMic, raw_to_ogg
 import os
+from my.irctools.jaracorocks.praterookery import PrateRookery
 
 alices_preferred_nickname = 'alice123'
 bobs_preferred_nickname = 'bob456'
@@ -29,17 +29,15 @@ the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_SANDBOX_IRC_NETWORK_N
 # bob_bot = PrateBot([the_room], bobs_preferred_nickname, "irc.libera.chat", 6667, bob_rsa_key)
 # while not (alice_bot.ready and bob_bot.ready):
 #    sleep(1)
-print("Opening harems")
-alice_harem = HaremOfPrateBots([the_room], alices_preferred_nickname, the_irc_server_URLs, alice_rsa_key)
-bob_harem = HaremOfPrateBots([the_room], bobs_preferred_nickname, the_irc_server_URLs, bob_rsa_key)
-while not (alice_harem.ready and bob_harem.ready):
+print("Opening rookerys")
+alice_rookery = PrateRookery([the_room], alices_preferred_nickname, the_irc_server_URLs, alice_rsa_key)
+bob_rookery = PrateRookery([the_room], bobs_preferred_nickname, the_irc_server_URLs, bob_rsa_key)
+while not (alice_rookery.ready and bob_rookery.ready):
     sleep(10)
 
-alice_harem.trigger_handshaking()
-bob_harem.trigger_handshaking()
+alice_rookery.trigger_handshaking()
+bob_rookery.trigger_handshaking()
 sleep(60)
-while len(alice_harem.ipaddrs) < 1 and len(bob_harem.ipaddrs) < 1:
-    sleep(1)
 
 print("SAY WORDS!")
 audio_queue = Queue()
@@ -53,9 +51,9 @@ while True:
     except KeyboardInterrupt:
         break
     else:
-        alice_harem.put(bob_rsa_key.public_key(), raw_to_ogg(raw_audio))
+        alice_rookery.put(bob_rsa_key.public_key(), raw_to_ogg(raw_audio))
     try:
-        src, msg = bob_harem.get_nowait()
+        src, msg = bob_rookery.get_nowait()
         fileno += 1
         fname = "/tmp/out_%d.ogg" % fileno
         with open(fname, "wb") as f:
@@ -63,16 +61,16 @@ while True:
         os.system("/opt/homebrew/bin/mpv %s" % fname)
     except Empty:
         sleep(.05)
-# alice_harem.put(bob_rsa_key.public_key(), b"HELLO WORLDDD")
-# bob_harem.get()
+# alice_rookery.put(bob_rsa_key.public_key(), b"HELLO WORLDDD")
+# bob_rookery.get()
 
 # with open("/Users/mchobbit/Downloads/side_cushion.stl", "rb") as f:
 #     outdat = f.read()
 #
 # import datetime
 # t = datetime.datetime.now()
-# alice_harem.put(bob_rsa_key.public_key(), outdat)
+# alice_rookery.put(bob_rsa_key.public_key(), outdat)
 # u = datetime.datetime.now()
-# sender, in_dat = bob_harem.get()
+# sender, in_dat = bob_rookery.get()
 # v = datetime.datetime.now()
 

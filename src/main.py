@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Created on Jan 22, 2025
 
 @author: mchobbit
-'''
+"""
+
 import os
 from Crypto.PublicKey import RSA
 import paramiko
@@ -11,7 +12,6 @@ import sys
 from my.stringtools import generate_irc_handle, get_word_salad, get_bits_to_be_encoded, encode_via_steg, decode_via_steg, \
     generate_all_possible_channel_names, strict_encode_via_steg
 import base64
-from my.globals import HAMLET, CICERO
 from random import randint, choice, shuffle
 import string
 import time
@@ -42,10 +42,10 @@ import os
 import socket
 import datetime
 from my.irctools.cryptoish import squeeze_da_keez
-from my.irctools.jaracorocks.harem import HaremOfPrateBots
 import wave
 from pydub.audio_segment import AudioSegment
 from my.classes.readwritelock import ReadWriteLock
+from my.irctools.jaracorocks.praterookery import PrateRookery
 
 
 def loopback_audio_transmission_and_reception_over_IRC_harem():
@@ -54,8 +54,8 @@ def loopback_audio_transmission_and_reception_over_IRC_harem():
     alice_rsa_key = RSA.generate(2048)
     bob_rsa_key = RSA.generate(2048)
     the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
-    alice_harem = HaremOfPrateBots([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
-    bob_harem = HaremOfPrateBots([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)
+    alice_harem = PrateRookery([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
+    bob_harem = PrateRookery([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)
     while not (alice_harem.ready and bob_harem.ready):
         sleep(1)
 
@@ -63,7 +63,7 @@ def loopback_audio_transmission_and_reception_over_IRC_harem():
     while len(alice_harem.users) < 2 and len(bob_harem.users) < 2:
         sleep(1)
 
-    while len(alice_harem.ipaddrs) < 1 and len(bob_harem.ipaddrs) < 1:
+    while len(alice_harem.true_homies) < 1 and len(bob_harem.true_homies) < 1:
         sleep(1)
 
     # print("Sending a file from %s to %s" % (alice_harem.desired_nickname, bob_harem.desired_nickname))

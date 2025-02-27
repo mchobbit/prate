@@ -1,13 +1,11 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Created on Feb 9, 2025
 
 @author: mchobbit
 
 
-
-
-
-'''
+"""
 import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
@@ -103,7 +101,7 @@ class TestGroupOne(unittest.TestCase):
         bob_bot = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key)
         self.assertTrue(alice_bot.ready)
         self.assertTrue(bob_bot.ready)
-        sleep(5)
+        sleep(8)
         self.assertFalse(alice_nick in alice_bot.homies)
         self.assertFalse(bob_nick in bob_bot.homies)
         self.assertTrue(alice_nick in bob_bot.homies)
@@ -212,10 +210,22 @@ class TestGroupTwo(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         my_rsa_key1 = RSA.generate(2048)
         my_rsa_key2 = RSA.generate(2048)
+        sleep(5)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-#        bot1.paused = True
-#        bot2.paused = True
+        bot1.quit()
+        bot2.quit()
+        sleep(5)
+
+    def testSendGoofyValuesWithoutSleeping(self):
+        my_room = '#prate'  # + generate_irc_handle(7, 9)
+        nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        self.assertNotEqual(nick1, nick2)
+        my_rsa_key1 = RSA.generate(2048)
+        my_rsa_key2 = RSA.generate(2048)
+        bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
         bot1.quit()
         bot2.quit()
 
@@ -547,11 +557,14 @@ class TestFernetKeyMismatches(unittest.TestCase):
         my_rsa_key2 = RSA.generate(2048)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        the_message = get_word_salad()[:400]
+        while not (bot1.ready and bot2.ready):
+            sleep(1)
+        sleep(10)
+        the_message = get_word_salad()[:MAX_CRYPTO_MSG_LENGTH]
         bot1.put(bot1.nickname, the_message)
-        sleep(3)
-        self.assertEqual(bot1.get_nowait(), (bot1.nickname, the_message))
+        self.assertEqual(bot1.get(timeout=30), (bot1.nickname, the_message))
         self.assertEqual(bot1.homies[nick2].fernetkey, bot2.homies[nick1].fernetkey)
+        self.assertEqual(bot2.homies[nick1].fernetkey, bot1.homies[nick2].fernetkey)
         bot1.quit()
         bot2.quit()
 

@@ -1,8 +1,30 @@
-'''
-Created on Jan 22, 2025
+# -*- coding: utf-8 -*-
+"""Poetry stuff.
+
+Created on Jan 30, 2025
 
 @author: mchobbit
-'''
+
+This module contains poetry.
+
+Todo:
+    * Better docs
+    * Detect if users' nicknames change
+    * Make the users' dictionary threadsafe
+    * Make the entire class threadsafe
+    * Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
+    * Turn the users' dictionary into a class
+    * Auto-check the nicknames whenever using a dictionary entry
+
+.. _Google Python Style Guide:
+   http://google.github.io/styleguide/pyguide.html
+
+.. _Napoleon Style Guide:
+   https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
+Example:
+
+"""
 
 HAMLET = """
 Events before the start of Hamlet set the stage for tragedy. When the king of Denmark, Prince Hamlet’s father, suddenly dies, Hamlet’s mother, Gertrude, marries his uncle Claudius, who becomes the new king.
@@ -5073,3 +5095,5 @@ Nature has planted in our minds an insatiable longing to see the truth.
 The life of the dead is placed in the memory of the living.
 Rightly defined philosophy is simply the love of wisdom.
 Freedom is a possession of inestimable value."""
+
+VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "

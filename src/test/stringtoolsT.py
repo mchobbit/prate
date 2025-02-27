@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Created on Jan 21, 2025
 
 @author: mchobbit
-'''
+"""
 import unittest
-from my.stringtools import  generate_irc_handle, encode_via_steg, decode_via_steg, get_word_salad
+from my.stringtools import  generate_irc_handle, encode_via_steg, decode_via_steg, get_word_salad, MAX_NICKNAME_LENGTH
 import paramiko
-from my.globals.poetry import CICERO, HAMLET
-from my.globals import VANILLA_WORD_SALAD, MAX_NICKNAME_LENGTH
+from my.globals.poetry import CICERO, HAMLET, VANILLA_WORD_SALAD
 
 
 class Test(unittest.TestCase):

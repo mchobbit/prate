@@ -14,25 +14,22 @@ Todo:
    https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
 
 """
-from my.globals.poetry import CICERO, HAMLET
 import requests
 from Crypto.PublicKey import RSA
-from my.pybase122 import b122encode, b122decode
-VANILLA_WORD_SALAD = CICERO + ". " + HAMLET + ". "
+from my.stringtools.pybase122 import b122encode, b122decode
+from my.stringtools import MAX_NICKNAME_LENGTH
 SENSIBLE_NOOF_RECONNECTIONS = 2
 JOINPARTCHAN_TIMEOUT = 15
 STARTUP_TIMEOUT = 30
 HANDSHAKE_TIMEOUT = 30
 ANTIOVERLOAD_CACHE_TIME = 10  # pings, dupe msgs, etc.
 DEFAULT_WHOIS_TIMEOUT = 10  # how long should we wait for a response to a /whois call?
-MAX_NICKNAME_LENGTH = 9  # From mIRC's manual.
+
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
 MAX_CHANNEL_LENGTH = 10  # I made it up.
-ENDTHREAD_TIMEOUT = 3
+ENDTHREAD_TIMEOUT = 8
 MAX_CRYPTO_MSG_LENGTH = int((MAX_PRIVMSG_LENGTH - MAX_NICKNAME_LENGTH) * 0.618)
 A_TICK = 0.1  # ... as in, 'hold on a tick!'
-
-MAXIMUM_HAREM_BLOCK_SIZE = 288
 
 
 def get_my_public_ip_address():
@@ -64,47 +61,6 @@ def get_my_public_ip_address():
         print("Warning -- ip1 != ip2")
     return ip2
 
-
-steg_dct_CLUMPS = {'a':
-                   {'а':'0', 'ạ':'1', 'ą':'00', 'ä':'01', 'à':'10', 'á':'11'},
-                   'c':
-                   {'с':'0', 'ƈ':'1', 'ċ':'00'},
-                   'd':
-                   {'ԁ':'0', 'ɗ':'1'},
-                   'e':
-                   {'е':'0', 'ẹ':'1', 'ė':'00', 'é':'01', 'è':'10'},
-                   'g':
-                   {'ġ':'0'},
-                   'h':
-                   {'һ':'1'},
-                   'i':
-                   {'і':'0', 'í':'1', 'ï':'10'},
-                   'j':
-                   {'j':'0', 'ʝ':'1'},
-                   'k':
-                   {'κ':'1'},
-                   'l':
-                   {'ӏ':'0', 'ḷ':'1'},
-                   'n':
-                   {'ո':'0'},
-                   'o':
-                   {'о':'0', 'ο':'1', 'օ':'00', 'ȯ':'01', 'ọ':'10', 'ỏ':'11', 'ơ':'000', 'ó':'111', 'ò':'101', 'ö':'010'},
-                   'p':
-                   {'р':'1'},
-                   'q':
-                   {'զ':'0'},
-                   's':
-                   {'ʂ':'1'},
-                   'u':
-                   {'υ':'0', 'ս':'1', 'ü':'00', 'ú':'01', 'ù':'10'},
-                   'v':
-                   {'ν':'0', 'ѵ':'1'},
-                   'x':
-                   {'х':'0', 'ҳ':'1'},
-                   'y':
-                   {'у':'0', 'ý':'1'},
-                   'z':
-                   {'ʐ':'0', 'ż':'1'}}
 
 ERR_NOSUCHNICK = 401
 ERR_NOSUCHSERVER = 402

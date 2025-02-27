@@ -1,8 +1,10 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Created on Jan 27, 2025
 
 @author: mchobbit
-'''
+"""
+
 import unittest
 from my.globals import get_my_public_ip_address
 

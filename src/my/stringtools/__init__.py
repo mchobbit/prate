@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 from my.stringtools import generate_irc_handle
 generate_irc_handle()
-'''
+"""
+
 import requests
 from my.classes.exceptions import WebAPITimeoutError, WebAPIOutputError, IrcBadNicknameError, IrcNicknameTooLongError
 from bs4 import BeautifulSoup as bs
 from random import randint, choice
-from my.globals import VANILLA_WORD_SALAD, steg_dct_CLUMPS, MAX_NICKNAME_LENGTH
 import base64
 from urllib3.connectionpool import HTTPSConnectionPool
 import string
-
+MAX_NICKNAME_LENGTH = 9  # From mIRC's manual.
 from functools import reduce
 
 from typing import Iterable
 import datetime
+from my.globals.poetry import VANILLA_WORD_SALAD
 
 # def get_random_zenquote(timeout:int=10) -> str:
 #     """Return an uplifting quote from ZenQuotes.
@@ -428,3 +429,45 @@ def flatten(items):
 def s_now():
     """Now, as HH:MM:SS str."""
     return datetime.datetime.fromtimestamp(datetime.datetime.timestamp(datetime.datetime.now())).strftime("%H:%M:%S")
+
+
+steg_dct_CLUMPS = {'a':
+                   {'а':'0', 'ạ':'1', 'ą':'00', 'ä':'01', 'à':'10', 'á':'11'},
+                   'c':
+                   {'с':'0', 'ƈ':'1', 'ċ':'00'},
+                   'd':
+                   {'ԁ':'0', 'ɗ':'1'},
+                   'e':
+                   {'е':'0', 'ẹ':'1', 'ė':'00', 'é':'01', 'è':'10'},
+                   'g':
+                   {'ġ':'0'},
+                   'h':
+                   {'һ':'1'},
+                   'i':
+                   {'і':'0', 'í':'1', 'ï':'10'},
+                   'j':
+                   {'j':'0', 'ʝ':'1'},
+                   'k':
+                   {'κ':'1'},
+                   'l':
+                   {'ӏ':'0', 'ḷ':'1'},
+                   'n':
+                   {'ո':'0'},
+                   'o':
+                   {'о':'0', 'ο':'1', 'օ':'00', 'ȯ':'01', 'ọ':'10', 'ỏ':'11', 'ơ':'000', 'ó':'111', 'ò':'101', 'ö':'010'},
+                   'p':
+                   {'р':'1'},
+                   'q':
+                   {'զ':'0'},
+                   's':
+                   {'ʂ':'1'},
+                   'u':
+                   {'υ':'0', 'ս':'1', 'ü':'00', 'ú':'01', 'ù':'10'},
+                   'v':
+                   {'ν':'0', 'ѵ':'1'},
+                   'x':
+                   {'х':'0', 'ҳ':'1'},
+                   'y':
+                   {'у':'0', 'ý':'1'},
+                   'z':
+                   {'ʐ':'0', 'ż':'1'}}

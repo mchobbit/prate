@@ -1,10 +1,12 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Created on Feb 4, 2025
 
 @author: mchobbit
 
 Test MyTTLCache
-'''
+"""
+
 import unittest
 from my.classes import MyTTLCache
 from time import sleep
