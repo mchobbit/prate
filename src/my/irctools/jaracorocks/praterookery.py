@@ -66,7 +66,7 @@ class PrateRookery:
 
     def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key,
                  startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS,
-                 autohandshake=True):
+                 autohandshake=True, port=6667):
         print("%s %-20s              Initializing rookery" % (s_now(), desired_nickname))
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
@@ -79,15 +79,12 @@ class PrateRookery:
         self.__list_of_all_irc_servers = list_of_all_irc_servers
         self.__desired_nickname = desired_nickname
         self.__paused = False
-        self.port = 6667
+        self.__port = port
         self.__bots = {}
         self.__autohandshake = autohandshake
         self.__ready = False
-        self.__outgoing_packetnumbers_dct = {}
         self.__privmsgs_from_rookery_bots = Queue()
         self.__our_getqueue = Queue()
-        self.__our_getq_cache = [None] * 65536
-        self.__our_getq_alreadyspatout = 0
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__gotta_quit = False
@@ -98,6 +95,10 @@ class PrateRookery:
     @property
     def autohandshake(self):
         return self.__autohandshake
+
+    @property
+    def port(self):
+        return self.__port
 
     @property
     def paused(self):
@@ -174,22 +175,6 @@ class PrateRookery:
     @property
     def our_getqueue(self):
         return self.__our_getqueue
-
-    @property
-    def our_getq_cache(self):
-        return self.__our_getq_cache
-
-    @property
-    def our_getq_alreadyspatout(self):
-        return self.__our_getq_alreadyspatout
-
-    @our_getq_alreadyspatout.setter
-    def our_getq_alreadyspatout(self, value):
-        self.__our_getq_alreadyspatout = value
-
-    @property
-    def outgoing_packetnumbers_dct(self):
-        return self.__outgoing_packetnumbers_dct
 
     @property
     def true_homies(self):
