@@ -29,12 +29,6 @@ See my __main__() function for an example.
 
 Todo:
     * Better docs
-    * Detect if users' nicknames change
-    * Make the users' dictionary threadsafe
-    * Make the entire class threadsafe
-    * Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
-    * Turn the users' dictionary into a class
-    * Auto-check the nicknames whenever using a dictionary entry
 
 .. _Google Python Style Guide:
    http://google.github.io/styleguide/pyguide.html

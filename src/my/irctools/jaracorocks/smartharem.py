@@ -6,18 +6,19 @@ Created on Jan 30, 2025
 @author: mchobbit
 
 This module contains classes for creating a SmartHarem Prate class that controls
-a rookery and adds [open/close/read/write] handles.
+a rookery and adds [open/close/read/write] handles, frames, checksums, etc.
+Whereas a PrateRookery wraps around a group of PrateBots and uses them to
+communicate collectively with other PrateRookery instances, a SmartHarem wraps
+around a PrateRookery and *adds* all sorts of good things:-
+
+- opening/closing of streams (AKA corridors)
+- checking that each packet arrived
+- quiet, nonchalant retransmission of packets that don't arrive (until they do arrive)
 
 See my __main__() function for an example.
 
 Todo:
     * Better docs
-    * Detect if users' nicknames change
-    * Make the users' dictionary threadsafe
-    * Make the entire class threadsafe
-    * Use the public keys' fingerprints, not the users' nicknames, as the key for the dictionary
-    * Turn the users' dictionary into a class
-    * Auto-check the nicknames whenever using a dictionary entry
 
 .. _Google Python Style Guide:
    http://google.github.io/styleguide/pyguide.html
