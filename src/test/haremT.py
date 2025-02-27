@@ -37,6 +37,38 @@ class TestHaremZero(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def testPutGetGetnowaitAndEmpty(self):
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        noof_servers = 1
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        while not (h1.ready and h2.ready):
+            sleep(1)
+        noof_loops = 0
+        while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
+            sleep(1)
+            noof_loops += 1
+            if noof_loops > 180:
+                raise TimeoutError("testTwoitemsServerList() ran out of time")
+        self.assertRaises(AttributeError, h1.put, 1, 2, 3, 4)
+        self.assertRaises(AttributeError, h1.empty)
+        self.assertRaises(AttributeError, h1.get)
+        self.assertRaises(AttributeError, h1.get_nowait)
+        h1.quit()
+        h2.quit()
+
+
+class TestHaremOne(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
     def testOneitemServerList(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         noof_servers = 1
