@@ -65,6 +65,7 @@ Error
     RookeryError
         RookeryCorridorError
             RookeryCorridorAlreadyClosedError
+            RookeryCorridorNoTrueHomiesError
             RookeryCorridorNotOpenYetError
 
 Example:
@@ -565,6 +566,14 @@ class RookeryCorridorError(RookeryError):
 
 class RookeryCorridorAlreadyClosedError(RookeryCorridorError):
     """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class RookeryCorridorNoTrueHomiesError(RookeryCorridorError):
+    """There are no available homies for this corridor."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 

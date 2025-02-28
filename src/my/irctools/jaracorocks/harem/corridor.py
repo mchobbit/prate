@@ -16,10 +16,10 @@ Todo:
 
 from threading import Thread
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError
+from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError, RookeryCorridorNoTrueHomiesError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, sha1, bytes_64bit_cksum
-from queue import Empty
+from queue import Empty, Queue
 from my.globals import A_TICK, SENSIBLE_NOOF_RECONNECTIONS, STARTUP_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, ENDTHREAD_TIMEOUT  # ALL_REALWORLD_IRC_NETWORK_NAMES
 from random import randint
 from my.stringtools import s_now, generate_random_alphanumeric_string
@@ -51,16 +51,105 @@ class Corridor:
     """
 
     def __init__(self, harem, destination, uid=None):
+        if type(destination) is not RSA.RsaKey:
+            raise ValueError("destination must be a public key")  # PublicKeyBadKeyError
+        if destination not in [h.pubkey for h in harem.true_homies]:
+            raise PublicKeyBadKeyError("Please handshake first. Then I'll be able to find your guy w/ his pubkey.")
         self.__uid = uid
         while self.__uid is None or self.__uid in [i.uid for i in harem.corridors]:
             self.__uid = sha1("%s%s%s" % (squeeze_da_keez(destination), harem.desired_nickname, generate_random_alphanumeric_string(32)))
             assert(len(self.__uid) == 25)
         self.__harem = harem
+        self.__frameno = 0
+        self.__frameno_lock = ReadWriteLock()
         self.__closed = False
         self.__gotta_quit = False
         self.__destination = destination
-        self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
-        self.__my_main_thread.start()
+        self.__our_getq_alreadyspatout = -1
+        self.__our_getq_alreadyspatout_lock = ReadWriteLock()
+        self.our_getq_cache = [None] * 65536
+
+        # self.__rxQ = Queue()
+        # self.__rxQ_lock = ReadWriteLock()
+        # self.__txQ = Queue()
+        # self.__txQ_lock = ReadWriteLock()
+        self.__mythread = Thread(target=self.__mymainloop, daemon=True)
+        self.__mythread.start()
+
+    @property
+    def frameno(self):
+        """Have I been instructed to start quitting?"""
+        self.__frameno_lock.acquire_read()
+        try:
+            retval = self.__frameno
+            return retval
+        finally:
+            self.__frameno_lock.release_read()
+
+    @frameno.setter
+    def frameno(self, value):
+        self.__frameno_lock.acquire_write()
+        try:
+            self.__frameno = value
+        finally:
+            self.__frameno_lock.release_write()
+
+    @property
+    def our_getq_alreadyspatout(self):
+        """Have I been instructed to start quitting?"""
+        self.__our_getq_alreadyspatout_lock.acquire_read()
+        try:
+            retval = self.__our_getq_alreadyspatout
+            return retval
+        finally:
+            self.__our_getq_alreadyspatout_lock.release_read()
+
+    @our_getq_alreadyspatout.setter
+    def our_getq_alreadyspatout(self, value):
+        self.__our_getq_alreadyspatout_lock.acquire_write()
+        try:
+            self.__our_getq_alreadyspatout = value
+        finally:
+            self.__our_getq_alreadyspatout_lock.release_write()
+    # @property
+    # def rxQ(self):
+    #     """The queue of messages received by me from the other end."""
+    #     self.__rxQ_lock.acquire_read()
+    #     try:
+    #         retval = self.__rxQ
+    #         return retval
+    #     finally:
+    #         self.__rxQ_lock.release_read()
+    #
+    # @rxQ.setter
+    # def rxQ(self, value):
+    #     self.__rxQ_lock.acquire_write()
+    #     try:
+    #         self.__rxQ = value
+    #     finally:
+    #         self.__rxQ_lock.release_write()
+    #
+    # @property
+    # def txQ(self):
+    #     """The queue of messages to be sent to the other end."""
+    #     self.__txQ_lock.acquire_read()
+    #     try:
+    #         retval = self.__txQ
+    #         return retval
+    #     finally:
+    #         self.__txQ_lock.release_read()
+    #
+    # @txQ.setter
+    # def txQ(self, value):
+    #     self.__txQ_lock.acquire_write()
+    #     try:
+    #         self.__txQ = value
+    #     finally:
+    #         self.__txQ_lock.release_write()
+
+    @property
+    def mythread(self):
+        return self.__mythread
 
     @property
     def source(self):
@@ -75,32 +164,28 @@ class Corridor:
     def gotta_quit(self):
         return self.__gotta_quit
 
-    def __my_main_loop(self):
-        self.harem.put(self.harem.destination, ("OPENCORRIDOR %s" % self.uid).encode())
-        print("%s %-20s              Starts main loop corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
+    def __mymainloop(self):
+        self.harem.put(self.destination, ("OPENCORRIDOR %s" % self.uid).encode())
+        print("%s %-26s: %-10s: Mainloop starting 'tween me and %s" % (s_now(), self.uid, self.harem.desired_nickname, squeeze_da_keez(self.destination)[:16]))
         while not self.gotta_quit:
             sleep(A_TICK)
-        print("%s %-20s              Ending main loop corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
+        print("%s %-26s: %-10s: Mainloop stopping 'tween me and %s" % (s_now(), self.uid, self.harem.desired_nickname, squeeze_da_keez(self.destination)[:16]))
 
     def close(self):
         if self.__closed:
             raise RookeryCorridorAlreadyClosedError("Corridor %s is already closed" % self.uid)
         else:
             self.__closed = True
-            self.harem.put(self.harem.destination, ("CLOSECORRIDOR %s" % self.uid).encode())
             self.quit()
         sleep(1)
 
     def quit(self, timeout=ENDTHREAD_TIMEOUT):
-        print("%s %-20s              I am closing the corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
-        try:
-            the_corridor_to_be_deleted = [e for e in self.harem.corridors if e.uid == self.uid][0]
-            self.harem.corridors.remove(the_corridor_to_be_deleted)
-        except (KeyError, IndexError):
-            print("%s %-20s              Failed to delete corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
+        print("%s %-26s: %-10s: Corridor QUITTING 'tween me and %s" % (s_now(), self.uid, self.harem.desired_nickname, squeeze_da_keez(self.destination)[:16]))
         self.__gotta_quit = True
-        self.__my_main_thread.join(timeout=timeout)
-        print("%s %-20s              I have closed th'corridor %s to %s..." % (s_now(), self.harem.desired_nickname, self.uid, squeeze_da_keez(self.harem.destination)[:16]))
+        self.harem.put(self.destination, ("CLOSECORRIDOR %s" % self.uid).encode())
+        self.harem.corridors.remove(self)
+        self.mythread.join(timeout=timeout)
+        print("%s %-26s: %-10s: Corridor HAS QUIT 'tween me and %s" % (s_now(), self.uid, self.harem.desired_nickname, squeeze_da_keez(self.destination)[:16]))
 
     @property
     def harem(self):
@@ -112,141 +197,122 @@ class Corridor:
         """The intended destination to which I'll connect."""
         return self.__destination
 
+    def _the_frames_to_be_written(self, datablock):
+        pos = 0
+        squeezed_pk = squeeze_da_keez(self.destination)
+        bytes_remaining = len(datablock)
+        the_frames = []
+        while True:
+            bytes_for_this_frame = min(ENCRYPTED_MSG_BLOCK_SIZE_INSIDE_OVERALL_FRAME, bytes_remaining)
+            our_block = datablock[pos:pos + bytes_for_this_frame]
+            frame = bytearray()
+            frame += self.frameno.to_bytes(4, 'little')  # packet#
+            frame += len(our_block).to_bytes(2, 'little')  # length
+            frame += our_block  # data block
+            frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
+            the_frames += [bytes(frame)]  # print("%s %-26s              Sent pkt#%d of %d bytes" % (s_now(), self.harem.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
+            bytes_remaining -= bytes_for_this_frame
+            pos += bytes_for_this_frame
+            self.frameno += 1
+            if bytes_for_this_frame == 0:
+                break
+        return the_frames
+
     def write(self, datablock, timeout=-1):
         """Write data to the destination."""
-        print("QQQ WRITE DATA QQQ")
+        assert(type(datablock) is bytes)
+        print("%s %-26s: %-10s: Transmitting frames to %s..." % (s_now(), self.uid, self.harem.desired_nickname, squeeze_da_keez(self.destination)[:16]))
+        if 0 == len(self.harem.true_homies):
+            raise RookeryCorridorNoTrueHomiesError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
+        our_homies = self.harem.true_homies
+        noof_homies = len(our_homies)
+        the_frames = self._the_frames_to_be_written(datablock)
+        noof_frames = len(the_frames)
+        frame_vs_elementno_offset = self.frameno - noof_frames
+        if 0 == len(our_homies):
+            raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
+        framestatuses = {}
+        is_homie_busy = [False] * noof_homies
+        el = 0
+        # Send a frame to every homie, in order.
+        while el < noof_frames or True in is_homie_busy:
+            sleep(.1)
+            if el < noof_frames:
+                frame = bytes(the_frames[el])
+                for homieno in range(0, noof_homies):
+                    if not is_homie_busy[homieno]:
+                        is_homie_busy[homieno] = True
+                        homie = our_homies[homieno]
+                        frameno = int.from_bytes(frame[0:4], 'little')
+                        print("Sending frame #%d to %s via %s" % (frameno, homie.nickname, homie.irc_server))
+                        framestatuses[frameno] = [homie.irc_server, datetime.datetime.now(), None]
+                        self.harem.bots[homie.irc_server].crypto_put(homie.nickname, frame)
+                        el += 1
+            for homieno in range(0, noof_homies):
+                if is_homie_busy[homieno]:
+                    try:
+                        (src, rxd) = self.harem.bots[our_homies[homieno].irc_server].get_nowait()
+                    except Empty:
+                        pass
+                    else:
+                        receipt_frameno = int(rxd.split(' ')[0])
+                        receipt_irc_server = rxd.split(' ')[1]
+                        receipt_cksum = rxd.split(' ')[2]
+                        if receipt_irc_server != our_homies[homieno].irc_server:
+                            raise ValueError("I think I've mistakenly handled a frame that was from a different destination.")
+                        assert(receipt_cksum == base64.b85encode(hashlib.sha1(bytes(the_frames[receipt_frameno - frame_vs_elementno_offset])).digest()).decode())
+                        if frame_vs_elementno_offset > 0:
+                            print("frame_vs_elementno_offset =", frame_vs_elementno_offset)
+                        assert(framestatuses[receipt_frameno][1] is not None)
+                        assert(framestatuses[receipt_frameno][2] is None)
+                        homie = our_homies[homieno]
+                        if src != homie.nickname:
+                            raise ValueError("WARNING -- src was not %s. Should I reinsert it in rx queue?" % homie.nickname)
+                        #     self.harem.bots[homie.irc_server].reinsert((src, rxd))
+                        # else:
+                        framestatuses[receipt_frameno][2] = datetime.datetime.now()
+                        print("CONFIRM frame #%d to %s via %s rx'd okay" % (receipt_frameno, homie.nickname, homie.irc_server))
+                        is_homie_busy[homieno] = False
+                        print("%s is now free." % homie.irc_server)
 
     def read(self, timeout=-1):
         """Read data from the destination."""
-        print("QQQ READ DATA QQQ")
         datablock = None
-        return datablock
-
-#     def FKDUP_generate_packets_list_for_transmission(self, pubkey, datablock):
-#         outpackets_lst = []
-#         bytes_remaining = len(datablock)
-#         pos = 0
-#         squeezed_pk = squeeze_da_keez(pubkey)
-#         # if squeezed_pk not in self.outgoing_caches_dct:
-#         #     self.outgoing_caches_dct[squeezed_pk] = [None] * 256
-#         if squeezed_pk not in self.outgoing_packetnumbers_dct:
-#             self.outgoing_packetnumbers_dct[squeezed_pk] = 0
-#         if self.outgoing_packetnumbers_dct[squeezed_pk] >= 256 * 256 * 256 * 127:
-#             self.outgoing_packetnumbers_dct[squeezed_pk] -= 256 * 256 * 256 * 127
-#         while True:
-#             bytes_for_this_frame = min(ENCRYPTED_MSG_BLOCK_SIZE_INSIDE_OVERALL_FRAME, bytes_remaining)
-#             our_block = datablock[pos:pos + bytes_for_this_frame]
-#             frame = bytearray()
-#             frame += self.outgoing_packetnumbers_dct[squeezed_pk].to_bytes(4, 'little')  # packet#
-#             frame += len(our_block).to_bytes(2, 'little')  # length
-#             frame += our_block  # data block
-#             frame += bytes_64bit_cksum(bytes(frame[0:len(frame)]))  # checksum
-#             outpackets_lst.append(frame)  # print("%s %-20s              Sent pkt#%d of %d bytes" % (s_now(), self.desired_nickname, self.outgoing_packetnumbers_dct[squeezed_pk], len(frame)))
-#             bytes_remaining -= bytes_for_this_frame
-#             pos += bytes_for_this_frame
-#             self.outgoing_packetnumbers_dct[squeezed_pk] += 1
-#             if bytes_for_this_frame == 0:
-#                 break
-#         return outpackets_lst
-#
-#     def FKDUP_put(self, pubkey, datablock):
-#         if self.paused:
-#             raise ValueError("Set paused=False and try again.")
-#         assert(type(pubkey) is RSA.RsaKey)
-#         assert(type(datablock) is bytes)
-#         outpackets_lst = self.FKDUP_generate_packets_list_for_transmission(pubkey, datablock)
-#         packetnum_offset = self.outgoing_packetnumbers_dct[squeeze_da_keez(pubkey)] - len(outpackets_lst)
-#         print("%s %s: okay. Transmitting the outpackets." % (s_now(), self.desired_nickname))
-#         our_homies = [h for h in self.get_homies_list(True) if h.pubkey == pubkey]
-#         if 0 == len(our_homies):
-#             raise PublicKeyUnknownError("I cannot send a datablock: NO ONE LOGGED-IN IS OFFERING THIS PUBKEY.")
-#         noof_packets = len(outpackets_lst)
-#         noof_homies = len(our_homies)
-#         packetstatuses = {}
-#         is_homie_busy = [False] * noof_homies
-#         el = 0
-#         # Send a packet to every homie, in order.
-#         while el < noof_packets or True in is_homie_busy:
-#             sleep(.1)
-#             if el < noof_packets:
-#                 frame = bytes(outpackets_lst[el])
-#                 for homieno in range(0, noof_homies):
-#                     if not is_homie_busy[homieno]:
-#                         is_homie_busy[homieno] = True
-#                         homie = our_homies[homieno]
-#                         frameno = int.from_bytes(frame[0:4], 'little')
-#                         print("Sending frame #%d to %s via %s" % (frameno, homie.nickname, homie.irc_server))
-#                         packetstatuses[frameno] = [homie.irc_server, datetime.datetime.now(), None]
-#                         self.bots[homie.irc_server].crypto_put(homie.nickname, frame)
-#                         el += 1
-#             for homieno in range(0, noof_homies):
-#                 if is_homie_busy[homieno]:
-#                     try:
-#                         (src, rxd) = self.bots[our_homies[homieno].irc_server].get_nowait()
-#                     except Empty:
-#                         pass
-#                     else:
-#                         receipt_packetno = int(rxd.split(' ')[0])
-#                         receipt_irc_server = rxd.split(' ')[1]
-#                         receipt_cksum = rxd.split(' ')[2]
-#                         if receipt_irc_server != our_homies[homieno].irc_server:
-#                             raise ValueError("I think I've mistakenly handled a packet that was from a different destination.")
-# #                        if our_pktno < len(outpackets_lst):
-#                         assert(receipt_cksum == base64.b85encode(hashlib.sha1(bytes(outpackets_lst[receipt_packetno - packetnum_offset])).digest()).decode())
-#                         if packetnum_offset > 0:
-#                             print("packetnum_offset =", packetnum_offset)
-#                         assert(packetstatuses[receipt_packetno][1] is not None)
-#                         assert(packetstatuses[receipt_packetno][2] is None)
-#                         homie = our_homies[homieno]
-#                         if src != homie.nickname:
-#                             raise ValueError("WARNING -- src was not %s. Should I reinsert it in rx queue?" % homie.nickname)
-#                         #     self.bots[homie.irc_server].reinsert((src, rxd))
-#                         # else:
-#                         packetstatuses[receipt_packetno][2] = datetime.datetime.now()
-#                         print("CONFIRM packet #%d to %s via %s rx'd okay" % (receipt_packetno, homie.nickname, homie.irc_server))
-#                         is_homie_busy[homieno] = False
-#                         print("%s is now free." % homie.irc_server)
-#
-#     def FKDUP_process_incoming_buffer(self):
-#         sleep(A_TICK)
-#         final_packetnumber = -1
-#         pubkey = None
-#         while not self.paused and not self.gotta_quit and \
-#         (final_packetnumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1) if self.our_getq_cache[i % 65536] is None]):
-#             # Prone to lockups and gridlock because it'll wait indefinitely for a missing packet.
-#             if self.gotta_quit or self.paused:
-#                 return
-#             else:
-#                 try:
-#                     user, irc_server, frame = self.privmsgs_from_rookery_bots.get_nowait()
-# #                    if pubkey is None:
-#                     pubkey = self.bots[irc_server].homies[user].pubkey  # else assert(pubkey == self.bots[irc_server].homies[user].pubkey)
-#                 except Empty:
-#                     sleep(A_TICK)  # pass
-#                 else:
-#                     packetno = int.from_bytes(frame[0:4], 'little')
-#                     if packetno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  #  ugly kludge
-#                         print("%s %s: I think we've wrapped around." % (s_now(), self.desired_nickname))
-#                         self.our_getq_alreadyspatout = 0
-#                     if packetno < self.our_getq_alreadyspatout:
-#                         print("%s %s: ignoring packet#%d, as it's a duplicate" % (s_now(), self.desired_nickname, packetno))
-#                     else:
-#                         assert(packetno < 256 * 256 * 256 * 127)  # PROGRAM A WRAPAROUND.
-#                         self.our_getq_cache[packetno % 65536] = frame
-#                         framelength = int.from_bytes(frame[4:6], 'little')
-#                         checksum = frame[framelength + 6:framelength + 14]
-#                         print("%s %s: rx'd pkt#%d of %d bytes" % (s_now(), self.desired_nickname, packetno, len(frame)))
-#                         if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
-#                             print("%s %s: bad checksum for pkt#%d. You should request a fresh copy." % (s_now(), self.desired_nickname, packetno))
-#                         if framelength == 0:
-#                             final_packetnumber = packetno
-#                         our_cksum = base64.b85encode(hashlib.sha1(bytes(frame)).digest()).decode()
-#                         print("Confirming receipt of packet #%d from %s; cksum %s" % (packetno, irc_server, our_cksum))
-#                         self.bots[irc_server].put(user, "%d %s %s" % (packetno, irc_server, our_cksum))
-#         data_to_be_returned = bytearray()
-#         for i in range(self.our_getq_alreadyspatout, final_packetnumber + 1):
-#             data_to_be_returned += self.our_getq_cache[i][6:-8]
-#             self.our_getq_cache[i] = None
-#         self.our_getq_alreadyspatout = final_packetnumber + 1
-#         self.our_getqueue.put((pubkey, data_to_be_returned))
+        final_framenumber = -1
+        pubkey = None
+        while not not self.gotta_quit and \
+        (final_framenumber < 0 or [] != [i for i in range(self.our_getq_alreadyspatout, final_framenumber + 1) if self.our_getq_cache[i % 65536] is None]):
+            # Prone to lockups and gridlock because it'll wait indefinitely for a missing frame.
+            try:
+                user, irc_server, frame = self.harem.privmsgs_from_rookery_bots.get_nowait()
+#                    if pubkey is None:
+                pubkey = self.harem.bots[irc_server].homies[user].pubkey  # else assert(pubkey == self.harem.bots[irc_server].homies[user].pubkey)
+            except Empty:
+                sleep(A_TICK)  # pass
+            else:
+                frameno = int.from_bytes(frame[0:4], 'little')
+                if frameno < 256 * 256 and self.our_getq_alreadyspatout > 256 * 256 * 256 * 64:  #  ugly kludge
+                    print("%s %-26s: %-10s: I think we've wrapped around." % (s_now(), self.uid, self.harem.desired_nickname))
+                    self.our_getq_alreadyspatout = 0
+                if frameno < self.our_getq_alreadyspatout:
+                    print("%s %-26s: %-10s: ignoring frame#%d, as it's a duplicate." % (s_now(), self.uid, self.harem.desired_nickname, frameno))
+                else:
+                    assert(frameno < 256 * 256 * 256 * 127)  # PROGRAM A WRAPAROUND.
+                    self.our_getq_cache[frameno % 65536] = frame
+                    framelength = int.from_bytes(frame[4:6], 'little')
+                    checksum = frame[framelength + 6:framelength + 14]
+                    print("%s %-26s: %-10s: rx'd pkt#%d of %3d bytes" % (s_now(), self.uid, self.harem.desired_nickname, frameno, len(frame)))
+                    if checksum != bytes_64bit_cksum(frame[0:6 + framelength]):
+                        print("%s %s: bad checksum for pkt#%d. You should request a fresh copy." % (s_now(), self.harem.desired_nickname, frameno))
+                    if framelength == 0:
+                        final_framenumber = frameno
+                    our_cksum = base64.b85encode(hashlib.sha1(bytes(frame)).digest()).decode()
+                    print("Confirming receipt of frame #%d from %s; cksum %s" % (frameno, irc_server, our_cksum))
+                    self.harem.bots[irc_server].put(user, "%d %s %s" % (frameno, irc_server, our_cksum))
+        data_to_be_returned = bytearray()
+        for i in range(self.our_getq_alreadyspatout, final_framenumber + 1):
+            data_to_be_returned += self.our_getq_cache[i][6:-8]
+            self.our_getq_cache[i] = None
+        self.our_getq_alreadyspatout = final_framenumber + 1
+        return data_to_be_returned if not self.gotta_quit else None
 

@@ -85,6 +85,7 @@ class Harem(PrateRookery):  # smart rookery
             self.__corridors_lock.release_write()
 
     def __my_harem_loop(self):
+        print("%s %-26s: %-10s: HAREM LOOP STARTING" % (s_now(), '', self.desired_nickname))
         while not self.gotta_quit:
             sleep(A_TICK)
             try:
@@ -99,26 +100,26 @@ class Harem(PrateRookery):  # smart rookery
                 else:
                     if decoded_rxd.startswith("OPENCORRIDOR"):
                         uid = decoded_rxd.split(' ')[1]
-                        print("Opening a corridor")
                         if uid in [c.uid for c in self.corridors]:
-                            print("No need to create a corridor opening here: we've already got a corridor.")
+                            print("%s %-26s: %-10s: Our request for a corridor has been approved by the other end." % (s_now(), uid, self.desired_nickname))
                         else:
-                            print("He opened a corridor. So, now, I'll open the other end here.")
+                            print("%s %-26s: %-10s: We are approving the other end's request for a corridor." % (s_now(), uid, self.desired_nickname))
                             self._corridors += [Corridor(uid=uid, harem=self, destination=src_pk)]
                     elif decoded_rxd.startswith("CLOSECORRIDOR"):
                         uid = decoded_rxd.split(' ')[1]
-                        print("Closing a corridor")
                         if uid in [c.uid for c in self.corridors]:
-                            print("Closing my end of the corridor")
+                            print("%s %-26s: %-10s: Corridor is closing." % (s_now(), uid, self.desired_nickname))
                             m = [c for c in self.corridors if c.uid == uid][0]
                             self._corridors.remove(m)
                         else:
-                            print("No need to close my end of corridor")
+                            print("%s %-26s: %-10s: Corridor needn't be closed: it doesn't exist." % (s_now(), uid, self.desired_nickname))
                     else:
-                        print("What does this mean?", decoded_rxd)
+                        print("%s %-26s: %-10s: What does this mean?," % (s_now(), '', self.desired_nickname), decoded_rxd)
                         self.put(src_pk, rxd)
+        print("%s %-26s: %-10s: HAREM LOOP CLOSING" % (s_now(), '', self.desired_nickname))
 
     def open(self, destination):
+        print("%s %-26s: %-10s: Opening a corridor to %s..." % (s_now(), '', self.desired_nickname, squeeze_da_keez(destination)[:16]))
         if type(destination) is not RSA.RsaKey:
             raise ValueError("pubkey must be a public key")  # PublicKeyBadKeyError
         if destination not in [h.pubkey for h in self.get_homies_list(True)]:
@@ -126,23 +127,30 @@ class Harem(PrateRookery):  # smart rookery
         while True:
             corridor = Corridor(harem=self, destination=destination)
             self.__corridors += [corridor]
+            print("%s %-26s: %-10s: We now have %d corridors:-" % (s_now(), '', self.desired_nickname, len(self.corridors)))
+            corridorno = 1
+            for c in self.corridors:
+                print("┣ %2d/%-2d  %-26s: %-10s:           corridor to %s..." % (corridorno, len(self.corridors), c.uid, self.desired_nickname, squeeze_da_keez(destination)[:16]))
+            print("┖        %-26s: %-10s: End of list" % ('', self.desired_nickname))
             return corridor
 
-    def empty(self):
-        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
-
-    def get(self, block=True, timeout=None):
-        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
-
-    def get_nowait(self):
-        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
-
-    def put(self, pubkey, datablock, irc_server=None):
-        raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+    # def empty(self):
+    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+    #
+    # def get(self, block=True, timeout=None):
+    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+    #
+    # def get_nowait(self):
+    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+    #
+    # def put(self, pubkey, datablock, irc_server=None):
+    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
 
     def quit(self):
-        for corridor in self.corridors:
-            corridor.quit()
+        if len(self.corridors) > 0:
+            print("%s %-26s: %-10s: Quitting all corridors" % (s_now(), '', self.desired_nickname))
+            for corridor in self.corridors:
+                corridor.quit()
         super().quit()
         sleep(1)
 

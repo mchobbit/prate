@@ -229,7 +229,6 @@ class TestRookeryHandshook(unittest.TestCase):
             noof_loops += 1
             if noof_loops > 180:
                 raise TimeoutError("testRookeryUsersPubkeysAndIpaddrs() ran out of time")
-        print("Waiting for handshaking to complete")
         sleep(10)
         self.assertEqual(len(h1.users), 2)
         self.assertEqual(len(h2.users), 2)
