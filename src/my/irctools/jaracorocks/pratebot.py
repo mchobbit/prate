@@ -205,7 +205,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                     print("%s %-26s: %-10s: request for my pubkey    from %s" % (s_now(), self.irc_server, self.nickname, sender))
                     super().put(sender, "%s%s" % (_TRANSMIT_PUBLICKEY_, squeeze_da_keez(self.rsa_key.public_key())))
                 elif msg.startswith(_TRANSMIT_PUBLICKEY_):
-                    print("%s %-26s: %-10s: reciprocate my pubkey    to   bb%s" % (s_now(), self.irc_server, self.nickname, sender))
+                    print("%s %-26s: %-10s: reciprocate my pubkey    to   %s" % (s_now(), self.irc_server, self.nickname, sender))
                     self.homies[sender].irc_server = self.irc_server  # just in case a Harem needs it
                     self.homies[sender].pubkey = unsqueeze_da_keez(msg[len(_TRANSMIT_PUBLICKEY_):])
                     super().put(sender, "%s%s" % (_REQUEST__FERNETKEY_, self.my_encrypted_fernetkey_for_this_user(sender)))
