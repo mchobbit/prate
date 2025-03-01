@@ -21,16 +21,7 @@ bob_rookery.get()
 """
 
 from Crypto.PublicKey import RSA
-# from my.irctools.cryptoish import *
-# from my.stringtools import *
-# from my.globals import *
 from time import sleep
-# from my.irctools.jaracorocks.pratebot import PrateBot
-# import datetime
-# from queue import Queue, Empty
-# from my.audiotools import MyMic, raw_to_ogg
-# import os
-# from my.classes.exceptions import IrcInitialConnectionTimeoutError
 from my.irctools.jaracorocks.praterookery import PrateRookery
 from my.stringtools import generate_random_alphanumeric_string
 from random import randint
@@ -69,16 +60,29 @@ while the_noof_homies != len(alice_harem.get_homies_list(True)):
 print("                                                 Opening a corridor between Alice and Bob")
 alice_corridor = alice_harem.open(bobs_PK)
 sleep(2)
+alice_corrid_2 = alice_harem.open(bobs_PK)
+assert(alice_corridor.uid == alice_corrid_2.uid)
+sleep(2)
 bob_corridor = bob_harem.open(alices_PK)
 sleep(2)
+bob_corrid_2 = bob_harem.open(alices_PK)
+assert(bob_corridor == bob_corrid_2)
+assert(alice_corridor == alice_corrid_2)
+assert(bob_corridor != alice_corridor)
+assert(alice_corridor.uid != bob_corridor.uid)
 
 # print("                                                 Write data from Alice to Bob and from Bob to Alice")
-# alice_corridor.write(b"MARCO?")
-# assert(bob_corridor.read() == b"MARCO?")
-# bob_corridor.write(b"POLO!")
-# assert(alice_corridor.read() == b"POLO!")
+alice_corridor.write(b"MARCO?")
+sleep(2)
+
+assert(bob_corridor.read() == b"MARCO?")
+sleep(2)
+bob_corridor.write(b"POLO!")
 
 sleep(2)
+assert(alice_corridor.read() == b"POLO!")
+sleep(2)
+
 print("                                                 Closing corridors")
 alice_corridor.close()
 sleep(2)
