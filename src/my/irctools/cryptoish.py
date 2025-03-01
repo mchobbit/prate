@@ -67,7 +67,7 @@ def unskin_key(k:str) -> RSA.RsaKey:
 
 def pubkey_to_bXX(pubkey, the_encoder):
     if type(pubkey) is not RSA.RsaKey:
-        raise PublicKeyBadKeyError("pubkey should be type RSA.RsaKey")
+        raise ValueError("pubkey should be type RSA.RsaKey")
     try:
         hex_key_n = hex(pubkey.n)[2:]
         hex_key_e = hex(pubkey.e)[2:]

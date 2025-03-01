@@ -106,7 +106,7 @@ class PrateBot(VanillaBot):
                  autoreconnect=True, strictly_nick=True, autohandshake=True):
         self.__strictly_nick = strictly_nick
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
-            raise PublicKeyBadKeyError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
+            raise ValueError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
         if type(startup_timeout) is not int or startup_timeout <= 0:
             raise ValueError("Startup_timeout should be a positive integer")
         super().__init__(channels=channels, nickname=nickname, irc_server=irc_server,

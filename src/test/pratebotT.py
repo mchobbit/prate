@@ -54,11 +54,11 @@ class TestGroupOne(unittest.TestCase):
         self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', None, my_rsa_key)
         self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 'Word up', my_rsa_key)
         self.assertRaises(IrcBadServerPortError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 0, my_rsa_key)
-        self.assertRaises(PublicKeyBadKeyError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, None)
+        self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, None)
         self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key, startup_timeout=-1)
         self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key, startup_timeout=0)
         self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key, startup_timeout='Blah')
-        self.assertRaises(PublicKeyBadKeyError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, 'blah')
+        self.assertRaises(ValueError, PrateBot, ['#prate'], alice_nick, 'cinqcent.local', 6667, 'blah')
 
     def testSimpleLogin(self):
         alice_nick = 'alice%d' % randint(111, 999)

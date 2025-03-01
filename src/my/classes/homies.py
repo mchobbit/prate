@@ -169,7 +169,7 @@ class Homie:
         self.__pubkey_lock.acquire_write()
         try:
             if value is not None and type(value) is not RSA.RsaKey:
-                raise PublicKeyBadKeyError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
+                raise ValueError("When setting pubkey, specify a RSA.RsaKey & not a {t}".format(t=str(type(value))))
             self.noof_fingerprinting_failures = 0
             self.__pubkey = value
         finally:
