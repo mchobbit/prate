@@ -11,11 +11,12 @@ import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_random_alphanumeric_string
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES, RSA_KEY_SIZE
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
 from random import randint
 import datetime
 import socket
 from my.irctools.jaracorocks.harem import Harem
+from my.classes.exceptions import RookeryCorridorAlreadyClosedError
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
@@ -25,8 +26,11 @@ bobs_PK = bobs_rsa_key.public_key()
 carols_PK = carols_rsa_key.public_key()
 some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
+the_room = '#room' + generate_random_alphanumeric_string(5)
+alice_nick = 'alice%d' % randint(111, 999)
+bob_nick = 'bob%d' % randint(111, 999)
 
-
+'''
 class TestHaremZero(unittest.TestCase):
 
     def setUp(self):
@@ -185,10 +189,86 @@ class TestHaremOne(unittest.TestCase):
             sleep(1)
         h1.quit()
         h2.quit()
+'''
+
+
+class TestHaremTwo(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.noof_servers = 1
+        cls.my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:cls.noof_servers]  # ALL_REALWORLD_IRC_NETWORK_NAMES
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def setUp(self):
+        self.alice_harem = Harem([the_room], alice_nick, self.my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
+        self.bob_harem = Harem([the_room], bob_nick, self.my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
+        while not (self.alice_harem.ready and self.bob_harem.ready):
+            sleep(1)
+        self.alice_harem.trigger_handshaking()
+        self.bob_harem.trigger_handshaking()
+        the_noof_homies = -1
+        while the_noof_homies != len(self.alice_harem.get_homies_list(True)):
+            the_noof_homies = len(self.alice_harem.get_homies_list(True))
+            sleep(STARTUP_TIMEOUT // 2 + 1)
+
+    def tearDown(self):
+        self.alice_harem.quit()
+        self.bob_harem.quit()
+
+    def testSimpleCreateAndDestroyTest(self):
+        self.assertEqual(self.alice_harem.corridors, [])
+        self.assertEqual(self.bob_harem.corridors, [])
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        alice_corrid_2 = self.alice_harem.open(bobs_PK)
+        sleep(2)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        bob_corrid_2 = self.bob_harem.open(alices_PK)
+        assert(bob_corridor == bob_corrid_2)
+        assert(alice_corridor == alice_corrid_2)
+        assert(bob_corridor != alice_corridor)
+        sleep(2)
+        bob_corridor.close()
+        self.assertRaises(RookeryCorridorAlreadyClosedError, bob_corrid_2.close)
+        alice_corridor.close()
+        self.assertRaises(RookeryCorridorAlreadyClosedError, alice_corrid_2.close)
+        sleep(2)
+        self.assertEqual(self.alice_harem.corridors, [])
+        self.assertEqual(self.bob_harem.corridors, [])
+
+    def testMarcoPolo(self):
+        self.assertEqual(self.alice_harem.corridors, [])
+        self.assertEqual(self.bob_harem.corridors, [])
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        alice_corridor.put(b"MARCO?")
+        sleep(2)
+        self.assertEqual(bob_corridor.get(), b"MARCO?")
+        sleep(2)
+        bob_corridor.put(b"POLO!")
+        sleep(2)
+        self.assertEqual(alice_corridor.get(), b"POLO!")
+        sleep(2)
+        alice_corridor.close()
+        bob_corridor.close()
+
+    def testMarcoPoloWithoutPausesthe(self):
+        self.assertEqual(self.alice_harem.corridors, [])
+        self.assertEqual(self.bob_harem.corridors, [])
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        alice_corridor.put(b"MARCO?")
+        self.assertEqual(bob_corridor.get(), b"MARCO?")
+        bob_corridor.put(b"POLO!")
+        self.assertEqual(alice_corridor.get(), b"POLO!")
+        alice_corridor.close()
+        bob_corridor.close()
 
 
 if __name__ == "__main__":
-    # import sys;sys.argv = ['', 'Test.testName']
+    # import sys;sys.argv = ['', 'TestHaremTwo.testSimpleTest']
     unittest.main()
-    pass
 

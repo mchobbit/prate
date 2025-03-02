@@ -420,10 +420,10 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
         my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
-        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        bot1 = PrateBot(['#prattq'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         lou1 = bot1.users
         lou1.sort()
-        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
+        bot2 = PrateBot(['#prattq'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         lou2 = bot2.users
         lou2.sort()
         self.assertTrue(bot2.nickname not in lou1)
@@ -440,9 +440,9 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bob_nick = 'alice%d' % randint(111, 999)
         my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
         my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
-        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        bot1 = PrateBot(['#prat45'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
         lou1 = bot1.users
-        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
+        bot2 = PrateBot(['#prat45'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
         b1nick = bot1.nickname
         b2nick = bot2.nickname
         self.assertTrue(b2nick not in lou1)
@@ -528,7 +528,7 @@ class TestManualHandshaking(unittest.TestCase):
         #    self.assertFalse(nickname in rsakeys)
         #    self.assertFalse(nickname in bots)
             rsakeys[nickname] = RSA.generate(RSA_KEY_SIZE)
-            bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, rsakeys[nickname], autohandshake=False)
+            bots[nickname] = PrateBot(['#etrap'], nickname, 'cinqcent.local', 6667, rsakeys[nickname], autohandshake=False)
         alice_bot = bots[list(bots)[0]]
         bob_bot = bots[list(bots)[1]]
         alice_bot.trigger_handshaking(bob_bot.nickname)

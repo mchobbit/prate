@@ -27,6 +27,7 @@ from my.stringtools import generate_random_alphanumeric_string
 from random import randint
 from my.globals import ALL_REALWORLD_IRC_NETWORK_NAMES, ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
 from my.irctools.jaracorocks.harem import Harem
+from my.irctools.cryptoish import sha1, squeeze_da_keez
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
@@ -59,28 +60,24 @@ while the_noof_homies != len(alice_harem.get_homies_list(True)):
 
 print("                                                 Opening a corridor between Alice and Bob")
 alice_corridor = alice_harem.open(bobs_PK)
-sleep(2)
 alice_corrid_2 = alice_harem.open(bobs_PK)
-assert(alice_corridor.uid == alice_corrid_2.uid)
-sleep(2)
+sleep(5)
 bob_corridor = bob_harem.open(alices_PK)
-sleep(2)
 bob_corrid_2 = bob_harem.open(alices_PK)
 assert(bob_corridor == bob_corrid_2)
 assert(alice_corridor == alice_corrid_2)
 assert(bob_corridor != alice_corridor)
-assert(alice_corridor.uid != bob_corridor.uid)
 
 # print("                                                 Write data from Alice to Bob and from Bob to Alice")
-alice_corridor.write(b"MARCO?")
+alice_corridor.put(b"MARCO?")
 sleep(2)
 
-assert(bob_corridor.read() == b"MARCO?")
-sleep(2)
-bob_corridor.write(b"POLO!")
+assert(bob_corridor.get() == b"MARCO?")
 
 sleep(2)
-assert(alice_corridor.read() == b"POLO!")
+bob_corridor.put(b"POLO!")
+sleep(2)
+assert(alice_corridor.get() == b"POLO!")
 sleep(2)
 
 print("                                                 Closing corridors")

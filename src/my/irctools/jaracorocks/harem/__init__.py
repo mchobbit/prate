@@ -9,11 +9,7 @@ This module contains classes for creating a Harem Prate class that controls
 a rookery and adds [open/close/read/write] handles, frames, checksums, etc.
 Whereas a PrateRookery wraps around a group of PrateBots and uses them to
 communicate collectively with other PrateRookery instances, a Harem wraps
-around a PrateRookery and *adds* all sorts of good things:-
-
-- opening/closing of streams (AKA corridors)
-- checking that each packet arrived
-- quiet, nonchalant retransmission of packets that don't arrive (until they do arrive)
+around a PrateRookery.
 
 See my __main__() function for an example.
 
@@ -33,19 +29,61 @@ Example:
 
 from threading import Thread
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError
+from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError, RookeryCorridorNoTrueHomiesError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, sha1, bytes_64bit_cksum
-from queue import Empty
+from queue import Empty, Queue
 from my.globals import A_TICK, SENSIBLE_NOOF_RECONNECTIONS, STARTUP_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, ENDTHREAD_TIMEOUT, RSA_KEY_SIZE  # ALL_REALWORLD_IRC_NETWORK_NAMES
-from random import randint
+from random import randint, choice
 from my.stringtools import s_now, generate_random_alphanumeric_string
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.jaracorocks.praterookery import PrateRookery
 import datetime
 import hashlib
 import base64
-from my.irctools.jaracorocks.harem.corridor import Corridor
+
+
+class Corridor:
+
+    def __init__(self, harem, pubkey):
+        self.myQ = Queue()
+        self.harem = harem
+        self.pubkey = pubkey  # public key of other end
+        self.closed = False
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        pk_nicks = self.harem.nicks_for_pk(self.pubkey)
+        return f"{class_name}: me={self.harem.desired_nickname!r}; them={pk_nicks!r})"
+
+    def empty(self):
+        return self.myQ.empty
+
+    def get(self, block=True, timeout=None):
+        return self.__get(block, timeout, nowait=False)
+
+    def get_nowait(self):
+        return self.__get(nowait=True)
+
+    def __get(self, block=True, timeout=None, nowait=False):
+        if self.closed:
+            raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
+        retval = self.myQ.get_nowait() if nowait else self.myQ.get(block, timeout)
+        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
+        return retval
+
+    def put(self, datablock):
+        if self.closed:
+            raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
+        if self.closed:
+            raise AttributeError()
+        self.harem.put(self.pubkey, datablock, yes_really=True)
+
+    def close(self):
+        if self.closed:
+            raise RookeryCorridorAlreadyClosedError("%s-to-%s corridor was already closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
+        self.harem.corridors.remove(self)
+        self.closed = True
 
 
 class Harem(PrateRookery):  # smart rookery
@@ -58,14 +96,51 @@ class Harem(PrateRookery):  # smart rookery
                          startup_timeout, maximum_reconnections, autohandshake)
         self.__corridors = []
         self.__corridors_lock = ReadWriteLock()
-        assert(not hasattr(self, '__my_harem_thread'))
-        assert(not hasattr(self, '__my_harem_loop'))
-        self.__my_harem_thread = Thread(target=self.__my_harem_loop, daemon=True)
-        self.__my_harem_thread.start()
+        assert(not hasattr(self, '__my_corridorservicing_thread'))
+        assert(not hasattr(self, '__my_corridorservicing_loop'))
+        self.__my_corridorservicing_thread = Thread(target=self.__my_corridorservicing_loop, daemon=True)
+        self.__my_corridorservicing_thread.start()
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        pk = self.rsa_key.public_key()
+        if pk is not None:
+            pk = squeeze_da_keez(pk)
+            pk = "%s..." % (pk[:16])
+        irc_servers_description_str = "1 item" if len(self.list_of_all_irc_servers) == 1 else "%d items" % len(self.list_of_all_irc_servers)
+        return f"{class_name}(channels={self.channels!r}, desired_nickname={self.desired_nickname!r}, rsa_key={pk!r}, list_of_all_irc_servers={irc_servers_description_str!r}, corridors={self.corridors!r})"
+
+    def nicks_for_pk(self, pubkey):
+        return '/'.join([h.nickname for h in self.true_homies if h.pubkey == pubkey])
 
     @property
     def corridors(self):
         return self._corridors
+
+    def empty(self, yes_really=False):
+        if yes_really:
+            return super().empty
+        else:
+            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+        raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+
+    def get(self, block=True, timeout=None, yes_really=False):
+        if yes_really:
+            return super().get(block, timeout)
+        else:
+            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+
+    def get_nowait(self, yes_really=False):
+        if yes_really:
+            return super().get_nowait()
+        else:
+            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+
+    def put(self, pubkey, datablock, irc_server=None, yes_really=False):
+        if yes_really:
+            super().put(pubkey, datablock, irc_server)
+        else:
+            AttributeError("Use a corridor for empty/get/get_nowait/put.")
 
     @property
     def _corridors(self):
@@ -84,140 +159,64 @@ class Harem(PrateRookery):  # smart rookery
         finally:
             self.__corridors_lock.release_write()
 
-    def __my_harem_loop(self):
-        print("%s %-26s: %-10s: HAREM LOOP STARTING" % (s_now(), '', self.desired_nickname))
+    def __my_corridorservicing_loop(self):
+        """Service incoming messages from the rookery.
+
+        Messages come in three flavors:-
+        1. An instruction to open a corridor.
+        2. An instruction to close a corridor
+        3. A data frame that should be sent to one particular corridor.
+
+        """
+        print("%s %-10s   %-10s  Harem's main loop starts" % (s_now(), self.desired_nickname, ''))
         while not self.gotta_quit:
             sleep(A_TICK)
             try:
-                src_pk, rxd = self.get_nowait()
+                source, frame = self.get_nowait(yes_really=True)
+                if type(source) is not RSA.RsaKey:
+                    raise ValueError("source must be a public key")  # PublicKeyBadKeyError
+                else:
+                    the_right_corridors = [c for c in self.corridors if c.pubkey == source]
+                    noof_right_corridors = len(the_right_corridors)
+                    if noof_right_corridors >= 1:
+                        if noof_right_corridors > 1:
+                            print("WARNING --- there are %d corridors" % noof_right_corridors)
+                            print(the_right_corridors)
+                        the_right_corridors[0].myQ.put(frame)
+                    else:
+                        raise RookeryCorridorNoTrueHomiesError("%s %-10s<==%-10s  %s (BUT I'VE NO APPLICABLE CORRIDOR)" % (s_now(), self.desired_nickname, self.nicks_for_pk(source), str(frame)))
             except Empty:
                 pass
-            else:
-                try:
-                    decoded_rxd = rxd.decode()
-                except Exception as e:
-                    print("Can't turn rxd into string: ", e)
-                else:
-                    if decoded_rxd.startswith("OPENCORRIDOR"):
-                        uid = decoded_rxd.split(' ')[1]
-                        if uid in [c.uid for c in self.corridors]:
-                            print("%s %-26s: %-10s: Our request for a corridor has been approved by the other end." % (s_now(), uid, self.desired_nickname))
-                        else:
-                            print("%s %-26s: %-10s: We are approving the other end's request for a corridor." % (s_now(), uid, self.desired_nickname))
-                            self._corridors += [Corridor(uid=uid, harem=self, destination=src_pk)]
-                    elif decoded_rxd.startswith("CLOSECORRIDOR"):
-                        uid = decoded_rxd.split(' ')[1]
-                        if uid in [c.uid for c in self.corridors]:
-                            print("%s %-26s: %-10s: Corridor is closing." % (s_now(), uid, self.desired_nickname))
-                            m = [c for c in self.corridors if c.uid == uid][0]
-                            self._corridors.remove(m)
-                        else:
-                            print("%s %-26s: %-10s: Corridor needn't be closed: it doesn't exist." % (s_now(), uid, self.desired_nickname))
-                    else:
-                        print("%s %-26s: %-10s: What does this mean?," % (s_now(), '', self.desired_nickname), decoded_rxd)
-                        self.put(src_pk, rxd)
-        print("%s %-26s: %-10s: HAREM LOOP CLOSING" % (s_now(), '', self.desired_nickname))
+        print("%s %-10s   %-10s  Harem's main loop ends" % (s_now(), self.desired_nickname, ''))
 
     def open(self, destination):
-        print("%s %-26s: %-10s: Opening a corridor to %s..." % (s_now(), '', self.desired_nickname, squeeze_da_keez(destination)[:16]))
+        """Generate a file(?)-style handle for reading and writing to/from the other harem."""
         if type(destination) is not RSA.RsaKey:
             raise ValueError("pubkey must be a public key")  # PublicKeyBadKeyError
         if destination not in [h.pubkey for h in self.get_homies_list(True)]:
             raise PublicKeyBadKeyError("Please handshake first. Then I'll be able to find your guy w/ his pubkey.")
-        while True:
-            corridor = Corridor(harem=self, destination=destination)
-            self.__corridors += [corridor]
-            print("%s %-26s: %-10s: We now have %d corridors:-" % (s_now(), '', self.desired_nickname, len(self.corridors)))
-            corridorno = 1
-            for c in self.corridors:
-                print("┣ %2d/%-2d  %-26s: %-10s:           corridor to %s..." % (corridorno, len(self.corridors), c.uid, self.desired_nickname, squeeze_da_keez(destination)[:16]))
-            print("┖        %-26s: %-10s: End of list" % ('', self.desired_nickname))
-            return corridor
-
-    # def empty(self):
-    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
-    #
-    # def get(self, block=True, timeout=None):
-    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
-    #
-    # def get_nowait(self):
-    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
-    #
-    # def put(self, pubkey, datablock, irc_server=None):
-    #     raise AttributeError("Do not use empty(), get(), get_nowait(), or put() directly. Use open() to get a handle; then, use that handle to read/write/etc.")
+        try:
+            corridor = [c for c in self.corridors if c.pubkey == destination][0]
+        except IndexError:
+            corridor = Corridor(harem=self, pubkey=destination)
+            print("%s %-10s<==%-10s  Opening a corridor" % (s_now(), self.desired_nickname, self.nicks_for_pk(destination)))
+            self._corridors += [corridor]
+        print("%s=== %-10s  We now have %s====╗" % (s_now(), self.desired_nickname, '1 corridor ' if len(self._corridors) == 1 else '%d corridors' % len(self._corridors)))
+        corridornumber = 1
+        for c in self.corridors:
+            print("╠          %2d/%-2d               %-10s          ╣" % (corridornumber, len(self.corridors), self.nicks_for_pk(destination)))
+            corridornumber += 1
+        print("╚==================================================╝")
+        return corridor
 
     def quit(self):
+        print("%s %-10s   %-10s  Harem is quitting" % (s_now(), self.desired_nickname, ''))
         if len(self.corridors) > 0:
-            print("%s %-26s: %-10s: Quitting all corridors" % (s_now(), '', self.desired_nickname))
-            for corridor in self.corridors:
-                corridor.quit()
+            corridors_to_be_deleted = self.corridors
+            for c in list(set(corridors_to_be_deleted)):  # I'm not sure why we do this.
+                c.close()
         super().quit()
+        self.__my_corridorservicing_thread.join(timeout=ENDTHREAD_TIMEOUT)
         sleep(1)
+        print("%s %-10s   %-10s  Harem has quit" % (s_now(), self.desired_nickname, ''))
 
-
-if __name__ == "__main__":
-    print("Generating RSA keys for Alice and Bob")
-    the_room = '#room' + generate_random_alphanumeric_string(5)
-    my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
-    noof_servers = len(my_list_of_all_irc_servers)
-    alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
-    bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
-    alice_pk = alice_rsa_key.public_key()
-    bob_pk = bob_rsa_key.public_key()
-    alice_nick = 'alice%d' % randint(111, 999)
-    bob_nick = 'bob%d' % randint(111, 999)
-
-    print("Creating harems for Alice and Bob")
-    alice_harem = Harem([the_room], alice_nick, my_list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
-    bob_harem = Harem([the_room], bob_nick, my_list_of_all_irc_servers, bob_rsa_key, autohandshake=False)
-    while not (alice_harem.ready and bob_harem.ready):
-        sleep(1)
-
-    print("Waiting for harems to shake hands")
-    alice_harem.trigger_handshaking()
-    bob_harem.trigger_handshaking()
-    the_noof_homies = -1
-    while the_noof_homies != len(alice_harem.get_homies_list(True)):
-        the_noof_homies = len(alice_harem.get_homies_list(True))
-        sleep(STARTUP_TIMEOUT // 2 + 1)
-
-    print("Opening a corridor between Alice and Bob")
-    alice_corridor = alice_harem.open(bob_pk)
-    bob_corridor = bob_harem.open(alice_pk)
-
-    print("Write data from Alice to Bob and from Bob to Alice")
-    alice_corridor.write(b"MARCO?")
-    assert(bob_corridor.read() == b"MARCO?")
-    bob_corridor.write(b"POLO!")
-    assert(alice_corridor.read() == b"POLO!")
-
-    print("Closing corridors")
-    alice_corridor.close()
-    bob_corridor.close()
-
-    # fname = "/Users/mchobbit/Downloads/top_panel.stl"  # pi_holder.stl"
-    # filelen = os.path.getsize(fname)
-    # with open(fname, "rb") as f:
-    #     the_data = f.read()
-    #
-    # t1 = datetime.datetime.now()
-    #
-    # import cProfile
-    # from pstats import Stats
-    # pr = cProfile.Profile()
-    # pr.enable()
-    #
-    # alice_harem.put(bob_pk, the_data)
-    # the_src, the_rxd = bob_harem.get()
-    #
-    # pr.disable()
-    # stats = Stats(pr)
-    # stats.sort_stats('cumtime').print_stats(10)  # tottime
-    #
-    # assert(the_src == alice_pk)
-    # assert(the_rxd == the_data)
-    # t2 = datetime.datetime.now()
-    # timedur = (t2 - t1).microseconds
-    # xfer_rate = filelen / (timedur / 1000000)
-    # print("%s: it took %1.4f seconds to send %d bytes via %d servers. That is %1.4f bytes per second." % (s_now(), timedur // 1000000, filelen, len(alice_harem.get_homies_list(True)), xfer_rate))
-    # pass

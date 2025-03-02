@@ -160,6 +160,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
 
     def __my_main_loop(self):
         """The main loop of this PrateBot: login, join, handshake (maybe), service messages, and (eventually) signout&quit."""
+        print("%s %-26s: %-10s: PrateBot is starting." % (s_now(), self.irc_server, self.nickname))
         while not self.ready and not self.should_we_quit:
             sleep(A_TICK)
         sleep(3)
@@ -191,7 +192,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                     pass
                 except FernetKeyIsInvalidError:
                     print("%s %-26s: %-10s: fernet key is invalid, allegedly" % (s_now(), self.irc_server, self.nickname))
-        print("%s %-26s: %-10s: Main loop is quitting." % (s_now(), self.irc_server, self.nickname))
+        print("%s %-26s: %-10s: PrateBot is ending." % (s_now(), self.irc_server, self.nickname))
 
     def read_messages_from_users(self):
         """Process private messages that other users sent to me via the IRC server."""

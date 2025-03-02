@@ -61,7 +61,7 @@ class PrateRookery:
     def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key,
                  startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS,
                  autohandshake=True, port=6667):
-        print("%s %-26s: %-10s: Initializing rookery" % (s_now(), '', desired_nickname))
+        print("%s %-10s   %-10s  Initializing rookery" % (s_now(), desired_nickname, ''))
         if type(list_of_all_irc_servers) not in (list, tuple):
             raise ValueError("list_of_all_irc_servers should be a list or a tuple.")
         if len(desired_nickname) > MAX_NICKNAME_LENGTH:
@@ -85,6 +85,14 @@ class PrateRookery:
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
         self.__log_into_all_functional_IRC_servers_mutex = Lock()
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        pk = self.rsa_key.public_key()
+        if pk is not None:
+            pk = squeeze_da_keez(pk)
+            pk = "%s..." % (pk[:16])
+        return f"{class_name}(channels={self.channels!r}, desired_nickname={self.desired_nickname!r}, rsa_key={pk!r}, list_of_all_irc_servers={self.__list_of_all_irc_servers!r})"
 
     @property
     def autohandshake(self):
@@ -132,7 +140,7 @@ class PrateRookery:
         return self.__ready
 
     def __my_main_loop(self):
-        print("%s %-26s: %-10s: Starting main loop" % (s_now(), '', self.desired_nickname))
+        print("%s %-10s   %-10s  Rookery main loop starts" % (s_now(), self.desired_nickname, ''))
         t = datetime.datetime.now()
         self.log_into_all_functional_IRC_servers()
         msgthr = Thread(target=self.keep_piping_the_privmsgs_out_of_bots_and_into_our_queue, daemon=True)
@@ -142,13 +150,13 @@ class PrateRookery:
         if self.autohandshake:
             self.trigger_handshaking()
         self.__ready = True
-        print("%s %-26s: %-10s: Processing incoming buffer... indefinitely" % (s_now(), '', self.desired_nickname))
+        print("%s %-10s   %-10s  Rookery main loop processes incoming buffer indefinitely" % (s_now(), self.desired_nickname, ''))
         while not self.gotta_quit:
             sleep(A_TICK)
             if not self.paused:
                 self.process_incoming_buffer()
         msgthr.join(timeout=ENDTHREAD_TIMEOUT)
-        print("%s %-26s: %-10s: Leaving main loop" % (s_now(), '', self.desired_nickname))
+        print("%s %-10s   %-10s  Rookery main loop ends" % (s_now(), self.desired_nickname, ''))
 
     def keep_piping_the_privmsgs_out_of_bots_and_into_our_queue(self):
         while not self.gotta_quit:
@@ -272,7 +280,7 @@ class PrateRookery:
         return self.__bots
 
     def trigger_handshaking(self):
-        print("%s %-26s: %-10s: Triggering handshaking between rookeries" % (s_now(), '', self.desired_nickname))
+        print("%s %-10s   %-10s  Triggering inter-rookery handshakes" % (s_now(), self.desired_nickname, ''))
         for k in self.bots:
             # bot = self.bots[k]
             # if k == self.bots[k].nickname: # I don't need to shake hands with myself :)
@@ -319,9 +327,9 @@ class PrateRookery:
                                    strictly_nick=False,
                                    autohandshake=self.autohandshake)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
-            print("%s %-26s: %-10s: Failed to log into %s" % (s_now(), '', self.desired_nickname, k))
+            print("%s %-26s: %-10s: PrateBot failed login" % (s_now(), k, self.desired_nickname))
         else:
-            print("%s %-26s: %-10s: Yay! I logged into %s" % (s_now(), '', self.desired_nickname, k))
+            print("%s %-26s: %-10s: PrateBot logged in OK" % (s_now(), k, self.desired_nickname))
             with self.__log_into_all_functional_IRC_servers_mutex:
                 self.bots[k] = bot
 
