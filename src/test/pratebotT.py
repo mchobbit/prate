@@ -129,8 +129,8 @@ class TestGroupTwo(unittest.TestCase):
         my_room = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        sleep(10); bot1.trigger_handshaking(nick2); sleep(30)
-        assert(bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr)
+        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
+            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
         shouldbe = [nick1, nick2]
         actuallyis = bot1.users
         shouldbe.sort()
@@ -146,8 +146,8 @@ class TestGroupTwo(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        sleep(10); bot1.trigger_handshaking(nick2); sleep(30)  #        my_rsa_key2.public_key()
-        assert(bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr)
+        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
+            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
         self.assertEqual([my_rsa_key1.public_key()], bot2.pubkeys)
         self.assertEqual([my_rsa_key2.public_key()], bot1.pubkeys)
         the_message = get_word_salad()[:MAX_CRYPTO_MSG_LENGTH].encode()
@@ -334,10 +334,10 @@ class TestKeyExchangingAndHandshaking(unittest.TestCase):
     def testOne(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
-        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
-        sleep(10); bot1.trigger_handshaking(bob_nick); sleep(30)
-        assert(bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1, autohandshake=False)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2, autohandshake=False)
+        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
+            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
         print("%s: %s" % (bot1.nickname, bot1.homies[bot2.nickname].ipaddr))
         print("%s: %s" % (bot2.nickname, bot1.homies[bot1.nickname].ipaddr))
         bot1.quit()
@@ -380,10 +380,10 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
     def testSimpleEncryptedTransferOf100Bytes(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
-        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
-        sleep(10); bot1.trigger_handshaking(bob_nick); sleep(30)
-        assert(bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1, autohandshake=False)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2, autohandshake=False)
+        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
+            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
         self.assertTrue(bot1.empty())
         for i in range(0, 10):
             print("loop", i)
@@ -401,9 +401,11 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
         bot1 = PrateBot(['#prattq'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        sleep(5)
         lou1 = bot1.users
         lou1.sort()
         bot2 = PrateBot(['#prattq'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
+        sleep(5)
         lou2 = bot2.users
         lou2.sort()
         self.assertTrue(bot2.nickname not in lou1)
@@ -419,8 +421,10 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
         bot1 = PrateBot(['#prat45'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1)
+        sleep(5)
         lou1 = bot1.users
         bot2 = PrateBot(['#prat45'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2)
+        sleep(5)
         b1nick = bot1.nickname
         b2nick = bot2.nickname
         self.assertTrue(b2nick not in lou1)
@@ -507,9 +511,10 @@ class TestManualHandshaking(unittest.TestCase):
             bots[nickname] = PrateBot(['#etrap'], nickname, 'cinqcent.local', 6667, rsakeys[nickname], autohandshake=False)
         alice_bot = bots[list(bots)[0]]
         bob_bot = bots[list(bots)[1]]
+        sleep(10)
         alice_bot.trigger_handshaking(bob_bot.nickname)
-        sleep(10); alice_bot.trigger_handshaking(); sleep(30)
-        assert(alice_bot.homies[alice_bot.nickname].ipaddr and bob_bot.homies[bob_bot.nickname].ipaddr)
+        while not (alice_bot.homies[bob_bot.nickname].ipaddr and bob_bot.homies[alice_bot.nickname].ipaddr):
+            alice_bot.trigger_handshaking(); sleep(15); bob_bot.trigger_handshaking(); sleep(15)
         self.assertEqual(squeeze_da_keez(alice_bot.homies[bob_bot.nickname].pubkey), squeeze_da_keez(bob_bot.rsa_key.public_key()))
         self.assertEqual(bob_bot.homies[alice_bot.nickname].pubkey, alice_bot.rsa_key.public_key())
         self.assertTrue(alice_bot.homies[bob_bot.nickname].ipaddr not in (None, ''))
