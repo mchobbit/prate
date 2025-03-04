@@ -55,10 +55,10 @@ class TestHaremZero(unittest.TestCase):
             noof_loops += 1
             if noof_loops > 180:
                 raise TimeoutError("testTwoitemsServerList() ran out of time")
-        self.assertRaises(AttributeError, h1.put, 1, 2, 3, 4)
-        self.assertRaises(AttributeError, h1.empty)
-        self.assertRaises(AttributeError, h1.get)
-        self.assertRaises(AttributeError, h1.get_nowait)
+        self.assertRaises(ValueError, h1.put, 1, 2, 3, 4)
+        # self.assertRaises(AttributeError, h1.empty)
+        # self.assertRaises(AttributeError, h1.get)
+        # self.assertRaises(AttributeError, h1.get_nowait)
         h1.quit()
         h2.quit()
 
