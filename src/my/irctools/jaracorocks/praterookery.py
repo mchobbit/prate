@@ -56,7 +56,43 @@ from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, END
 
 
 class PrateRookery:
-# Eventually, make it threaded!
+    """Bot for corralling multiple PrateBots for communications purposes.
+
+    The PrateRookery class launches a number of PrateBots on a number of
+    IRC servers. Then it corrals them to make them cooperate to transmit
+    data packets across all those IRC servers, probably to a rookery at
+    the other end. In this way, data packets can be multiplexed (?) and
+    send in parallel (sorta) across these multiple IRC networks.
+
+    Note:
+        There is no did-the-message-arrive-or-not checking.
+
+    Args:
+
+        channels (list of str): The channels to join, e.g. ['#test','#test2']
+        desired_nickname (str): The ideal nickname. A randomly generated one
+            will be used if the desired nickname is unavailable. This is on a
+            case-by-case basis. Each IRC server is handled separately in this
+            regard.
+        list_of_all_irc_servers (list of str): The IRC servers to be used.
+        rsa_key (RSA.RsaKey): My private+public key pair.
+        startup_timeout (int): How long should we wait to connect?
+        maximum_reconnections (int): Maximum number of permitted
+            reconnection attempts.
+        autohandshake (bool): If True, find and shake hands with other Prate
+            users now. If False, don't.
+        port (int): The port# to use.
+
+    Example:
+        $ alice_rsa_key = RSA.generate(1024)
+        $ bob_rsa_key = RSA.generate(1024)
+        $ alice_rookery = PrateRookery(['#prate'], 'alice123', ['cinqcent.local','rpi0irc1.local'], alice_rsa_key, autohandshake=False)
+        $ bob_rookery = PrateRookery(['#prate'], 'alice123', ['cinqcent.local','rpi0irc1.local'], alice_bob_key, autohandshake=False)
+        $ alice_rookery.trigger_handshake()
+        $ bob_rookery.trigger_handshake()
+        $ alice_rookery.put(bob_rsa_key.public_key(), b"MARCO!")
+        $ assert(bob_rookery.get() == (bob_rsa_key.public_key(), b"MARCO!")
+"""
 
     def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key,
                  startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS,
