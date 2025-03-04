@@ -30,7 +30,7 @@ the_room = '#room' + generate_random_alphanumeric_string(5)
 alice_nick = 'alice%d' % randint(111, 999)
 bob_nick = 'bob%d' % randint(111, 999)
 
-'''
+
 class TestHaremZero(unittest.TestCase):
 
     def setUp(self):
@@ -189,7 +189,6 @@ class TestHaremOne(unittest.TestCase):
             sleep(1)
         h1.quit()
         h2.quit()
-'''
 
 
 class TestHaremTwo(unittest.TestCase):

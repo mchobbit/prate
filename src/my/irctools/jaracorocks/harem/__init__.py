@@ -44,6 +44,25 @@ import base64
 
 
 class Corridor:
+    """The class for handling interaction between two harems.
+
+    123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789
+    Each harem (a collection of IRC bots) acts as one virtual IRC-style server.
+    By sending harem.put(pubkey,datablock) to a harem instance, a programmer can
+    send a block of data from one Prate user to another. There is an assumption
+    that each user is using a different harem.
+
+    The corridor is a higher-level abstraction that facilitates direct(ish)
+    communication betwen two Prate users. Each instance of a Corridor has
+    its own input and output methods. The interface between each corridor and
+    its harem is handled in the background. The programmer doesn't need to
+    know any of that.
+
+    Args:
+        harem (Harem): Harem to which this corridor belongs.
+        pubkey (RSA.RsaKey): The public key of the other user with whom I
+            am communicating. This channel is how I talk to that user.
+    """
 
     def __init__(self, harem, pubkey):
         self.myQ = Queue()
@@ -60,12 +79,12 @@ class Corridor:
         return self.myQ.empty
 
     def get(self, block=True, timeout=None):
-        return self.__get(block, timeout, nowait=False)
+        return self.__getSUB(block, timeout, nowait=False)
 
     def get_nowait(self):
-        return self.__get(nowait=True)
+        return self.__getSUB(nowait=True)
 
-    def __get(self, block=True, timeout=None, nowait=False):
+    def __getSUB(self, block=True, timeout=None, nowait=False):
         if self.closed:
             raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
         retval = self.myQ.get_nowait() if nowait else self.myQ.get(block, timeout)
@@ -86,8 +105,43 @@ class Corridor:
         self.closed = True
 
 
-class Harem(PrateRookery):  # smart rookery
-# Eventually, make it threaded!
+class Harem(PrateRookery):
+    """Harem class: a Rookery with load balancing and TCP-style packet tracking.
+
+    The Harem class adds streaming to PrateRookery. It uses checksums, packet
+    numbering, and packet retransmission options, to ensure that data is sent
+    and received for sure.
+
+    Note:
+        There is no did-the-message-arrive-or-not checking.
+
+    Args:
+
+        channels (list of str): The channels to join, e.g. ['#test','#test2']
+        desired_nickname (str): The ideal nickname. A randomly generated one
+            will be used if the desired nickname is unavailable. This is on a
+            case-by-case basis. Each IRC server is handled separately in this
+            regard.
+        list_of_all_irc_servers (list of str): The IRC servers to be used.
+        rsa_key (RSA.RsaKey): My private+public key pair.
+        startup_timeout (optional, int): How long should we wait to connect?
+        maximum_reconnections (optional, int): Maximum number of permitted
+            reconnection attempts.
+        autohandshake (optional, bool): If True, find and shake hands with other Prate
+            users now. If False, don't.
+
+    Example:
+        $ alice_rsa_key = RSA.generate(1024)
+        $ bob_rsa_key = RSA.generate(1024)
+        $ alice_harem = Harem(['#prate'], 'alice123', ['cinqcent.local','rpi0irc1.local'], alice_rsa_key, autohandshake=False)
+        $ bob_harem = Harem(['#prate'], 'alice123', ['cinqcent.local','rpi0irc1.local'], alice_bob_key, autohandshake=False)
+        $ alice_harem.trigger_handshake()
+        $ bob_harem.trigger_handshake()
+        $ alice_corridor = alice_harem.open(bob_rsa_key.public_key())
+        $ bob_corridor = bob_harem.open(alice_rsa_key.public_key())
+        $ alice_corridor.put(bob_rsa_key.public_key(), b"MARCO!")
+        $ assert(bob_corridor.get() == (bob_rsa_key.public_key(), b"MARCO!")
+    """
 
     def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key,
                  startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=SENSIBLE_NOOF_RECONNECTIONS,
