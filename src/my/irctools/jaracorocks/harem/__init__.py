@@ -194,7 +194,7 @@ class Harem(PrateRookery):
         if yes_really:
             super().put(pubkey, datablock, irc_server)
         else:
-            AttributeError("Use a corridor for empty/get/get_nowait/put.")
+            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
 
     @property
     def _corridors(self):
