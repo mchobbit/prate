@@ -22,12 +22,10 @@ bob_rookery.get()
 
 from Crypto.PublicKey import RSA
 from time import sleep
-from my.irctools.jaracorocks.praterookery import PrateRookery
 from my.stringtools import generate_random_alphanumeric_string
 from random import randint
 from my.globals import ALL_REALWORLD_IRC_NETWORK_NAMES, ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
 from my.irctools.jaracorocks.harem import Harem
-from my.irctools.cryptoish import sha1, squeeze_da_keez
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)

@@ -46,9 +46,8 @@ import base64
 class Corridor:
     """The class for handling interaction between two harems.
 
-    123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789
     Each harem (a collection of IRC bots) acts as one virtual IRC-style server.
-    By sending harem.put(pubkey,datablock) to a harem instance, a programmer can
+    By sending harem.put(pubkey, datablock) to a harem instance, a programmer can
     send a block of data from one Prate user to another. There is an assumption
     that each user is using a different harem.
 
@@ -79,9 +78,11 @@ class Corridor:
         return self.myQ.empty
 
     def get(self, block=True, timeout=None):
+        """Receive packet."""
         return self.__getSUB(block, timeout, nowait=False)
 
     def get_nowait(self):
+        """Receive packet."""
         return self.__getSUB(nowait=True)
 
     def __getSUB(self, block=True, timeout=None, nowait=False):
@@ -91,12 +92,11 @@ class Corridor:
         print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
         return retval
 
-    def put(self, datablock):
+    def put(self, datablock, irc_server=None):
+        """By hook or by crook (w/ signaling & perhaps randomly picking from harem bots), send packet."""
         if self.closed:
             raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        if self.closed:
-            raise AttributeError()
-        self.harem.put(self.pubkey, datablock, yes_really=True)
+        self.harem.put(self.pubkey, datablock, irc_server, yes_really=True)
 
     def close(self):
         if self.closed:
@@ -110,10 +110,9 @@ class Harem(PrateRookery):
 
     The Harem class adds streaming to PrateRookery. It uses checksums, packet
     numbering, and packet retransmission options, to ensure that data is sent
-    and received for sure.
+    and received. ... At least, it WILL do that. It doesn't do it yet.
 
-    Note:
-        There is no did-the-message-arrive-or-not checking.
+    It uses the Corridor class for the fancy stuff.
 
     Args:
 
