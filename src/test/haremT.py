@@ -31,16 +31,16 @@ some_random_PK = some_random_rsa_key.public_key()
 
 
 def receive_data_from_corridor(corridor, timeout=20):
-        timenow = datetime.datetime.now()
-        received_data = bytearray()
+    timenow = datetime.datetime.now()
+    received_data = bytearray()
 
-        while (datetime.datetime.now() - timenow).seconds < timeout:
-            try:
-                rxd_dat = corridor.get_nowait()
-                received_data += rxd_dat
-            except Empty:
-                sleep(.1)
-        return received_data
+    while (datetime.datetime.now() - timenow).seconds < timeout:
+        try:
+            rxd_dat = corridor.get_nowait()
+            received_data += rxd_dat
+        except Empty:
+            sleep(.1)
+    return received_data
 
 
 class TestHaremZero(unittest.TestCase):
