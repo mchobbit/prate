@@ -67,19 +67,89 @@ class Corridor:
         self.myQ_from_harem = Queue()  # Used by HAREM.
         self.the_get_queue = Queue()
         self.harem = harem
-        self.pubkey = pubkey  # public key of other end
-        self.closed = False
+        self.__pubkey = pubkey  # public key of other end
+        self.__pubkey_lock = ReadWriteLock()
+        self.__closed = False
+        self.__closed_lock = ReadWriteLock()
         self.__frames_lst = [None]
         self.__frames_lst_lock = ReadWriteLock()
         self.__frameno = 0
         self.__frameno_lock = ReadWriteLock()
+        self.__frame_size = 256  # Maximum is 256.
+        self.__frame_size_lock = ReadWriteLock()
+        self.__dupes = 1  # How many duplicates (of each frame) should be sent?
+        self.__dupes_lock = ReadWriteLock()
         self.__lastframethatispatout = -1
         self.__lastframethatispatout_lock = ReadWriteLock()
         self.__my_framing_thread = Thread(target=self.__my_framing_loop, daemon=True)
         self.__my_framing_thread.start()
 
     @property
-    def frameno(self):
+    def pubkey(self):
+        self.__pubkey_lock.acquire_read()
+        try:
+            retval = self.__pubkey
+            return retval
+        finally:
+            self.__pubkey_lock.release_read()
+
+    @property
+    def closed(self):
+        self.__closed_lock.acquire_read()
+        try:
+            retval = self.__closed
+            return retval
+        finally:
+            self.__closed_lock.release_read()
+
+    @closed.setter
+    def closed(self, value):
+        self.__closed_lock.acquire_write()
+        try:
+            self.__closed = value
+        finally:
+            self.__closed_lock.release_write()
+
+    @property
+    def dupes(self):
+        self.__dupes_lock.acquire_read()
+        try:
+            retval = self.__dupes
+            return retval
+        finally:
+            self.__dupes_lock.release_read()
+
+    @dupes.setter
+    def dupes(self, value):
+        if type(value) is not int or value < 0:
+            raise ValueError("dupes must be int and >=0")
+        self.__dupes_lock.acquire_write()
+        try:
+            self.__dupes = value
+        finally:
+            self.__dupes_lock.release_write()
+
+    @property
+    def frame_size(self):
+        self.__frame_size_lock.acquire_read()
+        try:
+            retval = self.__frame_size
+            return retval
+        finally:
+            self.__frame_size_lock.release_read()
+
+    @frame_size.setter
+    def frame_size(self, value):
+        if type(value) is not int or value < 64 or value > 256:
+            raise ValueError("frame_size must be int and between 64&256")
+        self.__frame_size_lock.acquire_write()
+        try:
+            self.__frame_size = value
+        finally:
+            self.__frame_size_lock.release_write()
+
+    @property
+    def _frameno(self):
         self.__frameno_lock.acquire_read()
         try:
             retval = self.__frameno
@@ -87,8 +157,8 @@ class Corridor:
         finally:
             self.__frameno_lock.release_read()
 
-    @frameno.setter
-    def frameno(self, value):
+    @_frameno.setter
+    def _frameno(self, value):
         self.__frameno_lock.acquire_write()
         try:
             self.__frameno = value
@@ -96,7 +166,7 @@ class Corridor:
             self.__frameno_lock.release_write()
 
     @property
-    def frames_lst(self):
+    def _frames_lst(self):
         self.__frames_lst_lock.acquire_read()
         try:
             retval = self.__frames_lst
@@ -104,8 +174,8 @@ class Corridor:
         finally:
             self.__frames_lst_lock.release_read()
 
-    @frames_lst.setter
-    def frames_lst(self, value):
+    @_frames_lst.setter
+    def _frames_lst(self, value):
         self.__frames_lst_lock.acquire_write()
         try:
             self.__frames_lst = value
@@ -113,7 +183,7 @@ class Corridor:
             self.__frames_lst_lock.release_write()
 
     @property
-    def lastframethatispatout(self):
+    def _lastframethatispatout(self):
         self.__lastframethatispatout_lock.acquire_read()
         try:
             retval = self.__lastframethatispatout
@@ -121,8 +191,8 @@ class Corridor:
         finally:
             self.__lastframethatispatout_lock.release_read()
 
-    @lastframethatispatout.setter
-    def lastframethatispatout(self, value):
+    @_lastframethatispatout.setter
+    def _lastframethatispatout(self, value):
         self.__lastframethatispatout_lock.acquire_write()
         try:
             self.__lastframethatispatout = value
@@ -150,14 +220,14 @@ class Corridor:
                     assert(len(subframe) == block_len)
                 cksum = frame[(block_len + 6):]
                 assert(cksum == bytes_64bit_cksum(frame[:block_len + 6]))
-                while len(self.frames_lst) <= this_frameno:
-                    self.frames_lst += [None]
-                self.frames_lst[this_frameno] = subframe
-                if self.lastframethatispatout < this_frameno and None not in self.frames_lst[self.lastframethatispatout + 1:this_frameno + 1]:
-#                    print("Sending blocks #%d thru %d (inclusive)" % (self.lastframethatispatout + 1, this_frameno))
-                    for i in range(self.lastframethatispatout + 1, this_frameno + 1):
-                        self.the_get_queue.put(self.frames_lst[i])
-                    self.lastframethatispatout = this_frameno
+                while len(self._frames_lst) <= this_frameno:
+                    self._frames_lst += [None]
+                self._frames_lst[this_frameno] = subframe
+                if self._lastframethatispatout < this_frameno and None not in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]:
+#                    print("Sending blocks #%d thru %d (inclusive)" % (self._lastframethatispatout + 1, this_frameno))
+                    for i in range(self._lastframethatispatout + 1, this_frameno + 1):
+                        self.the_get_queue.put(self._frames_lst[i])
+                    self._lastframethatispatout = this_frameno
 
     def empty(self):
         return self.the_get_queue.empty
@@ -184,15 +254,15 @@ class Corridor:
         noof_ircsvrs = len(ircsvrs)
         shuffle(ircsvrs)
         while indexpos < length_of_all_data and not self.harem.gotta_quit:
-            block_len = min(256, length_of_all_data - indexpos)
+            block_len = min(self.frame_size, length_of_all_data - indexpos)
             this_block = datablock[indexpos:(indexpos + block_len)]
-            subframe = bytes(self.frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
+            subframe = bytes(self._frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
             frame = bytes(subframe + bytes_64bit_cksum(subframe))
 #            print("block #", this_block, "==>", frame)
-            self._put(frame, ircsvrs[self.frameno % noof_ircsvrs])
-            self._put(frame, ircsvrs[(self.frameno + 1) % noof_ircsvrs])
+            for i in range(0, self.dupes + 1):
+                self._put(frame, ircsvrs[(self._frameno + i) % noof_ircsvrs])
             indexpos += block_len
-            self.frameno += 1
+            self._frameno += 1
 
     def _put(self, datablock, irc_server=None):
         """By hook or by crook (w/ signaling & perhaps randomly picking from harem bots), send packet."""

@@ -80,7 +80,6 @@ alice_corridor.put(all_data)
 
 sleep(10)
 
-frames_lst = [None]
 timenow = datetime.datetime.now()
 received_data = bytearray()
 while (datetime.datetime.now() - timenow).seconds < 20:

@@ -10,6 +10,7 @@ Created on Feb 9, 2025
 import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
+from queue import Empty
 from my.stringtools import generate_random_alphanumeric_string
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
 from random import randint
@@ -27,6 +28,19 @@ bobs_PK = bobs_rsa_key.public_key()
 carols_PK = carols_rsa_key.public_key()
 some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
+
+
+def receive_data_from_corridor(corridor, timeout=20):
+        timenow = datetime.datetime.now()
+        received_data = bytearray()
+
+        while (datetime.datetime.now() - timenow).seconds < timeout:
+            try:
+                rxd_dat = corridor.get_nowait()
+                received_data += rxd_dat
+            except Empty:
+                sleep(.1)
+        return received_data
 
 
 class TestHaremZero(unittest.TestCase):
@@ -252,8 +266,8 @@ class TestHaremTwo(unittest.TestCase):
         sleep(2)
         self.assertEqual(alice_corridor.get(), b"POLO!")
         sleep(2)
-        self.assertEqual(alice_corridor.irc_servers, list[self.alice_harem.bots.keys()])
-        self.assertEqual(bob_corridor.irc_servers, list[self.bob_harem.bots.keys()])
+        self.assertEqual(alice_corridor.irc_servers, list(self.alice_harem.bots.keys()))
+        self.assertEqual(bob_corridor.irc_servers, list(self.bob_harem.bots.keys()))
         alice_corridor.close()
         bob_corridor.close()
 
@@ -266,8 +280,8 @@ class TestHaremTwo(unittest.TestCase):
         self.assertEqual(bob_corridor.get(), b"MARCO?")
         bob_corridor.put(b"POLO!")
         self.assertEqual(alice_corridor.get(), b"POLO!")
-        self.assertEqual(alice_corridor.irc_servers, list[self.alice_harem.bots.keys()])
-        self.assertEqual(bob_corridor.irc_servers, list[self.bob_harem.bots.keys()])
+        self.assertEqual(alice_corridor.irc_servers, list(self.alice_harem.bots.keys()))
+        self.assertEqual(bob_corridor.irc_servers, list(self.bob_harem.bots.keys()))
         alice_corridor.close()
         bob_corridor.close()
 
@@ -277,13 +291,15 @@ class TestHaremTwo(unittest.TestCase):
         alice_corridor = self.alice_harem.open(bobs_PK)
         bob_corridor = self.bob_harem.open(alices_PK)
         alice_corridor.put(BORN_TO_DIE_IN_BYTES)
-        sleep(10)
-        self.assertEqual(bob_corridor.get(), BORN_TO_DIE_IN_BYTES)
+        sleep(20)
+        received_data = receive_data_from_corridor(bob_corridor, timeout=20)
+        self.assertEqual(received_data, BORN_TO_DIE_IN_BYTES)
         bob_corridor.put(CICERO.encode())
-        sleep(10)
-        self.assertEqual(alice_corridor.get(), CICERO.encode())
-        self.assertEqual(alice_corridor.irc_servers, list[self.alice_harem.bots.keys()])
-        self.assertEqual(bob_corridor.irc_servers, list[self.bob_harem.bots.keys()])
+        sleep(20)
+        received_data = receive_data_from_corridor(alice_corridor, timeout=20)
+        self.assertEqual(received_data, CICERO.encode())
+        self.assertEqual(alice_corridor.irc_servers, list(self.alice_harem.bots.keys()))
+        self.assertEqual(bob_corridor.irc_servers, list(self.bob_harem.bots.keys()))
         alice_corridor.close()
         bob_corridor.close()
 
