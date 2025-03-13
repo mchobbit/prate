@@ -17,6 +17,7 @@ import datetime
 import socket
 from my.irctools.jaracorocks.harem import Harem
 from my.classes.exceptions import RookeryCorridorAlreadyClosedError
+from my.globals.poetry import HAMLET, BORN_TO_DIE_IN_BYTES, CICERO
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
@@ -26,9 +27,6 @@ bobs_PK = bobs_rsa_key.public_key()
 carols_PK = carols_rsa_key.public_key()
 some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
-the_room = '#room' + generate_random_alphanumeric_string(5)
-alice_nick = 'alice%d' % randint(111, 999)
-bob_nick = 'bob%d' % randint(111, 999)
 
 
 class TestHaremZero(unittest.TestCase):
@@ -203,6 +201,9 @@ class TestHaremTwo(unittest.TestCase):
         pass
 
     def setUp(self):
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        the_room = '#room' + generate_random_alphanumeric_string(5)
         self.alice_harem = Harem([the_room], alice_nick, self.my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
         self.bob_harem = Harem([the_room], bob_nick, self.my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
         while not (self.alice_harem.ready and self.bob_harem.ready):
@@ -251,6 +252,8 @@ class TestHaremTwo(unittest.TestCase):
         sleep(2)
         self.assertEqual(alice_corridor.get(), b"POLO!")
         sleep(2)
+        self.assertEqual(alice_corridor.irc_servers, list[self.alice_harem.bots.keys()])
+        self.assertEqual(bob_corridor.irc_servers, list[self.bob_harem.bots.keys()])
         alice_corridor.close()
         bob_corridor.close()
 
@@ -263,6 +266,22 @@ class TestHaremTwo(unittest.TestCase):
         self.assertEqual(bob_corridor.get(), b"MARCO?")
         bob_corridor.put(b"POLO!")
         self.assertEqual(alice_corridor.get(), b"POLO!")
+        self.assertEqual(alice_corridor.irc_servers, list[self.alice_harem.bots.keys()])
+        self.assertEqual(bob_corridor.irc_servers, list[self.bob_harem.bots.keys()])
+        alice_corridor.close()
+        bob_corridor.close()
+
+    def testMarcoPoloOfHugeFile(self):
+        self.assertEqual(self.alice_harem.corridors, [])
+        self.assertEqual(self.bob_harem.corridors, [])
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        alice_corridor.put(BORN_TO_DIE_IN_BYTES)
+        self.assertEqual(bob_corridor.get(), BORN_TO_DIE_IN_BYTES)
+        bob_corridor.put(CICERO.encode())
+        self.assertEqual(alice_corridor.get(), CICERO.encode())
+        self.assertEqual(alice_corridor.irc_servers, list[self.alice_harem.bots.keys()])
+        self.assertEqual(bob_corridor.irc_servers, list[self.bob_harem.bots.keys()])
         alice_corridor.close()
         bob_corridor.close()
 

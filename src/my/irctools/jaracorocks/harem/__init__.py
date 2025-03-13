@@ -34,7 +34,7 @@ from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, sha1, bytes_64bit_cksum
 from queue import Empty, Queue
 from my.globals import A_TICK, SENSIBLE_NOOF_RECONNECTIONS, STARTUP_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, ENDTHREAD_TIMEOUT, RSA_KEY_SIZE  # ALL_REALWORLD_IRC_NETWORK_NAMES
-from random import randint, choice
+from random import randint, choice, shuffle
 from my.stringtools import s_now, generate_random_alphanumeric_string
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.jaracorocks.praterookery import PrateRookery
@@ -64,18 +64,103 @@ class Corridor:
     """
 
     def __init__(self, harem, pubkey):
-        self.myQ = Queue()
+        self.myQ_from_harem = Queue()  # Used by HAREM.
+        self.the_get_queue = Queue()
         self.harem = harem
         self.pubkey = pubkey  # public key of other end
         self.closed = False
+        self.__frames_lst = [None]
+        self.__frames_lst_lock = ReadWriteLock()
+        self.__frameno = 0
+        self.__frameno_lock = ReadWriteLock()
+        self.__lastframethatispatout = -1
+        self.__lastframethatispatout_lock = ReadWriteLock()
+        self.__my_framing_thread = Thread(target=self.__my_framing_loop, daemon=True)
+        self.__my_framing_thread.start()
+
+    @property
+    def frameno(self):
+        self.__frameno_lock.acquire_read()
+        try:
+            retval = self.__frameno
+            return retval
+        finally:
+            self.__frameno_lock.release_read()
+
+    @frameno.setter
+    def frameno(self, value):
+        self.__frameno_lock.acquire_write()
+        try:
+            self.__frameno = value
+        finally:
+            self.__frameno_lock.release_write()
+
+    @property
+    def frames_lst(self):
+        self.__frames_lst_lock.acquire_read()
+        try:
+            retval = self.__frames_lst
+            return retval
+        finally:
+            self.__frames_lst_lock.release_read()
+
+    @frames_lst.setter
+    def frames_lst(self, value):
+        self.__frames_lst_lock.acquire_write()
+        try:
+            self.__frames_lst = value
+        finally:
+            self.__frames_lst_lock.release_write()
+
+    @property
+    def lastframethatispatout(self):
+        self.__lastframethatispatout_lock.acquire_read()
+        try:
+            retval = self.__lastframethatispatout
+            return retval
+        finally:
+            self.__lastframethatispatout_lock.release_read()
+
+    @lastframethatispatout.setter
+    def lastframethatispatout(self, value):
+        self.__lastframethatispatout_lock.acquire_write()
+        try:
+            self.__lastframethatispatout = value
+        finally:
+            self.__lastframethatispatout_lock.release_write()
 
     def __repr__(self):
         class_name = type(self).__name__
         pk_nicks = self.harem.nicks_for_pk(self.pubkey)
-        return f"{class_name}: me={self.harem.desired_nickname!r}; them={pk_nicks!r})"
+        irc_servers = self.irc_servers
+        return f"{class_name}: me={self.harem.desired_nickname!r}; them={pk_nicks!r}: irc_servers={irc_servers!r}"
+
+    def __my_framing_loop(self):
+        while not self.harem.gotta_quit:
+            try:
+                frame = self.myQ_from_harem.get_nowait()
+            except Empty:
+                sleep(.1)
+            else:
+#                print("frame =>", frame)
+                this_frameno = int.from_bytes(frame[:4], 'little')
+                block_len = int.from_bytes(frame[4:6], 'little')
+                subframe = frame[6:(block_len + 6)]
+                if len(subframe) != block_len:
+                    assert(len(subframe) == block_len)
+                cksum = frame[(block_len + 6):]
+                assert(cksum == bytes_64bit_cksum(frame[:block_len + 6]))
+                while len(self.frames_lst) <= this_frameno:
+                    self.frames_lst += [None]
+                self.frames_lst[this_frameno] = subframe
+                if self.lastframethatispatout < this_frameno and None not in self.frames_lst[self.lastframethatispatout + 1:this_frameno + 1]:
+#                    print("Sending blocks #%d thru %d (inclusive)" % (self.lastframethatispatout + 1, this_frameno))
+                    for i in range(self.lastframethatispatout + 1, this_frameno + 1):
+                        self.the_get_queue.put(self.frames_lst[i])
+                    self.lastframethatispatout = this_frameno
 
     def empty(self):
-        return self.myQ.empty
+        return self.the_get_queue.empty
 
     def get(self, block=True, timeout=None):
         """Receive packet."""
@@ -88,11 +173,28 @@ class Corridor:
     def __getSUB(self, block=True, timeout=None, nowait=False):
         if self.closed:
             raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        retval = self.myQ.get_nowait() if nowait else self.myQ.get(block, timeout)
-        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
+        retval = self.the_get_queue.get_nowait() if nowait else self.the_get_queue.get(block, timeout)
+#        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
         return retval
 
-    def put(self, datablock, irc_server=None):
+    def put(self, datablock):
+        indexpos = 0
+        length_of_all_data = len(datablock)
+        ircsvrs = self.irc_servers
+        noof_ircsvrs = len(ircsvrs)
+        shuffle(ircsvrs)
+        while indexpos < length_of_all_data and not self.harem.gotta_quit:
+            block_len = min(256, length_of_all_data - indexpos)
+            this_block = datablock[indexpos:(indexpos + block_len)]
+            subframe = bytes(self.frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
+            frame = bytes(subframe + bytes_64bit_cksum(subframe))
+#            print("block #", this_block, "==>", frame)
+            self._put(frame, ircsvrs[self.frameno % noof_ircsvrs])
+            self._put(frame, ircsvrs[(self.frameno + 1) % noof_ircsvrs])
+            indexpos += block_len
+            self.frameno += 1
+
+    def _put(self, datablock, irc_server=None):
         """By hook or by crook (w/ signaling & perhaps randomly picking from harem bots), send packet."""
         if self.closed:
             raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
@@ -103,6 +205,10 @@ class Corridor:
             raise RookeryCorridorAlreadyClosedError("%s-to-%s corridor was already closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
         self.harem.corridors.remove(self)
         self.closed = True
+
+    @property
+    def irc_servers(self):
+        return list(self.harem.bots.keys())
 
 
 class Harem(PrateRookery):
@@ -164,7 +270,7 @@ class Harem(PrateRookery):
         return f"{class_name}(channels={self.channels!r}, desired_nickname={self.desired_nickname!r}, rsa_key={pk!r}, list_of_all_irc_servers={irc_servers_description_str!r}, corridors={self.corridors!r})"
 
     def nicks_for_pk(self, pubkey):
-        return '/'.join([h.nickname for h in self.true_homies if h.pubkey == pubkey])
+        return '/'.join(list(set([h.nickname for h in self.true_homies if h.pubkey == pubkey])))
 
     @property
     def corridors(self):
@@ -235,7 +341,7 @@ class Harem(PrateRookery):
                         if noof_right_corridors > 1:
                             print("WARNING --- there are %d corridors" % noof_right_corridors)
                             print(the_right_corridors)
-                        the_right_corridors[0].myQ.put(frame)
+                        the_right_corridors[0].myQ_from_harem.put(frame)
                     else:
                         raise RookeryCorridorNoTrueHomiesError("%s %-10s<==%-10s  %s (BUT I'VE NO APPLICABLE CORRIDOR)" % (s_now(), self.desired_nickname, self.nicks_for_pk(source), str(frame)))
             except Empty:

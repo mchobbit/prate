@@ -20,12 +20,18 @@ bob_rookery.get()
 
 """
 
+import datetime
+
+from queue import Empty
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.stringtools import generate_random_alphanumeric_string
-from random import randint
+from random import randint, shuffle
 from my.globals import ALL_REALWORLD_IRC_NETWORK_NAMES, ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
 from my.irctools.jaracorocks.harem import Harem
+from my.globals.poetry import BORN_TO_DIE_IN_BYTES
+from my.irctools.cryptoish import int_64bit_cksum, bytes_64bit_cksum
+from dns.rdataclass import NONE
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
@@ -36,7 +42,7 @@ carols_PK = carols_rsa_key.public_key()
 some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
 
-noof_servers = 1
+noof_servers = 20
 my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]  # ALL_REALWORLD_IRC_NETWORK_NAMES
 the_room = '#room' + generate_random_alphanumeric_string(5)
 alice_nick = 'alice%d' % randint(111, 999)
@@ -58,35 +64,53 @@ while the_noof_homies != len(alice_harem.get_homies_list(True)):
 
 print("                                                 Opening a corridor between Alice and Bob")
 alice_corridor = alice_harem.open(bobs_PK)
-alice_corrid_2 = alice_harem.open(bobs_PK)
+a2ice_corrido2 = alice_harem.open(bobs_PK)
 sleep(5)
 bob_corridor = bob_harem.open(alices_PK)
-bob_corrid_2 = bob_harem.open(alices_PK)
-assert(bob_corridor == bob_corrid_2)
-assert(alice_corridor == alice_corrid_2)
+b2b_corrid_2 = bob_harem.open(alices_PK)
+assert(bob_corridor == b2b_corrid_2)
+assert(alice_corridor == a2ice_corrido2)
 assert(bob_corridor != alice_corridor)
 
-# print("                                                 Write data from Alice to Bob and from Bob to Alice")
-alice_corridor.put(b"MARCO?")
-sleep(2)
-
-assert(bob_corridor.get() == b"MARCO?")
-
-sleep(2)
-bob_corridor.put(b"POLO!")
-sleep(2)
-assert(alice_corridor.get() == b"POLO!")
-sleep(2)
-
-print("                                                 Closing corridors")
-alice_corridor.close()
-sleep(2)
-bob_corridor.close()
-print("                                                 <FIN>")
-alice_harem.quit()
-bob_harem.quit()
 # with open("/Users/mchobbit/Downloads/top_panel.stl", "rb") as f:
-#     datablock = f.read()
+#    all_data = f.read()
+
+all_data = BORN_TO_DIE_IN_BYTES
+alice_corridor.put(all_data)
+
+sleep(10)
+
+frames_lst = [None]
+timenow = datetime.datetime.now()
+received_data = bytearray()
+while (datetime.datetime.now() - timenow).seconds < 20:
+    try:
+        rxd_dat = bob_corridor.get_nowait()
+#        print("Rx'd =>", rxd_dat)
+        received_data += rxd_dat
+    except Empty:
+        sleep(.1)
+
+print("Total received:", received_data)
+sleep(1)
+
+#
+# assert(bob_corridor.get() == b"MARCO?")
+#
+# sleep(2)
+# bob_corridor.put(b"POLO!")
+# sleep(2)
+# assert(alice_corridor.get() == b"POLO!")
+# sleep(2)
+#
+# print("                                                 Closing corridors")
+# alice_corridor.close()
+# sleep(2)
+# bob_corridor.close()
+# print("                                                 <FIN>")
+# alice_harem.quit()
+# bob_harem.quit()
+
 #
 # assert(alice_rookery.connected_homies_lst[0].fernetkey == bob_rookery.connected_homies_lst[0].fernetkey)
 # alice_rookery.put(bob_pk, datablock)
