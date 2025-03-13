@@ -92,6 +92,7 @@ while (datetime.datetime.now() - timenow).seconds < 20:
         sleep(.1)
 
 print("Total received:", received_data)
+assert(received_data == all_data)
 sleep(1)
 
 #
