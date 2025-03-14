@@ -16,7 +16,7 @@ from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_P
 from random import randint
 import datetime
 import socket
-from my.irctools.jaracorocks.harem import Harem
+from my.irctools.jaracorocks.harem import Harem, receive_data_from_corridor
 from my.classes.exceptions import RookeryCorridorAlreadyClosedError
 from my.globals.poetry import HAMLET, BORN_TO_DIE_IN_BYTES, CICERO
 
@@ -28,19 +28,6 @@ bobs_PK = bobs_rsa_key.public_key()
 carols_PK = carols_rsa_key.public_key()
 some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
-
-
-def receive_data_from_corridor(corridor, timeout=20):
-    timenow = datetime.datetime.now()
-    received_data = bytearray()
-
-    while (datetime.datetime.now() - timenow).seconds < timeout:
-        try:
-            rxd_dat = corridor.get_nowait()
-            received_data += rxd_dat
-        except Empty:
-            sleep(.1)
-    return received_data
 
 
 class TestHaremZero(unittest.TestCase):
@@ -150,6 +137,15 @@ class TestHaremOne(unittest.TestCase):
         h1.quit()
         h2.quit()
 
+
+class TestHaremTwo(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
     def testServerListOfOneGoodAndOneNonexistent(self):
         the_room = '#room' + generate_random_alphanumeric_string(5)
         list_of_all_irc_servers = ['cinqcent.local', 'rpi0irc99.local']
@@ -201,107 +197,6 @@ class TestHaremOne(unittest.TestCase):
             sleep(1)
         h1.quit()
         h2.quit()
-
-
-class TestHaremTwo(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.noof_servers = 1
-        cls.my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:cls.noof_servers]  # ALL_REALWORLD_IRC_NETWORK_NAMES
-
-    @classmethod
-    def tearDownClass(cls):
-        pass
-
-    def setUp(self):
-        alice_nick = 'alice%d' % randint(111, 999)
-        bob_nick = 'bob%d' % randint(111, 999)
-        the_room = '#room' + generate_random_alphanumeric_string(5)
-        self.alice_harem = Harem([the_room], alice_nick, self.my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
-        self.bob_harem = Harem([the_room], bob_nick, self.my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
-        while not (self.alice_harem.ready and self.bob_harem.ready):
-            sleep(1)
-        self.alice_harem.trigger_handshaking()
-        self.bob_harem.trigger_handshaking()
-        the_noof_homies = -1
-        while the_noof_homies != len(self.alice_harem.get_homies_list(True)):
-            the_noof_homies = len(self.alice_harem.get_homies_list(True))
-            sleep(STARTUP_TIMEOUT // 2 + 1)
-
-    def tearDown(self):
-        self.alice_harem.quit()
-        self.bob_harem.quit()
-
-    def testSimpleCreateAndDestroyTest(self):
-        self.assertEqual(self.alice_harem.corridors, [])
-        self.assertEqual(self.bob_harem.corridors, [])
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        alice_corrid_2 = self.alice_harem.open(bobs_PK)
-        sleep(2)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        bob_corrid_2 = self.bob_harem.open(alices_PK)
-        assert(bob_corridor == bob_corrid_2)
-        assert(alice_corridor == alice_corrid_2)
-        assert(bob_corridor != alice_corridor)
-        sleep(2)
-        bob_corridor.close()
-        self.assertRaises(RookeryCorridorAlreadyClosedError, bob_corrid_2.close)
-        alice_corridor.close()
-        self.assertRaises(RookeryCorridorAlreadyClosedError, alice_corrid_2.close)
-        sleep(2)
-        self.assertEqual(self.alice_harem.corridors, [])
-        self.assertEqual(self.bob_harem.corridors, [])
-
-    def testMarcoPolo(self):
-        self.assertEqual(self.alice_harem.corridors, [])
-        self.assertEqual(self.bob_harem.corridors, [])
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        alice_corridor.put(b"MARCO?")
-        sleep(2)
-        self.assertEqual(bob_corridor.get(), b"MARCO?")
-        sleep(2)
-        bob_corridor.put(b"POLO!")
-        sleep(2)
-        self.assertEqual(alice_corridor.get(), b"POLO!")
-        sleep(2)
-        self.assertEqual(alice_corridor.irc_servers, list(self.alice_harem.bots.keys()))
-        self.assertEqual(bob_corridor.irc_servers, list(self.bob_harem.bots.keys()))
-        alice_corridor.close()
-        bob_corridor.close()
-
-    def testMarcoPoloWithoutPausesthe(self):
-        self.assertEqual(self.alice_harem.corridors, [])
-        self.assertEqual(self.bob_harem.corridors, [])
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        alice_corridor.put(b"MARCO?")
-        self.assertEqual(bob_corridor.get(), b"MARCO?")
-        bob_corridor.put(b"POLO!")
-        self.assertEqual(alice_corridor.get(), b"POLO!")
-        self.assertEqual(alice_corridor.irc_servers, list(self.alice_harem.bots.keys()))
-        self.assertEqual(bob_corridor.irc_servers, list(self.bob_harem.bots.keys()))
-        alice_corridor.close()
-        bob_corridor.close()
-
-    def testMarcoPoloOfHugeFile(self):
-        self.assertEqual(self.alice_harem.corridors, [])
-        self.assertEqual(self.bob_harem.corridors, [])
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        alice_corridor.put(BORN_TO_DIE_IN_BYTES)
-        sleep(20)
-        received_data = receive_data_from_corridor(bob_corridor, timeout=20)
-        self.assertEqual(received_data, BORN_TO_DIE_IN_BYTES)
-        bob_corridor.put(CICERO.encode())
-        sleep(20)
-        received_data = receive_data_from_corridor(alice_corridor, timeout=20)
-        self.assertEqual(received_data, CICERO.encode())
-        self.assertEqual(alice_corridor.irc_servers, list(self.alice_harem.bots.keys()))
-        self.assertEqual(bob_corridor.irc_servers, list(self.bob_harem.bots.keys()))
-        alice_corridor.close()
-        bob_corridor.close()
 
 
 if __name__ == "__main__":
