@@ -31,7 +31,7 @@ import hashlib
 from my.classes.exceptions import PublicKeyBadKeyError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
 from cryptography.fernet import Fernet, InvalidToken
 from threading import Lock
-from my.stringtools import s_now
+# from my.stringtools import s_now
 
 
 def sha1(nickname):
