@@ -55,8 +55,9 @@ class TestRookeryZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
+
         noof_loops = 0
         while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
             sleep(1)
@@ -75,7 +76,7 @@ class TestRookeryZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testTwoitemsServerList is waiting for handshaking to complete")
         noof_loops = 0
@@ -96,7 +97,7 @@ class TestRookeryZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testTwoitemsPLUStotallyUnecessaryTriggeringOfHandshaking is waiting for handshaking to complete")
         noof_loops = 0
@@ -125,7 +126,7 @@ class TestRookeryZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testServerListOfOneGoodAndOneNonexistent is waiting for handshaking to complete")
         noof_loops = 0
@@ -145,7 +146,7 @@ class TestRookeryZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         sleep(5)
         self.assertEqual(0, len(h1.bots))
@@ -163,7 +164,7 @@ class TestRookeryZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testFouritemsServerList is waiting for handshaking to complete")
         while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
@@ -189,13 +190,14 @@ class TestRookeryAndSimplePrateBot(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         bob_bot = PrateBot([the_room], bob_nick, list_of_all_irc_servers[0], 6667, bob_rsa_key, autohandshake=False)
         alice_rookery = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alice_rsa_key, autohandshake=False)
-        while not (bob_bot.ready and alice_rookery.ready):
+        while not (bob_bot.connected_and_joined and alice_rookery.connected_and_joined):
             sleep(1)
         bob_bot.trigger_handshaking()
         sleep(30)
         self.assertEqual(alice_nick, alice_rookery.desired_nickname)
         self.assertTrue(alice_nick in bob_bot.homies)
-        self.assertEqual(bob_bot.rsa_key.public_key(), bob_rsa_key.public_key())
+        self.assertEqual(bob_bot._my_rsa_key.public_key(), bob_rsa_key.public_key())
+        self.assertEqual(bob_bot._my_rsa_key.public_key(), bob_bot.my_pubkey)
         self.assertEqual(bob_bot.homies[alice_nick].pubkey, alice_rsa_key.public_key())
         self.assertEqual(alice_rookery.bots[list(alice_rookery.bots)[0]].homies[bob_bot.nickname].pubkey, bob_rsa_key.public_key())
         alice_rookery.quit()
@@ -220,7 +222,7 @@ class TestRookeryHandshook(unittest.TestCase):
                               alices_rsa_key, startup_timeout=5, autohandshake=False)
         h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers,
                               bobs_rsa_key, startup_timeout=5, autohandshake=False)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         h1.trigger_handshaking()
         h2.trigger_handshaking()
@@ -233,14 +235,14 @@ class TestRookeryHandshook(unittest.TestCase):
         sleep(10)
         self.assertEqual(len(h1.users), 2)
         self.assertEqual(len(h2.users), 2)
-        self.assertEqual(len(h1.pubkeys), 1)
-        self.assertEqual(len(h2.pubkeys), 1)
+        self.assertEqual(len(h1.homies_pubkeys), 1)
+        self.assertEqual(len(h2.homies_pubkeys), 1)
         self.assertEqual(len(h1.true_homies), len(list_of_all_irc_servers))
         self.assertEqual(len(h2.true_homies), len(list_of_all_irc_servers))
         h2.quit()
         sleep(5)
         self.assertEqual(len(h1.users), 1)
-        self.assertEqual(len(h1.pubkeys), 0)
+        self.assertEqual(len(h1.homies_pubkeys), 0)
         self.assertEqual(len(h1.true_homies), 0)
         h1.quit()
 
@@ -252,7 +254,7 @@ class TestRookeryHandshook(unittest.TestCase):
         the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES
         alice_rookery = PrateRookery([the_room], my_nickname, the_irc_server_URLs, alice_rsa_key)
         bob_rookery = PrateRookery([the_room], my_nickname, the_irc_server_URLs, bob_rsa_key)
-        while not (alice_rookery.ready and bob_rookery.ready):
+        while not (alice_rookery.connected_and_joined and bob_rookery.connected_and_joined):
             sleep(1)
         print("Opening rookeries")
         while len(alice_rookery.true_homies) + len(bob_rookery.true_homies) < 2:
@@ -277,21 +279,6 @@ class TestRookeryHandshook(unittest.TestCase):
         alice_rookery.quit()
         bob_rookery.quit()
 
-    # def testFullServerList(self):
-    #     the_room = '#room' + generate_random_alphanumeric_string(5)
-    #     noof_servers = 4
-    #     print("testThreeandmoreitemsServerList with %d channels" % noof_servers)
-    #     list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
-    #     alice_nick = 'alice%d' % randint(111, 999)
-    #     bob_nick = 'bob%d' % randint(111, 999)
-    #     h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
-    #     h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-    #     print("testFullServerList is waiting for handshaking to complete")
-    #     while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
-    #         sleep(1)
-    #     h1.quit()
-    #     h2.quit()
-
 
 class TestSendFileBetweenTwoUserViaRookeries(unittest.TestCase):
     """Run some major tests... but USE THE SAME ROOKERIES THROUGHOUT!"""
@@ -303,7 +290,7 @@ class TestSendFileBetweenTwoUserViaRookeries(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         cls.h1 = PrateRookery(['#lokinbaa'], alice_nick, list_of_all_irc_servers, alices_rsa_key)
         cls.h2 = PrateRookery(['#lokinbaa'], bob_nick, list_of_all_irc_servers, bobs_rsa_key)
-        while not (cls.h1.ready and cls.h2.ready):
+        while not (cls.h1.connected_and_joined and cls.h2.connected_and_joined):
             sleep(1)
         print("TestSendFileBetweenTwoUserViaRookeries() --- waiting for setup")
         noof_loops = 0
@@ -349,6 +336,32 @@ class TestSendFileBetweenTwoUserViaRookeries(unittest.TestCase):
             self.h1.put(bobs_rsa_key.public_key(), plaintext)
             pk, msg = self.h2.get()
             self.assertEqual((pk, msg), (alices_rsa_key.public_key(), plaintext))
+
+
+class TestBrokenRookeryStuff(unittest.TestCase):  # This belongs in praterookeryT.py
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def testFullServerList(self):
+        the_room = '#room' + generate_random_alphanumeric_string(5)
+        noof_servers = 4
+        print("testThreeandmoreitemsServerList with %d channels" % noof_servers)
+        list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]
+        alice_nick = 'alice%d' % randint(111, 999)
+        bob_nick = 'bob%d' % randint(111, 999)
+        h1 = PrateRookery([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        h2 = PrateRookery([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
+        print("testFullServerList is waiting for handshaking to complete")
+        while len(h1.homies_pubkeys) < 1 or len(h2.homies_pubkeys) < 1:
+            sleep(1)
+        while h2.my_pubkey not in h1.homies_pubkeys or h1.my_pubkey not in h2.homies_pubkeys:
+            sleep(1)
+        h1.quit()
+        h2.quit()
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_P
 from random import randint
 import datetime
 import socket
-from my.irctools.jaracorocks.harem import Harem, receive_data_from_corridor
+from my.irctools.jaracorocks.harem import Harem
 from my.classes.exceptions import RookeryCorridorAlreadyClosedError
 from my.globals.poetry import HAMLET, BORN_TO_DIE_IN_BYTES, CICERO
 
@@ -46,7 +46,7 @@ class TestHaremZero(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         noof_loops = 0
         while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
@@ -78,7 +78,7 @@ class TestHaremOne(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         noof_loops = 0
         while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:
@@ -97,7 +97,7 @@ class TestHaremOne(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testTwoitemsServerList is waiting for handshaking to complete")
         noof_loops = 0
@@ -117,7 +117,7 @@ class TestHaremOne(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testTwoitemsPLUStotallyUnecessaryTriggeringOfHandshaking is waiting for handshaking to complete")
         noof_loops = 0
@@ -154,7 +154,7 @@ class TestHaremTwo(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testServerListOfOneGoodAndOneNonexistent is waiting for handshaking to complete")
         noof_loops = 0
@@ -173,7 +173,7 @@ class TestHaremTwo(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         sleep(5)
         self.assertEqual(0, len(h1.bots))
@@ -190,7 +190,7 @@ class TestHaremTwo(unittest.TestCase):
         bob_nick = 'bob%d' % randint(111, 999)
         h1 = Harem([the_room], alice_nick, list_of_all_irc_servers, alices_rsa_key, startup_timeout=5, maximum_reconnections=2)
         h2 = Harem([the_room], bob_nick, list_of_all_irc_servers, bobs_rsa_key, startup_timeout=5, maximum_reconnections=2)
-        while not (h1.ready and h2.ready):
+        while not (h1.connected_and_joined and h2.connected_and_joined):
             sleep(1)
         print("testFouritemsServerList is waiting for handshaking to complete")
         while len(h1.find_nickname_by_pubkey(bobs_rsa_key.public_key())) < noof_servers and len(h2.find_nickname_by_pubkey(alices_rsa_key.public_key())) < noof_servers:

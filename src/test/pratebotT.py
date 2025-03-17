@@ -66,33 +66,29 @@ class TestGroupOne(unittest.TestCase):
 
     def testSimpleLogin(self):
         alice_nick = 'alice%d' % randint(111, 999)
-
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
-        self.assertTrue(bot.ready)
+        self.assertTrue(bot.connected_and_joined)
         bot.quit()
 
 #
     def testReady(self):
         alice_nick = 'alice%d' % randint(111, 999)
-
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
-        self.assertTrue(bot.ready)
-        self.assertTrue(bot._client.ready)  # Should be the same as bot.ready pylint: disable=protected-access
+        self.assertTrue(bot.connected_and_joined)
+        self.assertTrue(bot._client.connected_and_joined)  # Should be the same as bot.connected_and_joined pylint: disable=protected-access
         bot.quit()
 
     def testSimpleWhois(self):
         alice_nick = 'alice%d' % randint(111, 999)
-
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
-        self.assertTrue(bot.ready)
+        self.assertTrue(bot.connected_and_joined)
         self.assertEqual(bot.whois(alice_nick).split('* ', 1)[-1], bot.fingerprint)
         bot.quit()
 
     def testSimpleCallResponse(self):
         alice_nick = 'alice%d' % randint(111, 999)
-
         bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
-        self.assertTrue(bot.ready)
+        self.assertTrue(bot.connected_and_joined)
         bot.put(bot.nickname, "HELLO")
         self.assertEqual(bot.get(timeout=10), (bot.nickname, 'HELLO'))
         bot.quit()
@@ -100,12 +96,14 @@ class TestGroupOne(unittest.TestCase):
     def testHomiesShouldNotIncludeMe(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'bob%d' % randint(111, 999)
-
         alice_bot = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key)
         bob_bot = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
-        sleep(8)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
+        if not (alice_bot.is_handshook_with(bob_bot.my_pubkey) and bob_bot.is_handshook_with(alice_bot.my_pubkey)):
+            sleep(10)
+        self.assertTrue(alice_bot.is_handshook_with(bob_bot.my_pubkey))
+        self.assertTrue(bob_bot.is_handshook_with(alice_bot.my_pubkey))
         self.assertFalse(alice_nick in alice_bot.homies)
         self.assertFalse(bob_nick in bob_bot.homies)
         self.assertTrue(alice_nick in bob_bot.homies)
@@ -129,8 +127,10 @@ class TestGroupTwo(unittest.TestCase):
         my_room = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
-            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
         shouldbe = [nick1, nick2]
         actuallyis = bot1.users
         shouldbe.sort()
@@ -146,10 +146,12 @@ class TestGroupTwo(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
-            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
-        self.assertEqual([my_rsa_key1.public_key()], bot2.pubkeys)
-        self.assertEqual([my_rsa_key2.public_key()], bot1.pubkeys)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
+        self.assertEqual([my_rsa_key1.public_key()], bot2.homies_pubkeys)
+        self.assertEqual([my_rsa_key2.public_key()], bot1.homies_pubkeys)
         the_message = get_word_salad()[:MAX_CRYPTO_MSG_LENGTH].encode()
         while bot1.homies[bot2.nickname].ipaddr is None or bot2.homies[bot1.nickname].ipaddr is None:
             print("Waiting for %s and %s to negotiate a connection" % (bot1.nickname, bot2.nickname))
@@ -170,15 +172,15 @@ class TestGroupTwo(unittest.TestCase):
             if not nick2:
                 nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
             self.assertNotEqual(nick1, nick2)
-            my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
-            my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
             try:
                 bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
-#                bot1.paused = True
                 bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-#                bot2.paused = True
-                self.assertTrue(bot1.ready)
-                self.assertTrue(bot2.ready)
+                self.assertTrue(bot1.connected_and_joined)
+                self.assertTrue(bot2.connected_and_joined)
+                if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+                    sleep(10)
+                self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+                self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
                 assert(len(bot1.nickname) <= MAX_NICKNAME_LENGTH)
                 assert(len(bot2.nickname) <= MAX_NICKNAME_LENGTH)
                 bot1.put(bot1.nickname, msg)
@@ -204,10 +206,15 @@ class TestGroupTwo(unittest.TestCase):
         nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
         self.assertNotEqual(nick1, nick2)
         sleep(5)
+        print("AAAAaa")
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        print("BBBBbb")
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        print("CCCCcc")
         bot1.quit()
+        print("DDDDdd")
         bot2.quit()
+        print("EEEEee")
         sleep(5)
 
     def testSendGoofyValuesWithoutSleeping(self):
@@ -228,8 +235,6 @@ class TestGroupTwo(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-#        bot1.paused = True
-#        bot2.paused = True
         self.assertEqual(bot1.nickname, nick1)
         self.assertEqual(bot2.nickname, nick2)
         bot1.quit()
@@ -237,14 +242,11 @@ class TestGroupTwo(unittest.TestCase):
 
     def testNicknameCollision(self):
         desired_nick = 'A' + generate_random_alphanumeric_string(MAX_NICKNAME_LENGTH - 1)
-
         bot1 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key)
-#        bot1.paused = True
-        self.assertTrue(bot1.ready)
+        self.assertTrue(bot1.connected_and_joined)
         self.assertEqual(bot1.nickname, desired_nick)
         bot2 = PrateBot(['#prate'], desired_nick, 'cinqcent.local', 6667, my_rsa_key, strictly_nick=False)  # To allow the automatic renaming of the nickname
-#        bot2.paused = True
-        self.assertTrue(bot2.ready)
+        self.assertTrue(bot2.connected_and_joined)
         try:
             while True:
                 _ = bot1.get_nowait()
@@ -259,10 +261,10 @@ class TestGroupTwo(unittest.TestCase):
         self.assertNotEqual(bot2.nickname, bot1.nickname)
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname) - len(_TRANSMIT_PLAINTEXT_))
         bot1.put(bot2.nickname, msg)
-        self.assertEqual(bot2.get(timeout=10), (bot1.nickname, msg))
+        self.assertEqual(bot2.get(timeout=180), (bot1.nickname, msg))
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot1.nickname) - len(_TRANSMIT_PLAINTEXT_))
         bot2.put(bot1.nickname, msg)
-        self.assertEqual(bot1.get(timeout=10), (bot2.nickname, msg))
+        self.assertEqual(bot1.get(timeout=180), (bot2.nickname, msg))
         bot1.quit()
         bot2.quit()
 
@@ -281,10 +283,12 @@ class TestGroupThree(unittest.TestCase):
         room1 = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         room2 = '#T' + generate_random_alphanumeric_string(MAX_CHANNEL_LENGTH - 2)
         self.assertNotEqual(nick1, nick2)
-        bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
-        bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        # bot1.paused = True
-        # bot2.paused = True
+        bot1 = PrateBot([room1, room2], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot([room1, room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(bot2.nickname) - len(_TRANSMIT_PLAINTEXT_))
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, "Hello, world.")
@@ -302,11 +306,12 @@ class TestGroupThree(unittest.TestCase):
         room1 = '#prate'  # + generate_irc_handle(7, 9)
         room2 = '#prate'  # + generate_irc_handle(7, 9)
         self.assertNotEqual(nick1, nick2)
-
         bot1 = PrateBot([room1], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([room2], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        # bot1.paused = True
-        # bot2.paused = True
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
         msg = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH - len(nick2) - len(_TRANSMIT_PLAINTEXT_))
         bot1.put(bot2.nickname, msg)
         bot1.put(bot2.nickname, msg)
@@ -323,52 +328,6 @@ class TestGroupThree(unittest.TestCase):
         bot2.quit()
 
 
-class TestKeyExchangingAndHandshaking(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def testOne(self):
-        alice_nick = 'alice%d' % randint(111, 999)
-        bob_nick = 'alice%d' % randint(111, 999)
-        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1, autohandshake=False)
-        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2, autohandshake=False)
-        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
-            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
-        print("%s: %s" % (bot1.nickname, bot1.homies[bot2.nickname].ipaddr))
-        print("%s: %s" % (bot2.nickname, bot1.homies[bot1.nickname].ipaddr))
-        bot1.quit()
-        bot2.quit()
-
-    def testTwo(self):
-        dct = {}
-        noofbots = 4
-        for _ in range(0, noofbots):
-            nick = generate_irc_handle()
-            dct[nick] = {}
-            dct[nick]['rsa key'] = RSA.generate(RSA_KEY_SIZE)
-            dct[nick]['pratebot'] = PrateBot(['#prate'], nick, 'cinqcent.local', 6667, dct[nick]['rsa key'])
-        while [dct[r]['pratebot'].ready for r in dct].count(False) > 0:
-            sleep(1)
-        all_found = False
-        while not all_found:
-            sleep(5)
-            all_found = True
-            for nickY in dct:
-                for nickX in dct:
-                    if nickX == nickY:
-                        continue
-                    if dct[nickX]['pratebot'].homies[nickY].ipaddr is None:
-#                        print("%s doesn't know %s's IP address" % (nickX, nickY))
-                        all_found = False
-        print("Great. We have all the IP addresses.")
-        for k in dct:
-            dct[k]['pratebot'].quit()
-
-
 class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
 
     def setUp(self):
@@ -380,11 +339,14 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
     def testSimpleEncryptedTransferOf100Bytes(self):
         alice_nick = 'alice%d' % randint(111, 999)
         bob_nick = 'alice%d' % randint(111, 999)
-        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1, autohandshake=False)
-        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2, autohandshake=False)
-        while not (bot1.homies[bot2.nickname].ipaddr and bot2.homies[bot1.nickname].ipaddr):
-            bot1.trigger_handshaking(); sleep(20); bot2.trigger_handshaking(); sleep(20)
+        bot1 = PrateBot(['#prate'], alice_nick, 'cinqcent.local', 6667, my_rsa_key1, autohandshake=True)
+        bot2 = PrateBot(['#prate'], bob_nick, 'cinqcent.local', 6667, my_rsa_key2, autohandshake=True)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))  # ...which implies bot1.connected_and_joined is True
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))  # ...which implies bot2.connected_and_joined is True
         self.assertTrue(bot1.empty())
+        self.assertTrue(bot2.empty())
         for i in range(0, 10):
             print("loop", i)
             plaintext = generate_random_alphanumeric_string(MAX_PRIVMSG_LENGTH // 2).encode()
@@ -483,47 +445,6 @@ class TestKeyCryptoPutAndCryptoGet(unittest.TestCase):
         bot1.quit()
         bot2.quit()
 
-# class TestHugeNumberOfUsers(unittest.TestCase):
-#
-#     def testThreeUsersAtOnce(self):
-#         noof_nicks = 3
-#         bots = {}
-#         keys = {}
-#         for i in range(0, noof_nicks):
-#             nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
-#             keys[nickname] = RSA.generate(RSA_KEY_SIZE)
-#             bots[nickname] = PrateBot(['#prate'], nickname, 'cinqcent.local', 6667, keys[nickname])
-#         while None in flatten([[bots[n].homies[u].ipaddr for u in bots[n].users if u != bots[n].nickname] for n in bots]):
-#             sleep(5)
-#         for k in bots:
-#             bots[k].quit()
-
-
-class TestManualHandshaking(unittest.TestCase):
-
-    def testSimpleManualHandshaking(self):
-        noof_nicks = 10
-        bots = {}
-        rsakeys = {}
-        for i in range(0, noof_nicks):
-            nickname = 'u%s%02d' % (generate_random_alphanumeric_string(5), i)
-        #    self.assertFalse(nickname in rsakeys)
-        #    self.assertFalse(nickname in bots)
-            rsakeys[nickname] = RSA.generate(RSA_KEY_SIZE)
-            bots[nickname] = PrateBot(['#etrap'], nickname, 'cinqcent.local', 6667, rsakeys[nickname], autohandshake=False)
-        alice_bot = bots[list(bots)[0]]
-        bob_bot = bots[list(bots)[1]]
-        sleep(10)
-        alice_bot.trigger_handshaking(bob_bot.nickname)
-        while not (alice_bot.homies[bob_bot.nickname].ipaddr and bob_bot.homies[alice_bot.nickname].ipaddr):
-            alice_bot.trigger_handshaking(); sleep(15); bob_bot.trigger_handshaking(); sleep(15)
-        self.assertEqual(squeeze_da_keez(alice_bot.homies[bob_bot.nickname].pubkey), squeeze_da_keez(bob_bot.rsa_key.public_key()))
-        self.assertEqual(bob_bot.homies[alice_bot.nickname].pubkey, alice_bot.rsa_key.public_key())
-        self.assertTrue(alice_bot.homies[bob_bot.nickname].ipaddr not in (None, ''))
-        self.assertTrue(bob_bot.homies[alice_bot.nickname].ipaddr not in (None, ''))
-        for k in bots:
-            bots[k].quit()
-
 
 class TestFernetKeyMismatches(unittest.TestCase):
 
@@ -534,9 +455,11 @@ class TestFernetKeyMismatches(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
+        while not (bot1.connected_and_joined and bot2.connected_and_joined):
             sleep(1)
         sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
         the_message = get_word_salad()[:MAX_CRYPTO_MSG_LENGTH]
         bot1.put(bot1.nickname, the_message)
         self.assertEqual(bot1.get(timeout=30), (bot1.nickname, the_message))
@@ -555,14 +478,12 @@ class TestPlaintextStuff(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
-            sleep(1)
-        noof_loops = 0
-        while bot1.homies[bot2.nickname].ipaddr is None or bot2.homies[bot1.nickname].ipaddr is None:
-            sleep(1)
-            noof_loops += 1
-            if noof_loops > 180:
-                raise TimeoutError("testSimpleSendAndReceivePlaintext() ran out of time")
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))  # ...which implies bot1.connected_and_joined is True
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))  # ...which implies bot2.connected_and_joined is True
+        self.assertTrue(bot1.empty())
+        self.assertTrue(bot2.empty())
         for i in range(0, 10):
             print("Loop %d" % i)
             t = datetime.datetime.now()
@@ -585,14 +506,10 @@ class TestPlaintextStuff(unittest.TestCase):
         self.assertNotEqual(nick1, nick2)
         bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
         bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
-        while not (bot1.ready and bot2.ready):
-            sleep(1)
-        noof_loops = 0
-        while bot1.homies[bot2.nickname].ipaddr is None or bot2.homies[bot1.nickname].ipaddr is None:
-            sleep(1)
-            noof_loops += 1
-            if noof_loops > 180:
-                raise TimeoutError("testSimpleSendAndReceiveCiphertext() ran out of time")
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
         for i in range(0, 10):
             print("Loop %d" % i)
             t = datetime.datetime.now()
@@ -607,6 +524,162 @@ class TestPlaintextStuff(unittest.TestCase):
             self.assertEqual(sender, nick1)
             self.assertEqual(sent_bb, byteblock_to_send)
             self.assertEqual(base64.b85decode(sent_bb).decode(), msg_to_send)
+        bot1.quit()
+        bot2.quit()
+
+
+class TestNewHandshakingAndTimeoutStuff(unittest.TestCase):
+
+    def testCreateHaremsAndLeaveHaremsWITHHandshaking(self):
+        my_room = '#tchalhwh'
+        nick1 = generate_irc_handle(MAX_NICKNAME_LENGTH, MAX_NICKNAME_LENGTH)
+        nick2 = generate_irc_handle(MAX_NICKNAME_LENGTH, MAX_NICKNAME_LENGTH)
+        self.assertNotEqual(nick1, nick2)
+        bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)  # auto-handshake is True by default
+        bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        self.assertEqual(bot1.connected_and_joined, True)
+        self.assertEqual(bot2.connected_and_joined, True)
+        bot1.quit()
+        bot2.quit()
+        # self.assertTrue([self.bots[k] for k in self.bots if None in [self.bots[k].homies[h].ipaddr for h in self.bots[k].homies]] is not [])
+        # self.assertEqual(bot1.handshook, True)
+
+    def testSimpleSendAndReceiveCiphertext(self):
+        my_room = '#pratelwqj'
+        nick1 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        nick2 = generate_irc_handle(4, MAX_NICKNAME_LENGTH)
+        self.assertNotEqual(nick1, nick2)
+        bot1 = PrateBot([my_room], nick1, 'cinqcent.local', 6667, my_rsa_key1)
+        bot2 = PrateBot([my_room], nick2, 'cinqcent.local', 6667, my_rsa_key2)
+        while not (bot1.connected_and_joined and bot2.connected_and_joined):
+            sleep(1)
+        bot1.quit()
+        bot2.quit()
+        self.assertFalse(bot1.connected)
+        self.assertFalse(bot1.joined)
+        self.assertFalse(bot2.connected)
+        self.assertFalse(bot2.joined)
+
+
+class TestNewBoringPrateBotLaunchAndQuit(unittest.TestCase):
+
+    def testMakeAndUnmakeTwoPrateBotsMANUALLY(self):
+        alices_rsa_key = my_rsa_key1
+        bobs_rsa_key = my_rsa_key2
+        bot1 = PrateBot(channels=['#prate'], nickname='mac1', irc_server='cinqcent.local', port=6667, rsa_key=alices_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        bot2 = PrateBot(channels=['#prate'], nickname='mac2', irc_server='cinqcent.local', port=6667, rsa_key=bobs_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        self.assertEqual(bot2.connected, True)
+        self.assertEqual(bot2.joined, True)
+        self.assertEqual(bot2.connected_and_joined, True)
+        bot1.trigger_handshaking()
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
+        bot1.quit()
+        bot2.quit()
+
+    def testMakeAndUnmakeTwoPrateBotsAUTOMATICALLY(self):
+        alices_rsa_key = my_rsa_key1
+        bobs_rsa_key = my_rsa_key2
+        bot1 = PrateBot(channels=['#prate'], nickname='mac1', irc_server='cinqcent.local', port=6667, rsa_key=alices_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=True)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        bot2 = PrateBot(channels=['#prate'], nickname='mac2', irc_server='cinqcent.local', port=6667, rsa_key=bobs_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=True)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        self.assertEqual(bot2.connected, True)
+        self.assertEqual(bot2.joined, True)
+        self.assertEqual(bot2.connected_and_joined, True)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
+        bot1.quit()
+        bot2.quit()
+
+    def testMakeAndUnmakeTwoPrateBotsONEMANUALHANDSHAKE(self):
+        alices_rsa_key = my_rsa_key1
+        bobs_rsa_key = my_rsa_key2
+        bot1 = PrateBot(channels=['#prate'], nickname='mac1', irc_server='cinqcent.local', port=6667, rsa_key=alices_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        bot2 = PrateBot(channels=['#prate'], nickname='mac2', irc_server='cinqcent.local', port=6667, rsa_key=bobs_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        self.assertEqual(bot2.connected, True)
+        self.assertEqual(bot2.joined, True)
+        self.assertEqual(bot2.connected_and_joined, True)
+        bot1.trigger_handshaking(bot2.nickname)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
+        bot1.quit()
+        bot2.quit()
+
+    def testMakeAndUnmakeTwoPrateBotsOTHERMANUALHANDSHAKE(self):
+        alices_rsa_key = my_rsa_key1
+        bobs_rsa_key = my_rsa_key2
+        bot1 = PrateBot(channels=['#prate'], nickname='mac1', irc_server='cinqcent.local', port=6667, rsa_key=alices_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        bot2 = PrateBot(channels=['#prate'], nickname='mac2', irc_server='cinqcent.local', port=6667, rsa_key=bobs_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        self.assertEqual(bot2.connected, True)
+        self.assertEqual(bot2.joined, True)
+        self.assertEqual(bot2.connected_and_joined, True)
+        bot2.trigger_handshaking(bot1.nickname)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
+        bot1.quit()
+        bot2.quit()
+
+    def testMakeAndUnmakeTwoPrateBotsBOTHMANUALHANDSHAKE(self):
+        alices_rsa_key = my_rsa_key1
+        bobs_rsa_key = my_rsa_key2
+        bot1 = PrateBot(channels=['#prate'], nickname='mac1', irc_server='cinqcent.local', port=6667, rsa_key=alices_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        bot2 = PrateBot(channels=['#prate'], nickname='mac2', irc_server='cinqcent.local', port=6667, rsa_key=bobs_rsa_key, startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True,
+                        autohandshake=False)
+        self.assertEqual(bot1.connected, True)
+        self.assertEqual(bot1.joined, True)
+        self.assertEqual(bot1.connected_and_joined, True)
+        self.assertEqual(bot2.connected, True)
+        self.assertEqual(bot2.joined, True)
+        self.assertEqual(bot2.connected_and_joined, True)
+        bot1.trigger_handshaking(bot2.nickname)
+        bot2.trigger_handshaking(bot1.nickname)
+        if not (bot1.is_handshook_with(bot2.my_pubkey) and bot2.is_handshook_with(bot1.my_pubkey)):
+            sleep(10)
+        self.assertTrue(bot1.is_handshook_with(bot2.my_pubkey))
+        self.assertTrue(bot2.is_handshook_with(bot1.my_pubkey))
         bot1.quit()
         bot2.quit()
 

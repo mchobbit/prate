@@ -45,8 +45,8 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          strictly_nick=True,
                          autoreconnect=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
         alice_bot.quit()
         sleep(2)
         self.assertTrue(alice_nick not in bob_bot.users)
@@ -64,7 +64,7 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          strictly_nick=True,
                          autoreconnect=True)
-        self.assertTrue(alice_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
         self.assertFalse(alice_bot.quitted)
         alice_bot.quit()
         self.assertTrue(alice_bot.quitted)
@@ -102,9 +102,9 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
-        self.assertTrue(charlie_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
+        self.assertTrue(charlie_bot.connected_and_joined)
         sleep(5)
         self.assertEqual(2, len(alice_bot.users))
         self.assertEqual(2, len(bob_bot.users))
@@ -148,8 +148,8 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
         self.assertEqual(1, len(alice_bot.users))
         self.assertEqual(1, len(alice_bot.channels))
         self.assertEqual(1, len(bob_bot.users))
@@ -186,8 +186,8 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
         self.assertEqual(1, len(alice_bot.users))
         self.assertEqual(1, len(alice_bot.channels))
         self.assertEqual([first_room], list(alice_bot.channels.keys()))
@@ -222,8 +222,8 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
         self.assertRaises(IrcDuplicateNicknameError, VanillaBot, [the_room],
                          dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 3, 1, True, True)
         alice_bot.quit()
@@ -250,8 +250,8 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
         self.assertEqual(alice_bot.fingerprint, alice_bot.whois(alice_nick).split('* ', 1)[-1])
         self.assertEqual(alice_bot.fingerprint, bob_bot.whois(alice_nick).split('* ', 1)[-1])
         self.assertEqual(bob_bot.fingerprint, alice_bot.whois(bob_nick).split('* ', 1)[-1])
@@ -289,9 +289,9 @@ class TestVanillaBot(unittest.TestCase):
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=False)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
-        self.assertTrue(dupe_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
+        self.assertTrue(dupe_bot.connected_and_joined)
         self.assertNotEqual(dupe_nick, dupe_bot.nickname)
         alice_bot.quit()
         bob_bot.quit()
@@ -307,7 +307,7 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=3,
+                         startup_timeout=5,
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
@@ -315,19 +315,19 @@ class TestVanillaBot(unittest.TestCase):
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=3,
+                         startup_timeout=5,
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
-        self.assertTrue(alice_bot.ready)
-        self.assertTrue(bob_bot.ready)
+        self.assertTrue(alice_bot.connected_and_joined)
+        self.assertTrue(bob_bot.connected_and_joined)
         self.assertRaises(IrcInitialConnectionTimeoutError, VanillaBot, [the_room],
                          dupe_nick, ALL_SANDBOX_IRC_NETWORK_NAMES[-1], 6667, 30, 0, False, True)
         dupe_bot = VanillaBot(channels=[the_room],
                          nickname=dupe_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=3,
+                         startup_timeout=5,
                          maximum_reconnections=1,
                          autoreconnect=True,
                          strictly_nick=False)
@@ -363,7 +363,7 @@ class TestTalk(unittest.TestCase):
                          nickname=alice_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=3,
+                         startup_timeout=5,
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
@@ -371,7 +371,7 @@ class TestTalk(unittest.TestCase):
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=3,
+                         startup_timeout=5,
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=True)
@@ -379,7 +379,7 @@ class TestTalk(unittest.TestCase):
                          nickname=bob_nick,
                          irc_server=ALL_SANDBOX_IRC_NETWORK_NAMES[-1],
                          port=6667,
-                         startup_timeout=3,
+                         startup_timeout=5,
                          maximum_reconnections=2,
                          autoreconnect=True,
                          strictly_nick=False)

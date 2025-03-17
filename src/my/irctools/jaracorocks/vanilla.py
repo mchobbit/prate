@@ -125,9 +125,11 @@ class VanillaBot:
         self.__quitted = False
         starttime = datetime.datetime.now()
         # Make initial attempt to join IRC server
-        while not self.ready and not self.should_we_quit and (self._client is None or self._client.err is None) and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
+        while not self.should_we_quit and (not self._client or self._client.err or not self._client.connected_and_joined) \
+                                        and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(A_TICK)
-        if not self.ready:
+        if (datetime.datetime.now() - starttime).seconds >= self.__startup_timeout:
+#        if not self._client.connected_and_joined:
             _ = [sleep(A_TICK) for __ in range(0, 50) if self.err is None]
             if self._client is not None and self._client.err is not None:
                 self.quit()
@@ -163,9 +165,9 @@ class VanillaBot:
         starting_datetime = datetime.datetime.now()
         if self._client.err:
             raise self._client.err
-        while not self.ready and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
+        while not (self.connected_and_joined) and (datetime.datetime.now() - starting_datetime).seconds < self.__startup_timeout:
             sleep(A_TICK)
-        if not self.ready:
+        if not self.connected_and_joined:
             raise IrcInitialConnectionTimeoutError("After %d seconds, we still aren't connected to server; aborting!" % self.__startup_timeout)
         if generate_fingerprint(self._client.nickname) != self._client.realname:
             raise IrcFingerprintMismatchCausedByServer("The server detected a nickname collision and changed mine, causing my fingerprint to be invalid.")
@@ -412,7 +414,7 @@ class VanillaBot:
             raise IrcBadNicknameError("Nickname %s is bad (non-string, empty, starts with a digit, too short)" % str(user))
         if len(user) > MAX_NICKNAME_LENGTH:
             raise IrcNicknameTooLongError("Nickname %s is too long" % user)
-        if self._client is None or not self._client.ready:
+        if self._client is None or not (self._client.connected_and_joined):
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         if msg in (None, '') or type(msg) is not str or len([c for c in msg if ord(c) < 32 or ord(c) >= 128]) > 0:
             raise IrcPrivateMessageContainsBadCharsError("I cannot send this message: it is empty and/or contains characters that IRC wouldn't like. => %s" % str(msg))
@@ -422,13 +424,13 @@ class VanillaBot:
 
     def get(self, block=True, timeout=None):
         """Retrieve the next private message from our queue, sent by a user on the IRC server."""
-        if self._client is None or not self._client.ready:
+        if self._client is None or not (self._client.connected_and_joined):
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         return self._client.get(block, timeout)
 
     def get_nowait(self):
         """Retrieve the next private message from our queue, sent by a user on the IRC server."""
-        if self._client is None or not self._client.ready:
+        if self._client is None or not (self._client.connected_and_joined):
             raise IrcStillConnectingError("Try again when I'm ready (when self.ready==True)")
         return self._client.get_nowait()
 
@@ -438,17 +440,38 @@ class VanillaBot:
         return self.__maximum_reconnections
 
     @property
-    def ready(self):
+    def connected_and_joined(self):
         """Is our bot connected to the IRC server and has it joined our desired rooms?"""
         if self._client is None:
             return False
-        elif not hasattr(self._client, 'ready'):
+        elif not hasattr(self._client, 'connected_and_joined'):
             return False
         else:
-            return self._client.ready
+            return self._client.connected_and_joined
+
+    @property
+    def connected(self):
+        """Is our bot connected to the IRC server and has it joined our desired rooms?"""
+        if self._client is None:
+            return False
+        elif not hasattr(self._client, 'connected'):
+            return False
+        else:
+            return self._client.connected
+
+    @property
+    def joined(self):
+        """Is our bot connected to the IRC server and has it joined our desired rooms?"""
+        if self._client is None:
+            return False
+        elif not hasattr(self._client, 'joined'):
+            return False
+        else:
+            return self._client.joined
 
     def quit(self, yes_even_the_reactor_thread=False, timeout=ENDTHREAD_TIMEOUT):
         """Quit this bot."""
+#        print("vanilla quit (irc=%s) is starting" % self.irc_server)
         if self.quitted:
             raise IrcAlreadyDisconnectedError("Trying to quit %s twice. This should be unnecessary." % self.irc_server)
         self.autoreconnect = False
@@ -462,4 +485,5 @@ class VanillaBot:
         if yes_even_the_reactor_thread:
             self.__my_client_start_thread.join(timeout)  # jaraco
         self.__quitted = True
+#        print("vanilla quit (irc=%s) is leaving" % self.irc_server)
 

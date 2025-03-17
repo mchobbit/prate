@@ -67,7 +67,7 @@ Error
             RookeryCorridorAlreadyClosedError
             RookeryCorridorNoTrueHomiesError
             RookeryCorridorNotOpenYetError
-
+            RookeryCorridorTimeoutError
 Example:
     n/a
 
@@ -582,6 +582,14 @@ class RookeryCorridorNoTrueHomiesError(RookeryCorridorError):
 
 class RookeryCorridorNotOpenYetError(RookeryCorridorError):
     """"""
+
+    def __init__(self, message):  # pylint: disable=useless-parent-delegation
+
+        super().__init__(message)
+
+
+class RookeryCorridorTimeoutError(RookeryCorridorError):
+    """If a file transfer takes too long"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 

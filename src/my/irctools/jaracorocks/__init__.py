@@ -125,7 +125,7 @@ class SingleServerIRCBotWithWhoisSupport(irc.bot.SingleServerIRCBot):
         return self.__irc_server
 
     @property
-    def ready(self):
+    def connected_and_joined(self):
         """bool: Are we connected to the IRC server *and* have we joined the room that we want?"""
         if not self.connected:
             return False

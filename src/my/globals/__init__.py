@@ -27,7 +27,7 @@ DEFAULT_WHOIS_TIMEOUT = 10  # how long should we wait for a response to a /whois
 RSA_KEY_SIZE = 1024  # 2048 is normal
 MAX_PRIVMSG_LENGTH = 500  # 500 works; 501 does not.
 MAX_CHANNEL_LENGTH = 10  # I made it up.
-ENDTHREAD_TIMEOUT = 8
+ENDTHREAD_TIMEOUT = 20
 MAX_CRYPTO_MSG_LENGTH = int((MAX_PRIVMSG_LENGTH - MAX_NICKNAME_LENGTH) * 0.618)
 A_TICK = 0.1  # ... as in, 'hold on a tick!'
 
@@ -216,7 +216,7 @@ irc.geekshed.net
 
 ALL_REALWORLD_IRC_NETWORK_NAMES = [r for r in PARAGRAPH_OF_ALL_IRC_NETWORK_NAMES.replace('\n', ' ').split(' ') if r != '']
 
-ALL_SANDBOX_IRC_NETWORK_NAMES = ('rpi0irc1.local', 'rpi0irc2.local', 'rpi0irc3.local',
+ALL_SANDBOX_IRC_NETWORK_NAMES = ('rpi0irc2.local', 'rpi0irc3.local', 'rpi0irc1.local',
                                'rpi0irc4.local', 'rpi0irc5.local', 'rpi0irc6.local',
                                'rpi0irc7.local', 'rpi0irc8.local', 'rpi0irc9.local',
                                'rpi0irc10.local', 'rpi0irc11.local', 'rpi0irc12.local',

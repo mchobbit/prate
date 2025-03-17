@@ -12,65 +12,147 @@ from Crypto.PublicKey import RSA
 from my.stringtools import *
 from my.globals import *
 from time import sleep
-from my.irctools.jaracorocks.pratebot import PrateBot
-import datetime
 from queue import Queue, Empty
 from my.audiotools import MyMic, raw_to_ogg
 import os
-from my.irctools.jaracorocks.praterookery import PrateRookery
+import datetime
+from my.irctools.jaracorocks.harem import Harem, receive_data_from_corridor
 
-alices_preferred_nickname = 'alice123'
-bobs_preferred_nickname = 'bob456'
-the_room = "#prankrr"
-alice_rsa_key = RSA.generate(RSA_KEY_SIZE)
-bob_rsa_key = RSA.generate(RSA_KEY_SIZE)
-the_irc_server_URLs = ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_SANDBOX_IRC_NETWORK_NAMES  # ALL_REALWORLD_IRC_NETWORK_NAMES
-# alice_bot = PrateBot([the_room], alices_preferred_nickname, "irc.libera.chat", 6667, alice_rsa_key)
-# bob_bot = PrateBot([the_room], bobs_preferred_nickname, "irc.libera.chat", 6667, bob_rsa_key)
-# while not (alice_bot.ready and bob_bot.ready):
-#    sleep(1)
-print("Opening rookerys")
-alice_rookery = PrateRookery([the_room], alices_preferred_nickname, the_irc_server_URLs, alice_rsa_key)
-bob_rookery = PrateRookery([the_room], bobs_preferred_nickname, the_irc_server_URLs, bob_rsa_key)
-while not (alice_rookery.ready and bob_rookery.ready):
-    sleep(10)
+alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
+bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
+alices_PK = alices_rsa_key.public_key()
+bobs_PK = bobs_rsa_key.public_key()
 
-alice_rookery.trigger_handshaking()
-bob_rookery.trigger_handshaking()
-sleep(60)
+noof_servers = 20
+my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]  # ALL_REALWORLD_IRC_NETWORK_NAMES
+the_room = '#room' + generate_random_alphanumeric_string(5)
+alice_nick = 'alice%d' % randint(111, 999)
+bob_nick = 'bob%d' % randint(111, 999)
+
+print("                                                 Creating harems for Alice and Bob")
+alice_harem = Harem([the_room], alice_nick, my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
+bob_harem = Harem([the_room], bob_nick, my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
+while not (alice_harem.ready and bob_harem.ready):
+    sleep(1)
+
+print("                                                 Waiting for harems to shake hands")
+alice_harem.trigger_handshaking()
+bob_harem.trigger_handshaking()
+the_noof_homies = -1
+while the_noof_homies != len(alice_harem.get_homies_list(True)):
+    the_noof_homies = len(alice_harem.get_homies_list(True))
+    sleep(STARTUP_TIMEOUT // 3 + 1)
+
+print("                                                 Opening a corridor between Alice and Bob")
+alice_corridor = alice_harem.open(bobs_PK)
+bob_corridor = bob_harem.open(alices_PK)
+sleep(10)
+
+'''
+with open("/tmp/my.raw", "rb") as f:
+    raw_data = f.read()
+
+with open("/tmp/my.ogg", "wb") as f:
+    f.write(raw_to_ogg(raw_data))
+
+
+# os.system("/opt/homebrew/bin/mpv /tmp/my.ogg")
+
+alice_corridor.put(raw_data)
+sleep(10)
+msg = receive_data_from_corridor(bob_corridor)
+sleep(1)
+
+
+# d = bob_corridor.get()
+
+alice_corridor.put(raw_data)
+sleep(15)
+bufsize = 4096
+incoming_data = bytearray()
+
+while True:
+    try:
+        incoming_data += bytearray(bob_corridor.get(timeout=5))
+        if len(incoming_data) >= bufsize:
+            with open("/tmp/oops.ogg", "wb") as f:
+                f.write(raw_to_ogg(bytes(incoming_data[:bufsize])))
+            os.system("/opt/homebrew/bin/mpv /tmp/oops.ogg")
+            incoming_data = incoming_data[bufsize:]
+    except Empty:
+        break
+
+while True:
+    bob_corridor.get_nowait()
+
+
+
+with open("/tmp/received.ogg", "wb") as f:
+    f.write(raw_to_ogg(incoming_data))
+'''
 
 print("SAY WORDS!")
 audio_queue = Queue()
 mic = MyMic(audio_queue, squelch=200)
 fileno = 0
+
 while True:
     try:
-        raw_audio = audio_queue.get_nowait()
+        raw_audio = audio_queue.get(timeout=1)
     except Empty:
         sleep(.05)
     except KeyboardInterrupt:
         break
     else:
-        alice_rookery.put(bob_rsa_key.public_key(), raw_to_ogg(raw_audio))
-    try:
-        src, msg = bob_rookery.get_nowait()
+        print("Sending to Alice")
+        alice_corridor.put(raw_to_ogg(raw_audio))
+        # fname = "/tmp/out_%d.ogg" % fileno
+        # with open(fname, "wb") as f:
+        #     f.write(raw_to_ogg(raw_audio))
+        # with open(fname.replace('ogg', 'raw'), "wb") as f:
+        #     f.write(raw_audio)
+        # os.system("/opt/homebrew/bin/mpv %s" % fname)
+        # fileno += 1
+        print("Waiting for Bob")
+        ogg_data = receive_data_from_corridor(bob_corridor, timeout=5)
+        with open('/tmp/recent_%d.ogg' % fileno, 'wb') as f:
+            f.write(ogg_data)
+        print("Playing audio")
+        os.system("/opt/homebrew/bin/mpv /tmp/recent_%d.ogg" % fileno)
         fileno += 1
+        # bufsize = 4096
+        # incoming_data = bytearray()
+        # while True:
+        #     fileno = 0
+        #     try:
+        #         incoming_data += bytearray(bob_corridor.get(timeout=1))
+        #         if len(incoming_data) >= bufsize:
+        #             print("Retrieving #%d from Bob" % fileno)
+        #             fname = "/tmp/oops_%d.ogg" % fileno
+        #             with open(fname, "wb") as f:
+        #                 f.write(raw_to_ogg(bytes(incoming_data[:bufsize])))
+        #             os.system("/opt/homebrew/bin/mpv %s &" % fname)
+        #             incoming_data = incoming_data[bufsize:]
+        #             fileno += 1
+        #     except Empty:
+        #         break
+
+'''
+while True:
+    bob_corridor.get_nowait()
+
+
+        msg = receive_data_from_corridor(bob_corridor)
+    #        msg = bob_corridor.get_nowait()
+        fileno += 1
+        with open("/tmp/out_%d.raw" % fileno, "wb") as f:
+            f.write(msg)
+
         fname = "/tmp/out_%d.ogg" % fileno
         with open(fname, "wb") as f:
-            f.write(msg)
+            f.write(raw_to_ogg(msg))
         os.system("/opt/homebrew/bin/mpv %s" % fname)
     except Empty:
         sleep(.05)
-# alice_rookery.put(bob_rsa_key.public_key(), b"HELLO WORLDDD")
-# bob_rookery.get()
-
-# with open("/Users/mchobbit/Downloads/side_cushion.stl", "rb") as f:
-#     outdat = f.read()
-#
-# import datetime
-# t = datetime.datetime.now()
-# alice_rookery.put(bob_rsa_key.public_key(), outdat)
-# u = datetime.datetime.now()
-# sender, in_dat = bob_rookery.get()
-# v = datetime.datetime.now()
+'''
 

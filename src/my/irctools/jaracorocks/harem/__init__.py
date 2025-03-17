@@ -41,244 +41,14 @@ from my.irctools.jaracorocks.praterookery import PrateRookery
 import datetime
 import hashlib
 import base64
+from my.irctools.jaracorocks.harem.corridor import Corridor
 
 
-class Corridor:
-    """The class for handling interaction between two harems.
-
-    Each harem (a collection of IRC bots) acts as one virtual IRC-style server.
-    By sending harem.put(pubkey, datablock) to a harem instance, a programmer can
-    send a block of data from one Prate user to another. There is an assumption
-    that each user is using a different harem.
-
-    The corridor is a higher-level abstraction that facilitates direct(ish)
-    communication betwen two Prate users. Each instance of a Corridor has
-    its own input and output methods. The interface between each corridor and
-    its harem is handled in the background. The programmer doesn't need to
-    know any of that.
-
-    Args:
-        harem (Harem): Harem to which this corridor belongs.
-        pubkey (RSA.RsaKey): The public key of the other user with whom I
-            am communicating. This channel is how I talk to that user.
-    """
-
-    def __init__(self, harem, pubkey):
-        self.myQ_from_harem = Queue()  # Used by HAREM.
-        self.the_get_queue = Queue()
-        self.harem = harem
-        self.__pubkey = pubkey  # public key of other end
-        self.__pubkey_lock = ReadWriteLock()
-        self.__closed = False
-        self.__closed_lock = ReadWriteLock()
-        self.__frames_lst = [None]
-        self.__frames_lst_lock = ReadWriteLock()
-        self.__frameno = 0
-        self.__frameno_lock = ReadWriteLock()
-        self.__frame_size = 256  # Maximum is 256.
-        self.__frame_size_lock = ReadWriteLock()
-        self.__dupes = 1  # How many duplicates (of each frame) should be sent?
-        self.__dupes_lock = ReadWriteLock()
-        self.__lastframethatispatout = -1
-        self.__lastframethatispatout_lock = ReadWriteLock()
-        self.__my_framing_thread = Thread(target=self.__my_framing_loop, daemon=True)
-        self.__my_framing_thread.start()
-
-    @property
-    def pubkey(self):
-        self.__pubkey_lock.acquire_read()
-        try:
-            retval = self.__pubkey
-            return retval
-        finally:
-            self.__pubkey_lock.release_read()
-
-    @property
-    def closed(self):
-        self.__closed_lock.acquire_read()
-        try:
-            retval = self.__closed
-            return retval
-        finally:
-            self.__closed_lock.release_read()
-
-    @closed.setter
-    def closed(self, value):
-        self.__closed_lock.acquire_write()
-        try:
-            self.__closed = value
-        finally:
-            self.__closed_lock.release_write()
-
-    @property
-    def dupes(self):
-        self.__dupes_lock.acquire_read()
-        try:
-            retval = self.__dupes
-            return retval
-        finally:
-            self.__dupes_lock.release_read()
-
-    @dupes.setter
-    def dupes(self, value):
-        if type(value) is not int or value < 0:
-            raise ValueError("dupes must be int and >=0")
-        self.__dupes_lock.acquire_write()
-        try:
-            self.__dupes = value
-        finally:
-            self.__dupes_lock.release_write()
-
-    @property
-    def frame_size(self):
-        self.__frame_size_lock.acquire_read()
-        try:
-            retval = self.__frame_size
-            return retval
-        finally:
-            self.__frame_size_lock.release_read()
-
-    @frame_size.setter
-    def frame_size(self, value):
-        if type(value) is not int or value < 64 or value > 256:
-            raise ValueError("frame_size must be int and between 64&256")
-        self.__frame_size_lock.acquire_write()
-        try:
-            self.__frame_size = value
-        finally:
-            self.__frame_size_lock.release_write()
-
-    @property
-    def _frameno(self):
-        self.__frameno_lock.acquire_read()
-        try:
-            retval = self.__frameno
-            return retval
-        finally:
-            self.__frameno_lock.release_read()
-
-    @_frameno.setter
-    def _frameno(self, value):
-        self.__frameno_lock.acquire_write()
-        try:
-            self.__frameno = value
-        finally:
-            self.__frameno_lock.release_write()
-
-    @property
-    def _frames_lst(self):
-        self.__frames_lst_lock.acquire_read()
-        try:
-            retval = self.__frames_lst
-            return retval
-        finally:
-            self.__frames_lst_lock.release_read()
-
-    @_frames_lst.setter
-    def _frames_lst(self, value):
-        self.__frames_lst_lock.acquire_write()
-        try:
-            self.__frames_lst = value
-        finally:
-            self.__frames_lst_lock.release_write()
-
-    @property
-    def _lastframethatispatout(self):
-        self.__lastframethatispatout_lock.acquire_read()
-        try:
-            retval = self.__lastframethatispatout
-            return retval
-        finally:
-            self.__lastframethatispatout_lock.release_read()
-
-    @_lastframethatispatout.setter
-    def _lastframethatispatout(self, value):
-        self.__lastframethatispatout_lock.acquire_write()
-        try:
-            self.__lastframethatispatout = value
-        finally:
-            self.__lastframethatispatout_lock.release_write()
-
-    def __repr__(self):
-        class_name = type(self).__name__
-        pk_nicks = self.harem.nicks_for_pk(self.pubkey)
-        irc_servers = self.irc_servers
-        return f"{class_name}: me={self.harem.desired_nickname!r}; them={pk_nicks!r}: irc_servers={irc_servers!r}"
-
-    def __my_framing_loop(self):
-        while not self.harem.gotta_quit:
-            try:
-                frame = self.myQ_from_harem.get_nowait()
-            except Empty:
-                sleep(.1)
-            else:
-#                print("frame =>", frame)
-                this_frameno = int.from_bytes(frame[:4], 'little')
-                block_len = int.from_bytes(frame[4:6], 'little')
-                subframe = frame[6:(block_len + 6)]
-                if len(subframe) != block_len:
-                    assert(len(subframe) == block_len)
-                cksum = frame[(block_len + 6):]
-                assert(cksum == bytes_64bit_cksum(frame[:block_len + 6]))
-                while len(self._frames_lst) <= this_frameno:
-                    self._frames_lst += [None]
-                self._frames_lst[this_frameno] = subframe
-                if self._lastframethatispatout < this_frameno and None not in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]:
-#                    print("Sending blocks #%d thru %d (inclusive)" % (self._lastframethatispatout + 1, this_frameno))
-                    for i in range(self._lastframethatispatout + 1, this_frameno + 1):
-                        self.the_get_queue.put(self._frames_lst[i])
-                    self._lastframethatispatout = this_frameno
-
-    def empty(self):
-        return self.the_get_queue.empty
-
-    def get(self, block=True, timeout=None):
-        """Receive packet."""
-        return self.__getSUB(block, timeout, nowait=False)
-
-    def get_nowait(self):
-        """Receive packet."""
-        return self.__getSUB(nowait=True)
-
-    def __getSUB(self, block=True, timeout=None, nowait=False):
-        if self.closed:
-            raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        retval = self.the_get_queue.get_nowait() if nowait else self.the_get_queue.get(block, timeout)
-#        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
-        return retval
-
-    def put(self, datablock):
-        indexpos = 0
-        length_of_all_data = len(datablock)
-        ircsvrs = self.irc_servers
-        noof_ircsvrs = len(ircsvrs)
-        shuffle(ircsvrs)
-        while indexpos < length_of_all_data and not self.harem.gotta_quit:
-            block_len = min(self.frame_size, length_of_all_data - indexpos)
-            this_block = datablock[indexpos:(indexpos + block_len)]
-            subframe = bytes(self._frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
-            frame = bytes(subframe + bytes_64bit_cksum(subframe))
-#            print("block #", this_block, "==>", frame)
-            for i in range(0, self.dupes + 1):
-                self._put(frame, ircsvrs[(self._frameno + i) % noof_ircsvrs])
-            indexpos += block_len
-            self._frameno += 1
-
-    def _put(self, datablock, irc_server=None):
-        """By hook or by crook (w/ signaling & perhaps randomly picking from harem bots), send packet."""
-        if self.closed:
-            raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        self.harem.put(self.pubkey, datablock, irc_server, yes_really=True)
-
-    def close(self):
-        if self.closed:
-            raise RookeryCorridorAlreadyClosedError("%s-to-%s corridor was already closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        self.harem.corridors.remove(self)
-        self.closed = True
-
-    @property
-    def irc_servers(self):
-        return list(self.harem.bots.keys())
+def wait_for_harem_to_stabilize(harem):
+    the_noof_homies = -1
+    while the_noof_homies != len(harem.get_homies_list(True)):
+        the_noof_homies = len(harem.get_homies_list(True))
+        sleep(STARTUP_TIMEOUT // 2 + 1)
 
 
 class Harem(PrateRookery):
@@ -304,6 +74,9 @@ class Harem(PrateRookery):
             reconnection attempts.
         autohandshake (optional, bool): If True, find and shake hands with other Prate
             users now. If False, don't.
+        return_immediately (optional, bool): If True, don't wait for harem to be
+            ready; return immediately instead. If False, wait for .ready to turn
+            True, and *THEN* return. Timeout applies though.
 
     Example:
         $ alice_rsa_key = RSA.generate(1024)
@@ -332,7 +105,7 @@ class Harem(PrateRookery):
 
     def __repr__(self):
         class_name = type(self).__name__
-        pk = self.rsa_key.public_key()
+        pk = self.my_pubkey
         if pk is not None:
             pk = squeeze_da_keez(pk)
             pk = "%s..." % (pk[:16])
@@ -340,7 +113,8 @@ class Harem(PrateRookery):
         return f"{class_name}(channels={self.channels!r}, desired_nickname={self.desired_nickname!r}, rsa_key={pk!r}, list_of_all_irc_servers={irc_servers_description_str!r}, corridors={self.corridors!r})"
 
     def nicks_for_pk(self, pubkey):
-        return '/'.join(list(set([h.nickname for h in self.true_homies if h.pubkey == pubkey])))
+        retval = '/'.join(list(set([h.nickname for h in self.true_homies if h.pubkey == pubkey])))
+        return retval
 
     @property
     def corridors(self):
@@ -348,7 +122,7 @@ class Harem(PrateRookery):
 
     def empty(self, yes_really=False):
         if yes_really:
-            return super().empty
+            return super().empty()
         else:
             raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
         raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
@@ -408,12 +182,20 @@ class Harem(PrateRookery):
                     the_right_corridors = [c for c in self.corridors if c.pubkey == source]
                     noof_right_corridors = len(the_right_corridors)
                     if noof_right_corridors >= 1:
+                        the_right_corridor = the_right_corridors[0]
                         if noof_right_corridors > 1:
                             print("WARNING --- there are %d corridors" % noof_right_corridors)
                             print(the_right_corridors)
-                        the_right_corridors[0].myQ_from_harem.put(frame)
                     else:
-                        raise RookeryCorridorNoTrueHomiesError("%s %-10s<==%-10s  %s (BUT I'VE NO APPLICABLE CORRIDOR)" % (s_now(), self.desired_nickname, self.nicks_for_pk(source), str(frame)))
+#                        raise RookeryCorridorNoTrueHomiesError("%s %-10s<==%-10s  %s (BUT I'VE NO APPLICABLE CORRIDOR)" % (s_now(), self.desired_nickname, self.nicks_for_pk(source), str(frame)))
+                        print("%s %-10s<==%-10s  NO CORRIDOR YET. I'll create one." % (s_now(), self.desired_nickname, self.nicks_for_pk(source)))
+                        try:
+                            the_right_corridor = self.open(source)
+                        except PublicKeyBadKeyError:
+                            print("JK. There's no corridor. We shouldn't even exist.")
+                            print("Ignoring frame", frame, "from source", source)
+                    print("%s %-10s<==%-10s  Harem RXs data packet" % (s_now(), self.desired_nickname, self.nicks_for_pk(source)), frame)
+                    the_right_corridor.q4me_via_harem.put(frame)
             except Empty:
                 pass
         print("%s %-10s   %-10s  Harem's main loop ends" % (s_now(), self.desired_nickname, ''))
@@ -430,6 +212,11 @@ class Harem(PrateRookery):
             corridor = Corridor(harem=self, pubkey=destination)
             print("%s %-10s<==%-10s  Opening a corridor" % (s_now(), self.desired_nickname, self.nicks_for_pk(destination)))
             self._corridors += [corridor]
+            if corridor.closed:
+                print("I JUST CREATED YOU. WHY ARE YOU CLOSED ALREADY?")
+        if corridor.closed:
+            print("WTF? The corridor is closed!")
+            print("This is so odd.")
         print("%s=== %-10s  We now have %s====╗" % (s_now(), self.desired_nickname, '1 corridor ' if len(self._corridors) == 1 else '%d corridors' % len(self._corridors)))
         corridornumber = 1
         for c in self.corridors:
@@ -440,12 +227,13 @@ class Harem(PrateRookery):
 
     def quit(self):
         print("%s %-10s   %-10s  Harem is quitting" % (s_now(), self.desired_nickname, ''))
-        if len(self.corridors) > 0:
-            corridors_to_be_deleted = self.corridors
-            for c in list(set(corridors_to_be_deleted)):  # I'm not sure why we do this.
-                c.close()
-        super().quit()
+        while len(self.corridors) > 0:
+            print("Closing corridor", self.corridors[0])
+            self.corridors[0].close()
+        print("%s %-10s   %-10s  Harem is joining" % (s_now(), self.desired_nickname, ''))
+        self.gotta_quit = True
         self.__my_corridorservicing_thread.join(timeout=ENDTHREAD_TIMEOUT)
+        super().quit()
         sleep(1)
         print("%s %-10s   %-10s  Harem has quit" % (s_now(), self.desired_nickname, ''))
 

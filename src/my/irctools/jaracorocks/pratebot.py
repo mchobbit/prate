@@ -76,22 +76,24 @@ class PrateBot(VanillaBot):
             .nickname .
         irc_server (str): The server, e.g. irc.dal.net
         port (int): The port# to use.
-        rsa_key (RSA.Key): The RSA key to use.
+        my_rsa_key (RSA.Key): The RSA key to use.
         startup_timeout (int): How long should we wait to connect?
         maximum_reconnections (int): Maximum number of permitted
             reconnection attempts.
         autoreconnect (bool): If True, autoreconnect should a
             disconnection occur. If False, don't.
-        strictly_nick (bool): If True, and the nickname is
-            rejected by the IRC server for being a dupe, abort.
-        autohandshake (bool): If True, start handshaking ASAP.
-            Otherwise, the programmer will have to initiate it.
+        strictly_nick (optional, bool): If False, and the nickname is
+            rejected by the IRC server for being a dupe, try a random
+            nickname instead. If that doesn't work, try another one etc.
+            If True, abort when the initially desired nickname is rejected.
+        autohandshake (optional, bool): If True, start handshaking in
+            the background and return immediately. If False, just return.
 
     Example:
-        $ my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
-        $ my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
-        $ bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_rsa_key1, 30, 2, True, True)
-        $ bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_rsa_key2, 30, 2, True, True)
+        $ my_my_rsa_key1 = RSA.generate(RSA_KEY_SIZE)
+        $ my_my_rsa_key2 = RSA.generate(RSA_KEY_SIZE)
+        $ bot1 = PrateBot(['#prate'], 'mac1', 'cinqcent.local', 6667, my_my_rsa_key1, 30, 2, True, True)
+        $ bot2 = PrateBot(['#prate'], 'mac2', 'cinqcent.local', 6667, my_my_rsa_key2, 30, 2, True, True)
         $ sleep(30)
         $ bot1.crypto_put("mac1", "WORD")
         $ bot2.crypto_get()
@@ -103,7 +105,9 @@ class PrateBot(VanillaBot):
 
     def __init__(self, channels, nickname, irc_server, port, rsa_key,
                  startup_timeout=STARTUP_TIMEOUT, maximum_reconnections=2,
-                 autoreconnect=True, strictly_nick=True, autohandshake=True):
+                 autoreconnect=True, strictly_nick=False, autohandshake=True):
+        assert(not hasattr(self, '__my_main_thread'))
+        assert(not hasattr(self, '__my_main_loop'))
         self.__strictly_nick = strictly_nick
         if rsa_key is None or type(rsa_key) is not RSA.RsaKey:
             raise ValueError(str(rsa_key) + " is a goofy value for an RSA key. Fix it.")
@@ -113,25 +117,43 @@ class PrateBot(VanillaBot):
                          port=port, startup_timeout=startup_timeout,
                          maximum_reconnections=maximum_reconnections,
                          autoreconnect=autoreconnect, strictly_nick=strictly_nick)
-        self.rsa_key = rsa_key
+        self.__my_rsa_key = rsa_key
+        self.__my_pubkey = rsa_key.public_key()
         self.__autohandshake = autohandshake
         self.__homies = HomiesDct()
         self.__crypto_rx_queue = Queue()
         self.__plain_rx_queue = Queue()
         self.__paused = False
-        assert(not hasattr(self, '__my_main_thread'))
-        assert(not hasattr(self, '__my_main_loop'))
+        if self.autohandshake:
+            print("%s %-26s: %-10s: Handshaking initiated." % (s_now(), self.irc_server, self.nickname))
+            try:
+                self.trigger_handshaking()
+            except IrcStillConnectingError:
+                print("%s %-26s: %-10s: I'm not ready for handshaking yet (I'm still connecting)." % (s_now(), self.irc_server, self.nickname))
+            except IrcIAmNotInTheChannelError:
+                print("%s %-26s: %-10s: I'm not ready for handshaking yet (I'm not in the channel yet)" % (s_now(), self.irc_server, self.nickname))
+            else:
+                print("%s %-26s: %-10s: Handshaking succeeded." % (s_now(), self.irc_server, self.nickname))
         self.__my_main_thread = Thread(target=self.__my_main_loop, daemon=True)
         self.__my_main_thread.start()
 
+    def is_handshook_with(self, pubkey):
+        """True if we've exchanged keys with this user. Else, False."""
+        return True if pubkey in self.homies_pubkeys else False
+        # try:
+        #     homie = [self.homies[h] for h in self.homies if self.homies[h].pubkey == pubkey][0]
+        #     return True if homie.ipaddr is not None else False
+        # except (KeyError, IndexError, AttributeError):
+        #     return False
+
     def __repr__(self):
         class_name = type(self).__name__
-        pk = self.rsa_key
+        pk = self._my_rsa_key
         if pk is not None:
             pk = squeeze_da_keez(pk)
             pk = "%s..." % (pk[:16])
         return f"{class_name}channels={self.channels!r}, nickname={self.nickname!r}, irc_server={self.irc_server!r}, \
-port={self.port!r}, rsa_key={pk!r}, startup_timeout={self.startup_timeout!r}, maximum_reconnections={self.maximum_reconnections!r}, \
+port={self.port!r}, my_rsa_key={pk!r}, startup_timeout={self.startup_timeout!r}, maximum_reconnections={self.maximum_reconnections!r}, \
 autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, autohandshake={self.autohandshake!r})"
 
     @property
@@ -139,7 +161,16 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
         return self.__autohandshake
 
     @property
-    def pubkeys(self):
+    def my_pubkey(self):
+        return self.__my_pubkey
+
+    @property
+    def _my_rsa_key(self):
+        return self.__my_rsa_key
+
+    @property
+    def homies_pubkeys(self):
+        """Homies' pubkeys"""
         retval = []
         for user in [u for u in self.users if u != self.nickname]:
             pubkey = self.homies[user].pubkey
@@ -152,39 +183,30 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
         return self.__strictly_nick
 
     @property
-    def ready(self):
+    def connected(self):
         try:
-            return super().ready
+            return super().connected
+        except AttributeError:
+            return False
+
+    @property
+    def joined(self):
+        try:
+            return super().joined
         except AttributeError:
             return False
 
     def __my_main_loop(self):
         """The main loop of this PrateBot: login, join, handshake (maybe), service messages, and (eventually) signout&quit."""
         print("%s %-26s: %-10s: PrateBot is starting." % (s_now(), self.irc_server, self.nickname))
-        while not self.ready and not self.should_we_quit:
-            sleep(A_TICK)
-        sleep(3)
-        while True:
-            if self.should_we_quit:
-                pass  # print("%s %-26s: %-10s: Quitting before we could finish handshakings." % (s_now(), self.irc_server, self.nickname))
-            elif self.paused:
-                sleep(A_TICK)
-            elif not self.autohandshake:
-                break
-            else:
-                try:
-                    self.trigger_handshaking()
-                except IrcStillConnectingError:
-                    print("%s %-26s: %-10s: I'm not ready for handshaking yet (I'm still connecting)." % (s_now(), self.irc_server, self.nickname))
-                except IrcIAmNotInTheChannelError:
-                    print("%s %-26s: %-10s: I'm not ready for handshaking yet (I'm not in the channel yet)" % (s_now(), self.irc_server, self.nickname))
-                else:
-                    print("%s %-26s: %-10s: Handshaking initiated." % (s_now(), self.irc_server, self.nickname))
-                    break
         while not self.should_we_quit:
             sleep(A_TICK)
             if self.paused:
-                pass
+                print("%s %-26s: %-10s: Paused." % (s_now(), self.irc_server, self.nickname))
+                sleep(3)
+            elif not (self.connected_and_joined):
+                print("%s %-26s: %-10s: Waiting for connection & joining to happen." % (s_now(), self.irc_server, self.nickname))
+                sleep(3)
             else:
                 try:
                     self.read_messages_from_users()
@@ -204,7 +226,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
             else:
                 if msg.startswith(_REQUEST_PUBLICKEY_):
                     print("%s %-26s: %-10s: request for my pubkey    from %s" % (s_now(), self.irc_server, self.nickname, sender))
-                    super().put(sender, "%s%s" % (_TRANSMIT_PUBLICKEY_, squeeze_da_keez(self.rsa_key.public_key())))
+                    super().put(sender, "%s%s" % (_TRANSMIT_PUBLICKEY_, squeeze_da_keez(self._my_rsa_key.public_key())))
                 elif msg.startswith(_TRANSMIT_PUBLICKEY_):
                     print("%s %-26s: %-10s: reciprocate my pubkey    to   %s" % (s_now(), self.irc_server, self.nickname, sender))
                     self.homies[sender].irc_server = self.irc_server  # just in case a Harem needs it
@@ -214,11 +236,11 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
                     print("%s %-26s: %-10s: request for my fernetkey from %s" % (s_now(), self.irc_server, self.nickname, sender))
                     if self.homies[sender].pubkey is None:
                         print("%s %-26s: %-10s: I'm being asked for my fernet key, but I don't have %s's public key yet. I'll ask for it now." % (s_now(), self.irc_server, self.nickname, sender))
-                        super().put(sender, "%s%s" % (_REQUEST_PUBLICKEY_, squeeze_da_keez(self.rsa_key.public_key())))
+                        super().put(sender, "%s%s" % (_REQUEST_PUBLICKEY_, squeeze_da_keez(self._my_rsa_key.public_key())))
                     else:
 #                        print("%s %-26s: %-10s: I'm about to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, sender))
                         t1 = datetime.datetime.now()
-                        dc = rsa_decrypt(base64.b64decode(msg[len(_REQUEST__FERNETKEY_):]), self.rsa_key)
+                        dc = rsa_decrypt(base64.b64decode(msg[len(_REQUEST__FERNETKEY_):]), self._my_rsa_key)
                         t2 = datetime.datetime.now()
                         if (t2 - t1).seconds > 1:
                             print("%s %-26s: %-10s: it took %d seconds to decrypt the fernet key that %s sent me." % (s_now(), self.irc_server, self.nickname, (t2 - t1).seconds, sender))
@@ -229,7 +251,7 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
 #                        print("%s %-26s: %-10s: I have encrypted and sent my fernet key to %s." % (s_now(), self.irc_server, self.nickname, sender))
                 elif msg.startswith(_TRANSMIT_FERNETKEY_):
                     print("%s %-26s: %-10s: reciprocate my fernetkey to   %s" % (s_now(), self.irc_server, self.nickname, sender))
-                    dc = rsa_decrypt(base64.b64decode(msg[len(_TRANSMIT_FERNETKEY_):]), self.rsa_key)
+                    dc = rsa_decrypt(base64.b64decode(msg[len(_TRANSMIT_FERNETKEY_):]), self._my_rsa_key)
                     if self.homies[sender].remotely_supplied_fernetkey != dc:
                         print("%s %-26s: %-10s: saving his new fernetkey from %s" % (s_now(), self.irc_server, self.nickname, sender))
                         self.homies[sender].remotely_supplied_fernetkey = dc
@@ -284,11 +306,15 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
 
     def trigger_handshaking(self, user=None):
         """Initiate handshaking for all users, *or* just the specified user."""
+        if user:
+            print("%s %-26s: %-10s: TRIGGERING HANDSHAKING (with just %s)" % (s_now(), self.irc_server, self.nickname, user))
+        else:
+            print("%s %-26s: %-10s: TRIGGERING HANDSHAKING WITH EVERYONE" % (s_now(), self.irc_server, self.nickname))
         for _ in range(0, STARTUP_TIMEOUT):
-            if self.ready:
+            if self.connected_and_joined:
                 break
             sleep(1)
-        if not self.ready:
+        if not (self.connected_and_joined):
             raise IrcStillConnectingError("I cannot trigger handshaking with other users: I'm not even online/joinedroom yet.")
         elif user is None:
             for user in [u for u in self.users if u != self.nickname]:
@@ -412,10 +438,12 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
             super().put(user, outgoing_str)
 
     def quit(self, yes_even_the_reactor_thread=False, timeout=ENDTHREAD_TIMEOUT):
+        print("quit(irc=%s, nick=%s) is starting" % (self.irc_server, self.nickname))
         super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread, timeout=timeout)
         if hasattr(self, '__my_main_thread'):  # Is someone deleting it?
             print("HUZZAH! WE CAN CLOSE THE MAIN THREAD.")
             self.__my_main_thread.join(timeout=timeout)
+        print("quit(irc=%s, nick=%s) is leaving" % (self.irc_server, self.nickname))
 
 
 if __name__ == "__main__":
@@ -432,9 +460,9 @@ if __name__ == "__main__":
         my_channel = sys.argv[3]
         desired_nickname = sys.argv[4]
 
-    my_rsa_key = RSA.generate(RSA_KEY_SIZE)
-    my_bot = PrateBot([my_channel], desired_nickname, my_irc_server, my_port, my_rsa_key)
-    while not my_bot.ready:
+    my_my_rsa_key = RSA.generate(RSA_KEY_SIZE)
+    my_bot = PrateBot([my_channel], desired_nickname, my_irc_server, my_port, my_my_rsa_key)
+    while not my_bot.connected_and_joined:
         sleep(1)
     print("Hi there.")
 
