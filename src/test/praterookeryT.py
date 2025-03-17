@@ -196,8 +196,8 @@ class TestRookeryAndSimplePrateBot(unittest.TestCase):
         sleep(30)
         self.assertEqual(alice_nick, alice_rookery.desired_nickname)
         self.assertTrue(alice_nick in bob_bot.homies)
-        self.assertEqual(bob_bot._my_rsa_key.public_key(), bob_rsa_key.public_key())
-        self.assertEqual(bob_bot._my_rsa_key.public_key(), bob_bot.my_pubkey)
+        self.assertEqual(bob_bot._my_rsa_key.public_key(), bob_rsa_key.public_key())  # pylint: disable=protected-access
+        self.assertEqual(bob_bot._my_rsa_key.public_key(), bob_bot.my_pubkey)  # pylint: disable=protected-access
         self.assertEqual(bob_bot.homies[alice_nick].pubkey, alice_rsa_key.public_key())
         self.assertEqual(alice_rookery.bots[list(alice_rookery.bots)[0]].homies[bob_bot.nickname].pubkey, bob_rsa_key.public_key())
         alice_rookery.quit()

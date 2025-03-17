@@ -14,9 +14,9 @@ from queue import Empty
 from my.stringtools import generate_random_alphanumeric_string
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
 from random import randint
-from my.classes.exceptions import RookeryCorridorAlreadyClosedError, RookeryCorridorNoTrueHomiesError, RookeryCorridorTimeoutError
-from my.globals.poetry import HAMLET, BORN_TO_DIE_IN_BYTES, CICERO
+from my.classes.exceptions import RookeryCorridorNoTrueHomiesError, RookeryCorridorTimeoutError, RookeryCorridorAlreadyClosedError
 from my.irctools.jaracorocks.harem import Harem
+from my.globals.poetry import BORN_TO_DIE_IN_BYTES, CICERO
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
@@ -129,8 +129,6 @@ class TestCorridorsZero(unittest.TestCase):
 
     def testSlightlyOddValues(self):
         self.__run_super_duper_simple_test(noof_servers=5, dupes=5, frame_size=256, datalen_lst=(0, 0, 1, 1, 0, 1))
-
-'''
 
     def testSDSOwithTimeout180(self):
         self.__run_super_duper_simple_test(noof_servers=5, dupes=0, frame_size=32, datalen_lst=(8, 16, 31, 32, 33), timeout=180)
@@ -371,7 +369,7 @@ class TestCorridorsBigFiles(unittest.TestCase):
 
     def testPiHolderStl(self):
         self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/pi_holder.stl")
-'''
+
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'TestHaremTwo.testSimpleTest']

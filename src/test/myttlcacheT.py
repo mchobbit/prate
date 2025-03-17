@@ -10,8 +10,7 @@ Test MyTTLCache
 import unittest
 from my.classes.myttlcache import MyTTLCache
 from time import sleep
-from random import randint, choice
-import string
+from random import randint
 from my.stringtools import generate_random_alphanumeric_string
 
 
@@ -32,12 +31,12 @@ class Test(unittest.TestCase):
         self.assertRaises(ValueError, MyTTLCache, 'Hello')
 
     def testDataEnduresForNSeconds(self):
-        for attempts in range(0, 2):
+        for _attempts in range(0, 2):
             for timedelay in (1, 2, 3, 1):
                 cache = MyTTLCache(timedelay)
                 dct = {}
                 noof_items = randint(1, 100)
-                for itemno in range(0, noof_items):
+                for _itemno in range(0, noof_items):
                     if 0 == randint(0, 1):
                         key = randint(-1000, 1000)
                     else:

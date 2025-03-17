@@ -26,13 +26,7 @@ Example:
     etc. etc.
 """
 
-from threading import Condition, Lock, Thread
-from time import sleep
-import copy
-import datetime
-import random
-import string
-import time
+from threading import Condition, Lock
 
 
 def singleton(cls):

@@ -8,8 +8,6 @@ Appropriated from here — https://github.com/Theelx/pybase122/blob/master/READM
 
 """
 
-import base64  # for converting b64 strings to b122
-
 
 class MyClass(object):
     '''
@@ -27,7 +25,7 @@ kIllegals = [chr(0), chr(10), chr(13), chr(34), chr(38), chr(92)]
 kIllegalsSet = {chr(0), chr(10), chr(13), chr(34), chr(38), chr(92)}
 
 
-def b122encode(rawData, warnings=True):
+def b122encode(rawData, warnings=True):  # pylint: disable=unused-argument
     if isinstance(rawData, str):
         rawData = bytearray(rawData, "UTF-8")
     else:
@@ -80,7 +78,7 @@ def b122encode(rawData, warnings=True):
     return outData
 
 
-def b122decode(strData, warnings=True):
+def b122decode(strData, warnings=True):  # pylint: disable=unused-argument
     # null, newline, carriage return, double quote, ampersand, backslash
     decoded = []
     curByte = bitOfByte = 0

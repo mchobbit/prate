@@ -10,15 +10,10 @@ Created on Feb 9, 2025
 import unittest
 from Crypto.PublicKey import RSA
 from time import sleep
-from queue import Empty
 from my.stringtools import generate_random_alphanumeric_string
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_NICKNAME_LENGTH, MAX_PRIVMSG_LENGTH, MAX_CRYPTO_MSG_LENGTH, ALL_REALWORLD_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE
 from random import randint
-import datetime
-import socket
 from my.irctools.jaracorocks.harem import Harem
-from my.classes.exceptions import RookeryCorridorAlreadyClosedError
-from my.globals.poetry import HAMLET, BORN_TO_DIE_IN_BYTES, CICERO
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)

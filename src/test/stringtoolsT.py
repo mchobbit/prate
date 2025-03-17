@@ -84,7 +84,7 @@ class Test(unittest.TestCase):
 
     def testBytesStegger(self):
         key = paramiko.RSAKey.generate(4096)
-        irc_nickname = generate_irc_handle(salad_txt="Few things are more distressing to a well-regulated mind than to see a boy who ought to know better disporting himself at improper moments.")
+        # irc_nickname = generate_irc_handle(salad_txt="Few things are more distressing to a well-regulated mind than to see a boy who ought to know better disporting himself at improper moments.")
         # word_salad_str = '''Do you hear the people sing? Singing a song of angry men? It is the music of a people Who will not be slaves again! When the beating of your heart Echoes the beating of the drums There is a life about to start When tomorrow comes!'''
         # ws_generator = lambda: word_salad_str
         plaintext = key.asbytes()
