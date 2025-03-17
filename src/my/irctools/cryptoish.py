@@ -26,12 +26,10 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import base64
 from my.globals.poetry import CICERO
-# from my.classes.readwritelock import ReadWriteLock
 import hashlib
 from my.classes.exceptions import PublicKeyBadKeyError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
 from cryptography.fernet import Fernet, InvalidToken
 from threading import Lock
-# from my.stringtools import s_now
 
 
 def sha1(nickname):
@@ -143,7 +141,7 @@ def rsa_decrypt(cipher_text:bytes, rsakey) -> bytes:
     """
     cipher_rsa = PKCS1_OAEP.new(rsakey)
     plain_text = cipher_rsa.decrypt(cipher_text)
-    return plain_text  # .decode()  # print(f"Decrypted: {plain_text.decode()}")
+    return plain_text
 
 
 def get_random_Cicero_line() -> str:

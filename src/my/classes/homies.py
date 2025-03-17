@@ -31,7 +31,7 @@ Todo:
 from Crypto.PublicKey import RSA
 from cryptography.fernet import Fernet
 from my.classes.readwritelock import ReadWriteLock
-from my.classes.exceptions import IrcBadNicknameError, PublicKeyBadKeyError, IrcNicknameTooLongError
+from my.classes.exceptions import IrcBadNicknameError, IrcNicknameTooLongError
 from my.globals import MAX_NICKNAME_LENGTH
 from my.irctools.cryptoish import squeeze_da_keez
 

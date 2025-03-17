@@ -233,8 +233,7 @@ class VanillaBot:
                         lst += [nickname]
             except (KeyError, AttributeError) as e:
                 if ch not in self._client.channels:
-                    print("I (%s on %s) am not in %s. Therefore, I cannot obtain a list of its users." % (self.nickname, self.irc_server, ch))
-                    # raise IrcIAmNotInTheChannelError("I am not in %s. Therefore, I cannot obtain a list of its users." % ch) from e
+                    print("I (%s on %s) am not in %s. Therefore, I cannot obtain a list of its users." % (self.nickname, self.irc_server, ch))  # raise IrcIAmNotInTheChannelError("I am not in %s. Therefore, I cannot obtain a list of its users." % ch) from e
                 else:
                     raise e
         return lst
@@ -246,8 +245,8 @@ class VanillaBot:
         while self._client and not self.should_we_quit:
             try:
                 self._client.start()
-            except (ValueError, OSError, AttributeError):  # print("Client is stopping, I think:", e)
-                sleep(A_TICK)
+            except (ValueError, OSError, AttributeError):
+                sleep(A_TICK)  # print("Client is stopping, I think:", e)
 
     def _main_loop(self):
         """The main background loop. It maintains our connection with the IRC server."""

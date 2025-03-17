@@ -22,19 +22,14 @@ Example:
 """
 
 from threading import Thread
-from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError, RookeryCorridorNoTrueHomiesError
+from my.classes.exceptions import RookeryCorridorAlreadyClosedError
 from time import sleep
-from my.irctools.cryptoish import squeeze_da_keez, sha1, bytes_64bit_cksum
+from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
 from queue import Empty, Queue
-from my.globals import A_TICK, SENSIBLE_NOOF_RECONNECTIONS, STARTUP_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, ENDTHREAD_TIMEOUT, RSA_KEY_SIZE  # ALL_REALWORLD_IRC_NETWORK_NAMES
-from random import randint, choice, shuffle
-from my.stringtools import s_now, generate_random_alphanumeric_string
+from random import randint, shuffle
+from my.stringtools import s_now
 from my.classes.readwritelock import ReadWriteLock
-from my.irctools.jaracorocks.praterookery import PrateRookery
 import datetime
-import hashlib
-import base64
 
 
 def receive_data_from_corridor(corridor, timeout=5):
@@ -72,8 +67,8 @@ class _Corridor:
     def __init__(self, harem, pubkey, uid):
         self.q4me_via_harem = Queue()  # Used by HAREM.
         self.my_get_queue = Queue()
-        self.__harem = harem  # FIXME: make threadsafe
-        self.__uid = uid  # # FIXME: make threadsafe
+        self.__harem = harem  # FIXME: make harem AND uid threadsafe
+        self.__uid = uid
         self.__streaming = False  # If True, feed incoming data to buffer as it comes in; don't wait for the final packet!
         self.__streaming_lock = ReadWriteLock()
         self.__pubkey = pubkey  # public key of other end
@@ -348,11 +343,7 @@ class _Corridor:
         if self.closed:
             raise RookeryCorridorAlreadyClosedError("%s-to-%s corridor was already closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
         self.closed = True
-        print("Removing")
-        print("BEFORE:", self.harem.corridors)
         self.harem.corridors.remove(self)
-        print("AFTER:", self.harem.corridors)
-        pass
 
     @property
     def irc_servers(self):
@@ -363,8 +354,8 @@ class _Corridor:
 _corridor_dct = {}
 
 
-def Corridor(harem, pubkey):
-    global _corridor_dct
+def Corridor(harem, pubkey):  # TODO: make into a class or singleton or something, so that _corridor_dct{} isn't a global var.
+    global _corridor_dct  # pylint: disable=global-variable-not-assigned
     key = squeeze_da_keez(pubkey)
     if key in _corridor_dct and _corridor_dct[key].closed:
         print("A closed corridor was left in the cache. I'm removing it now.")

@@ -42,17 +42,15 @@ Example:
 
 from threading import Thread, Lock
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer, IrcNicknameTooLongError, PublicKeyUnknownError, \
-    IrcPrivateMessageTooLongError, RookeryCorridorNotOpenYetError, RookeryCorridorAlreadyClosedError, EncryptionHandshakeTimeoutError, RookeryCorridorTimeoutError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez  # , bytes_64bit_cksum
 from queue import Queue, Empty
 from my.irctools.jaracorocks.pratebot import PrateBot
-import datetime
 from random import randint, choice
 from my.stringtools import s_now, generate_random_alphanumeric_string, MAX_NICKNAME_LENGTH
 from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
-# from my.classes.readwritelock import ReadWriteLock
+from my.classes.exceptions import IrcPrivateMessageTooLongError, PublicKeyUnknownError, RookeryCorridorNotOpenYetError, IrcInitialConnectionTimeoutError, \
+    IrcFingerprintMismatchCausedByServer, EncryptionHandshakeTimeoutError, IrcNicknameTooLongError
 
 
 class PrateRookery:
@@ -330,22 +328,12 @@ class PrateRookery:
         if not self.connected_and_joined:
             these_irc_servers_failed_to_handshake = [self.bots[k].irc_server for k in self.bots]
             raise EncryptionHandshakeTimeoutError("These IRC servers failed to handshake: %s" % ', '.join(these_irc_servers_failed_to_handshake))
-        t = datetime.datetime.now()
-        # my_threads = []
         for k in self.bots:
             bot = self.bots[k]
             if k == self.bots[k].nickname:  # I don't need to shake hands with myself :)
                 pass  # print("%s %-26s: %-10s: no need to trigger handshaking w/ %s" % (s_now(), bot.irc_server, bot.nickname, k))
             else:
                 bot.trigger_handshaking()
-        #     my_threads += [Thread(target=self.bots[k].trigger_handshaking, args=[], daemon=True)]  # Timeout applies
-        # while [self.bots[k] for k in self.bots if None in [self.bots[k].homies[h].ipaddr for h in self.bots[k].homies]] is not [] \
-        # and (datetime.datetime.now() - t).seconds < self.startup_timeout:
-        #     sleep(1)
-        # if (datetime.datetime.now() - t).seconds >= self.startup_timeout:
-        #     raise RookeryCorridorTimeoutError("Failed to handshake with %s" % ','.join([self.bots[k] for k in self.bots if None in [self.bots[k].homies[h].ipaddr for h in self.bots[k].homies]]))
-        # for thr in my_threads:
-        #     thr.join(timeout=ENDTHREAD_TIMEOUT)
 
     @property
     def list_of_all_irc_servers(self):

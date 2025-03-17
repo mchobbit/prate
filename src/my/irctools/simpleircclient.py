@@ -23,29 +23,6 @@ print("b85    : %d chars" % len(b85slim))
 print("b64    : %d chars" % len(b64slim))
 """
 
-# import requests
-# import types
-# import irc.bot
-# import sys
-# import queue
-#
-# import datetime
-# from time import sleep
-# from my.stringtools import generate_irc_handle, get_word_salad, get_bits_to_be_encoded, encode_via_steg, decode_via_steg, strict_encode_via_steg, multiline_encode_via_steg
-# from random import randint, choice, shuffle
-# from queue import Empty
-# from threading import Thread
-#
-# from Crypto.PublicKey import RSA
-# from Crypto.Cipher import PKCS1_OAEP
-# from cryptography.fernet import Fernet, InvalidToken
-# import base64
-# from dns.rdataclass import NONE
-# from my.globals import RPL_WHOISUSER, RPL_ENDOFWHOIS, WHOIS_ERRORS_LST, WHOIS_RESPCODE_LST
-# from my.globals.poetry import CICERO
-# from my.classes.readwritelock import ReadWriteLock
-# from my.irctools.jaracorocks import SingleServerIRCBotWithWhoisSupport
-
 
 def superduper_simple_irc_client():
     import socket
@@ -77,10 +54,3 @@ def superduper_simple_irc_client():
             resp = data.strip(ping)
             client.send(pong + resp)
             print(pong + resp)
-
-# if __name__ == "__main__":
-#
-#     ircbot = MyGroovyTestBot(channel="#prate", nickname='clyde', realname='clyde', server='cinqcent.local', port=6667)
-#     add_whois_support_to_ircbot(ircbot)
-#     ircbot.connect("cinqcent.local", 6667, "clyde")
-#     ircbot.start()

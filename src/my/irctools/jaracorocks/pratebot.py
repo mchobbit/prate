@@ -26,7 +26,7 @@ Example:
 import sys
 from threading import Thread
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, \
+from my.classes.exceptions import IrcIAmNotInTheChannelError, IrcStillConnectingError, FernetKeyIsInvalidError, FernetKeyIsUnknownError, \
                 IrcNicknameTooLongError, IrcBadNicknameError, IrcYouCantUseABotAfterQuittingItError, IrcPrivateMessageTooLongError, PublicKeyUnknownError
 
 from time import sleep
