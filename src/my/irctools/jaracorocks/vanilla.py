@@ -123,13 +123,11 @@ class VanillaBot:
         self.__my_client_start_thread.start()
         self.__my_main_thread.start()
         self.__quitted = False
-        starttime = datetime.datetime.now()
-        # Make initial attempt to join IRC server
+        starttime = datetime.datetime.now()  # Make initial attempt to join IRC server
         while not self.should_we_quit and (not self._client or self._client.err or not self._client.connected_and_joined) \
                                         and (datetime.datetime.now() - starttime).seconds < self.__startup_timeout:
             sleep(A_TICK)
-        if (datetime.datetime.now() - starttime).seconds >= self.__startup_timeout:
-#        if not self._client.connected_and_joined:
+        if (datetime.datetime.now() - starttime).seconds >= self.__startup_timeout:  # if not self._client.connected_and_joined:
             _ = [sleep(A_TICK) for __ in range(0, 50) if self.err is None]
             if self._client is not None and self._client.err is not None:
                 self.quit()
@@ -248,8 +246,7 @@ class VanillaBot:
         while self._client and not self.should_we_quit:
             try:
                 self._client.start()
-            except (ValueError, OSError, AttributeError):  # as e:
-#                print("Client is stopping, I think:", e)
+            except (ValueError, OSError, AttributeError):  # print("Client is stopping, I think:", e)
                 sleep(A_TICK)
 
     def _main_loop(self):
@@ -257,20 +254,17 @@ class VanillaBot:
         have_we_ever_successfully_connected = False
         my_nick = self.initial_nickname
         while not self.should_we_quit and (self.maximum_reconnections is None or self.noof_reconnections < self.maximum_reconnections):
-            # if randint(0, 10) == 0:
-            #     print("%s is still trying to connect" % self.irc_server)
             sleep(A_TICK)
             if self.should_we_quit is False and self._client is None and self.autoreconnect is True:
                 self.noof_reconnections += 1
                 try:
-                    self.reconnect_server_connection(my_nick)  # If its fingerprint is wonky, quit&reconnect.
-#                    print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, my_nick))
+                    self.reconnect_server_connection(my_nick)  # print("**** CONNECTED TO %s AS %s ****" % (self.irc_server, my_nick))
                     self.noof_reconnections = 0
                     have_we_ever_successfully_connected = True
                 except IrcInitialConnectionTimeoutError:
-                    pass  # print("Timeout error. Retrying.")
-                except IrcFingerprintMismatchCausedByServer:
-                    pass  # print("The IRC server %s changed my nickname from %s to %s, to prevent a collision." % (self.irc_server, my_nick, self.nickname))
+                    pass
+                except IrcFingerprintMismatchCausedByServer:  # print("The IRC server %s changed my nickname from %s to %s, to prevent a collision." % (self.irc_server, my_nick, self.nickname))
+                    pass
             # channels_weve_dropped_out_of = [ch for ch in self.channels if ch not in self._client.channels]
             # if self._client.connected and channels_weve_dropped_out_of != []:
             #     print("WARNING -- we dropped out of", channels_weve_dropped_out_of)
@@ -286,7 +280,7 @@ class VanillaBot:
                     self.err = self._client.err
                     self.should_we_quit = True
                 else:
-                    my_nick = self._client.nickname  # print("*** RECONNECTED AS %s" % self._client.nickname)
+                    my_nick = self._client.nickname
         if self.maximum_reconnections is not None and self.noof_reconnections >= self.maximum_reconnections:
             if self.err is None:
                 if have_we_ever_successfully_connected:
@@ -471,7 +465,6 @@ class VanillaBot:
 
     def quit(self, yes_even_the_reactor_thread=False, timeout=ENDTHREAD_TIMEOUT):
         """Quit this bot."""
-#        print("vanilla quit (irc=%s) is starting" % self.irc_server)
         if self.quitted:
             raise IrcAlreadyDisconnectedError("Trying to quit %s twice. This should be unnecessary." % self.irc_server)
         self.autoreconnect = False
@@ -485,5 +478,4 @@ class VanillaBot:
         if yes_even_the_reactor_thread:
             self.__my_client_start_thread.join(timeout)  # jaraco
         self.__quitted = True
-#        print("vanilla quit (irc=%s) is leaving" % self.irc_server)
 
