@@ -212,9 +212,9 @@ class Harem(PrateRookery):
             corridor = Corridor(harem=self, pubkey=destination)
             print("%s %-10s<==%-10s  Opening a corridor" % (s_now(), self.desired_nickname, self.nicks_for_pk(destination)))
             self._corridors += [corridor]
-            if corridor.closed:
+            if corridor.is_closed:
                 print("I JUST CREATED YOU. WHY ARE YOU CLOSED ALREADY?")
-        if corridor.closed:
+        if corridor.is_closed:
             print("WTF? The corridor is closed!")
             print("This is so odd.")
         print("%s=== %-10s  We now have %s====╗" % (s_now(), self.desired_nickname, '1 corridor ' if len(self._corridors) == 1 else '%d corridors' % len(self._corridors)))

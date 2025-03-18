@@ -73,8 +73,8 @@ class _Corridor:
         self.__streaming_lock = ReadWriteLock()
         self.__pubkey = pubkey  # public key of other end
         self.__pubkey_lock = ReadWriteLock()
-        self.__closed = False
-        self.__closed_lock = ReadWriteLock()
+        self.__is_closed = False
+        self.__is_closed_lock = ReadWriteLock()
         self.__frames_dct = {}
         self.__frames_dct_lock = ReadWriteLock()
         self.__frameno = 0
@@ -123,24 +123,24 @@ class _Corridor:
             self.__streaming_lock.release_write()
 
     @property
-    def closed(self):
-        self.__closed_lock.acquire_read()
+    def is_closed(self):
+        self.__is_closed_lock.acquire_read()
         try:
-            retval = self.__closed
+            retval = self.__is_closed
             if retval is False and self.harem.gotta_quit is True:
                 print("WARNING --- closed should be true, as harem is quitting. Returning True.")
                 retval = True
             return retval
         finally:
-            self.__closed_lock.release_read()
+            self.__is_closed_lock.release_read()
 
-    @closed.setter
-    def closed(self, value):
-        self.__closed_lock.acquire_write()
+    @is_closed.setter
+    def is_closed(self, value):
+        self.__is_closed_lock.acquire_write()
         try:
-            self.__closed = value
+            self.__is_closed = value
         finally:
-            self.__closed_lock.release_write()
+            self.__is_closed_lock.release_write()
 
     @property
     def dupes(self):
@@ -242,7 +242,7 @@ class _Corridor:
         if nicks4pk == '':
             nicks4pk = '(zombie)'  # print("WARNING -- cannot find any nicknames for this public key. This suggests that it's a leftover from a previous corridor.")
         print("%s %-10s<==%-10s  Framing loop is beginning" % (s_now(), self.harem.desired_nickname, nicks4pk))
-        while not self.closed:
+        while not self.is_closed:
             if self.q4me_via_harem.empty():
                 sleep(1)
                 if randint(0, 10) == 0:
@@ -302,7 +302,7 @@ class _Corridor:
         return self.__getSUB(nowait=True)
 
     def __getSUB(self, block=True, timeout=None, nowait=False):
-        if self.closed:
+        if self.is_closed:
             raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
         retval = self.my_get_queue.get_nowait() if nowait else self.my_get_queue.get(block=block, timeout=timeout)
 #        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
@@ -320,7 +320,7 @@ class _Corridor:
         noof_ircsvrs = len(ircsvrs)
         shuffle(ircsvrs)
         block_len = 999999
-        while block_len > 0 and not self.closed:
+        while block_len > 0 and not self.is_closed:
             block_len = min(self.frame_size, length_of_all_data - indexpos)
             this_block = datablock[indexpos:(indexpos + block_len)]
             subframe = bytes(self.uid.to_bytes(4, 'little') + self._frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
@@ -334,15 +334,15 @@ class _Corridor:
 
     def _put(self, datablock, irc_server=None):
         """By hook or by crook (w/ signaling & perhaps randomly picking from harem bots), send packet."""
-        if self.closed:
+        if self.is_closed:
             raise RookeryCorridorAlreadyClosedError("You cannot use %s-to-%s corridor: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
         self.harem.put(self.pubkey, datablock, irc_server, yes_really=True)
 
     def close(self):
         print("%s %-10s<==%-10s  Closing a corridor" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        if self.closed:
+        if self.is_closed:
             raise RookeryCorridorAlreadyClosedError("%s-to-%s corridor was already closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)))
-        self.closed = True
+        self.is_closed = True
         self.harem.corridors.remove(self)
 
     @property
