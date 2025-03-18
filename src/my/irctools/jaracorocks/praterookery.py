@@ -191,10 +191,10 @@ class PrateRookery:
         return True if False not in [self.bots[k].connected_and_joined for k in self.bots] else False
 
     def __my_main_loop(self):
-        print("%s %-10s   %-10s  Rookery main loop starts" % (s_now(), self.desired_nickname, ''))
+        print("%s %-10s   %-10s  Rookery main loop begins" % (s_now(), self.desired_nickname, ''))
         msgthr = Thread(target=self.keep_piping_the_privmsgs_out_of_bots_and_into_our_queue, daemon=True)
         msgthr.start()
-        print("%s %-10s   %-10s  Rookery main loop begins" % (s_now(), self.desired_nickname, ''))
+        print("%s %-10s   %-10s  Rookery main loop bibbety bobbety boop" % (s_now(), self.desired_nickname, ''))
         while not self.gotta_quit:
             sleep(A_TICK)
             if not self.paused:
