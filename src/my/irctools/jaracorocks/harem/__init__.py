@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Harem class: a rookery with corridors.
+"""Harem class: a rookery with simpipes.
 
 Created on Jan 30, 2025
 
@@ -29,7 +29,7 @@ Example:
 
 from threading import Thread
 from Crypto.PublicKey import RSA
-from my.classes.exceptions import PublicKeyBadKeyError, RookeryCorridorAlreadyClosedError, PublicKeyUnknownError, RookeryCorridorNoTrueHomiesError
+from my.classes.exceptions import PublicKeyBadKeyError, RookerySimpipeAlreadyClosedError, PublicKeyUnknownError, RookerySimpipeNoTrueHomiesError
 from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez, sha1, bytes_64bit_cksum
 from queue import Empty, Queue
@@ -41,7 +41,7 @@ from my.irctools.jaracorocks.praterookery import PrateRookery
 import datetime
 import hashlib
 import base64
-from my.irctools.jaracorocks.harem.corridor import Corridor
+from my.irctools.jaracorocks.harem.simpipe import Simpipe
 
 
 def wait_for_harem_to_stabilize(harem):
@@ -58,7 +58,7 @@ class Harem(PrateRookery):
     numbering, and packet retransmission options, to ensure that data is sent
     and received. ... At least, it WILL do that. It doesn't do it yet.
 
-    It uses the Corridor class for the fancy stuff.
+    It uses the Simpipe class for the fancy stuff.
 
     Args:
 
@@ -85,10 +85,10 @@ class Harem(PrateRookery):
         $ bob_harem = Harem(['#prate'], 'alice123', ['cinqcent.local','rpi0irc1.local'], alice_bob_key, autohandshake=False)
         $ alice_harem.trigger_handshake()
         $ bob_harem.trigger_handshake()
-        $ alice_corridor = alice_harem.open(bob_rsa_key.public_key())
-        $ bob_corridor = bob_harem.open(alice_rsa_key.public_key())
-        $ alice_corridor.put(bob_rsa_key.public_key(), b"MARCO!")
-        $ assert(bob_corridor.get() == (bob_rsa_key.public_key(), b"MARCO!")
+        $ alice_simpipe = alice_harem.open(bob_rsa_key.public_key())
+        $ bob_simpipe = bob_harem.open(alice_rsa_key.public_key())
+        $ alice_simpipe.put(bob_rsa_key.public_key(), b"MARCO!")
+        $ assert(bob_simpipe.get() == (bob_rsa_key.public_key(), b"MARCO!")
     """
 
     def __init__(self, channels, desired_nickname, list_of_all_irc_servers, rsa_key,
@@ -96,12 +96,12 @@ class Harem(PrateRookery):
                  autohandshake=True):
         super().__init__(channels, desired_nickname, list_of_all_irc_servers, rsa_key,
                          startup_timeout, maximum_reconnections, autohandshake)
-        self.__corridors = []
-        self.__corridors_lock = ReadWriteLock()
-        assert(not hasattr(self, '__my_corridorservicing_thread'))
-        assert(not hasattr(self, '__my_corridorservicing_loop'))
-        self.__my_corridorservicing_thread = Thread(target=self.__my_corridorservicing_loop, daemon=True)
-        self.__my_corridorservicing_thread.start()
+        self.__simpipes = []
+        self.__simpipes_lock = ReadWriteLock()
+        assert(not hasattr(self, '__my_simpipeservicing_thread'))
+        assert(not hasattr(self, '__my_simpipeservicing_loop'))
+        self.__my_simpipeservicing_thread = Thread(target=self.__my_simpipeservicing_loop, daemon=True)
+        self.__my_simpipeservicing_thread.start()
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -110,65 +110,77 @@ class Harem(PrateRookery):
             pk = squeeze_da_keez(pk)
             pk = "%s..." % (pk[:16])
         irc_servers_description_str = "1 item" if len(self.list_of_all_irc_servers) == 1 else "%d items" % len(self.list_of_all_irc_servers)
-        return f"{class_name}(channels={self.channels!r}, desired_nickname={self.desired_nickname!r}, rsa_key={pk!r}, list_of_all_irc_servers={irc_servers_description_str!r}, corridors={self.corridors!r})"
+        return f"{class_name}(channels={self.channels!r}, desired_nickname={self.desired_nickname!r}, rsa_key={pk!r}, list_of_all_irc_servers={irc_servers_description_str!r}, simpipes={self.simpipes!r})"
+
+    def obtain_simpipe(self, pubkey, uid):
+        """Generate a Simpipe instance... or at least spit out an existing instance."""
+        matching_simpipes = [r for r in self.simpipes if r.pubkey == pubkey]
+        if matching_simpipes == []:
+            print("%s [#%-5d] src %-10s dst %-10s  %s is opening a new simpipe for talking to %s" % (s_now(), uid, self.desired_nickname, self.nicks_for_pk(pubkey), self.desired_nickname, self.nicks_for_pk(pubkey)))
+            retval = Simpipe(self, pubkey, uid)
+            retval.description = "This is the corridor for %s=>%s" % (self.desired_nickname, self.nicks_for_pk(pubkey))  # squeeze_da_keez(pubkey)
+            self.simpipes.append(retval)
+        else:
+            print("%s [#%-5d] src %-10s dst %-10s  %s uses an existing simpipe for talking to %s" % (s_now(), uid, self.desired_nickname, self.nicks_for_pk(pubkey), self.desired_nickname, self.nicks_for_pk(pubkey)))
+            retval = matching_simpipes[0]
+            if len(matching_simpipes) > 1:
+                print("WARNING --- >1 MATCHING SIMPIPES")
+                print(matching_simpipes)
+        return retval
 
     def nicks_for_pk(self, pubkey):
         retval = '/'.join(list(set([h.nickname for h in self.true_homies if h.pubkey == pubkey])))
         return retval
 
-    @property
-    def corridors(self):
-        return self._corridors
-
     def empty(self, yes_really=False):
         if yes_really:
             return super().empty()
         else:
-            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
-        raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+            raise AttributeError("Use a simpipe for empty/get/get_nowait/put.")
+        raise AttributeError("Use a simpipe for empty/get/get_nowait/put.")
 
     def get(self, block=True, timeout=None, yes_really=False):
         if yes_really:
             return super().get(block, timeout)
         else:
-            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+            raise AttributeError("Use a simpipe for empty/get/get_nowait/put.")
 
     def get_nowait(self, yes_really=False):
         if yes_really:
             return super().get_nowait()
         else:
-            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+            raise AttributeError("Use a simpipe for empty/get/get_nowait/put.")
 
     def put(self, pubkey, datablock, irc_server=None, yes_really=False):
         if yes_really:
             super().put(pubkey, datablock, irc_server)
         else:
-            raise AttributeError("Use a corridor for empty/get/get_nowait/put.")
+            raise AttributeError("Use a simpipe for empty/get/get_nowait/put.")
 
     @property
-    def _corridors(self):
-        self.__corridors_lock.acquire_read()
+    def simpipes(self):
+        self.__simpipes_lock.acquire_read()
         try:
-            retval = self.__corridors
+            retval = self.__simpipes
             return retval
         finally:
-            self.__corridors_lock.release_read()
+            self.__simpipes_lock.release_read()
 
-    @_corridors.setter
-    def _corridors(self, value):
-        self.__corridors_lock.acquire_write()
+    @simpipes.setter
+    def simpipes(self, value):
+        self.__simpipes_lock.acquire_write()
         try:
-            self.__corridors = value
+            self.__simpipes = value
         finally:
-            self.__corridors_lock.release_write()
+            self.__simpipes_lock.release_write()
 
-    def __my_corridorservicing_loop(self):
+    def __my_simpipeservicing_loop(self):
         """Service incoming messages from the rookery.
 
         Messages come in three flavors:-
-        1. An instruction to open a corridor.
-        2. An instruction to close a corridor
-        3. A data frame that should be sent to one particular corridor.
+        1. An instruction to open a simpipe.
+        2. An instruction to close a simpipe
+        3. A data frame that should be sent to one particular simpipe.
 
         """
         print("%s %-10s   %-10s  Harem's main loop starts" % (s_now(), self.desired_nickname, ''))
@@ -176,64 +188,73 @@ class Harem(PrateRookery):
             sleep(A_TICK)
             try:
                 source, frame = self.get_nowait(yes_really=True)
+            except Empty:
+                pass
+            else:
                 if type(source) is not RSA.RsaKey:
                     raise ValueError("source must be a public key")  # PublicKeyBadKeyError
                 else:
-                    the_right_corridors = [c for c in self.corridors if c.pubkey == source]
-                    noof_right_corridors = len(the_right_corridors)
-                    if noof_right_corridors >= 1:
-                        the_right_corridor = the_right_corridors[0]
-                        if noof_right_corridors > 1:
-                            print("WARNING --- there are %d corridors" % noof_right_corridors)
-                            print(the_right_corridors)
-                    else:
-#                        raise RookeryCorridorNoTrueHomiesError("%s %-10s<==%-10s  %s (BUT I'VE NO APPLICABLE CORRIDOR)" % (s_now(), self.desired_nickname, self.nicks_for_pk(source), str(frame)))
-                        print("%s %-10s<==%-10s  NO CORRIDOR YET. I'll create one." % (s_now(), self.desired_nickname, self.nicks_for_pk(source)))
+                    this_uid = int.from_bytes(frame[:4], 'little')
+                    the_right_simpipes = [c for c in self.simpipes if c.uid == this_uid]  # c.pubkey == source]
+                    if the_right_simpipes == []:
                         try:
-                            the_right_corridor = self.open(source)
+                            the_sender_told_us_to_use_this_uid_for_simpipe = int.from_bytes(frame[:4], 'little')
+                            the_right_simpipe = self.open(source, uid=the_sender_told_us_to_use_this_uid_for_simpipe)
+                            if len(self.simpipes) > 1:
+                                print("WARNING -- >1 simpipes now")
+                                print(self.simpipes)
+                            print("%s [#%-5d] src %-10s dst %-10s  The former has sent data packets to the latter, me. I'll accept his simpipe with his UID." % (s_now(), the_right_simpipe.uid, self.nicks_for_pk(source), self.desired_nickname))
                         except PublicKeyBadKeyError:
-                            print("JK. There's no corridor. We shouldn't even exist.")
-                            print("Ignoring frame", frame, "from source", source)
-                    print("%s %-10s<==%-10s  Harem RXs data packet" % (s_now(), self.desired_nickname, self.nicks_for_pk(source)), frame)
-                    the_right_corridor.q4me_via_harem.put(frame)
-            except Empty:
-                pass
+                            print("%s [#%-5d] src %-10s dst %-10s  This simpipe appears not to exist. So, I'll ignore this frame." % (s_now(), this_uid, self.nicks_for_pk(source), self.desired_nickname))
+                            return
+                    else:
+                        the_right_simpipe = the_right_simpipes[0]
+                        if len(the_right_simpipes) > 1:
+                            print("WARNING --- there are %d simpipes" % len(the_right_simpipes))
+                    print("%s [#%-5d] src %-10s dst %-10s  Routing a frame to this simpipe" % (s_now(), this_uid, self.nicks_for_pk(source), self.desired_nickname), frame)
+                    the_right_simpipe.q4me_via_harem.put(frame)
         print("%s %-10s   %-10s  Harem's main loop ends" % (s_now(), self.desired_nickname, ''))
 
-    def open(self, destination):
+    def open(self, destination, uid=None):
         """Generate a file(?)-style handle for reading and writing to/from the other harem."""
+        if uid is None:
+            uid = randint(11111, 99999)
         if type(destination) is not RSA.RsaKey:
             raise ValueError("pubkey must be a public key")  # PublicKeyBadKeyError
         if destination not in [h.pubkey for h in self.get_homies_list(True)]:
             raise PublicKeyBadKeyError("Please handshake first. Then I'll be able to find your guy w/ his pubkey.")
-        try:
-            corridor = [c for c in self.corridors if c.pubkey == destination][0]
-        except IndexError:
-            corridor = Corridor(harem=self, pubkey=destination)
-            print("%s %-10s<==%-10s  Opening a corridor" % (s_now(), self.desired_nickname, self.nicks_for_pk(destination)))
-            self._corridors += [corridor]
-            if corridor.is_closed:
-                print("I JUST CREATED YOU. WHY ARE YOU CLOSED ALREADY?")
-        if corridor.is_closed:
-            print("WTF? The corridor is closed!")
-            print("This is so odd.")
-        print("%s=== %-10s  We now have %s====╗" % (s_now(), self.desired_nickname, '1 corridor ' if len(self._corridors) == 1 else '%d corridors' % len(self._corridors)))
-        corridornumber = 1
-        for c in self.corridors:
-            print("╠          %2d/%-2d               %-10s          ╣" % (corridornumber, len(self.corridors), self.nicks_for_pk(destination)))
-            corridornumber += 1
-        print("╚==================================================╝")
-        return corridor
+        simpipe = self.obtain_simpipe(pubkey=destination, uid=uid)  # generate if necessary
+        self.display_corridors()
+        return simpipe
+
+    def display_corridors(self):
+        print("%s╔=== %-10s  We now have %s====╗" % (s_now(), self.desired_nickname, '1 simpipe ' if len(self.simpipes) == 1 else '%d simpipes' % len(self.simpipes)))
+        simpipenumber = 1
+        for c in self.simpipes:
+            print("        ╠[#%-5d] %2d of %-2d       dst %-10s    ╣ %s" % (c.uid, simpipenumber, len(self.simpipes), self.nicks_for_pk(c.pubkey), c.description))
+            simpipenumber += 1
+        print("        ╚==========================================╝")
+
+    @property
+    def homies_pubkeys(self):
+        retval = []
+        for homie in self.true_homies:
+            if homie.pubkey not in retval:
+                retval += [homie.pubkey]
+        return retval
+
+    def is_handshook_with(self, pubkey):
+        """True if we've exchanged keys with this user. Else, False."""
+        return True if pubkey in self.homies_pubkeys else False
 
     def quit(self):
-        print("%s %-10s   %-10s  Harem is quitting" % (s_now(), self.desired_nickname, ''))
-        while len(self.corridors) > 0:
-            print("Closing corridor", self.corridors[0])
-            self.corridors[0].close()
-        print("%s %-10s   %-10s  Harem is joining" % (s_now(), self.desired_nickname, ''))
+        print("%s %-10s   %-10s  Harem is telling its simpipes to quit" % (s_now(), self.desired_nickname, ''))
+        while len(self.simpipes) > 0:
+            self.simpipes[0].close()
+        print("%s %-10s   %-10s  Harem itself is quitting" % (s_now(), self.desired_nickname, ''))
         self.gotta_quit = True
-        self.__my_corridorservicing_thread.join(timeout=ENDTHREAD_TIMEOUT)
+        self.__my_simpipeservicing_thread.join(timeout=ENDTHREAD_TIMEOUT)
         super().quit()
         sleep(1)
-        print("%s %-10s   %-10s  Harem has quit" % (s_now(), self.desired_nickname, ''))
+        print("%s %-10s   %-10s  Harem has quit!" % (s_now(), self.desired_nickname, ''))
 

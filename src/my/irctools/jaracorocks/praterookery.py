@@ -49,7 +49,7 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from random import randint, choice
 from my.stringtools import s_now, generate_random_alphanumeric_string, MAX_NICKNAME_LENGTH
 from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
-from my.classes.exceptions import IrcPrivateMessageTooLongError, PublicKeyUnknownError, RookeryCorridorNotOpenYetError, IrcInitialConnectionTimeoutError, \
+from my.classes.exceptions import IrcPrivateMessageTooLongError, PublicKeyUnknownError, RookerySimpipeNotOpenYetError, IrcInitialConnectionTimeoutError, \
     IrcFingerprintMismatchCausedByServer, EncryptionHandshakeTimeoutError, IrcNicknameTooLongError
 
 
@@ -194,7 +194,7 @@ class PrateRookery:
         print("%s %-10s   %-10s  Rookery main loop begins" % (s_now(), self.desired_nickname, ''))
         msgthr = Thread(target=self.keep_piping_the_privmsgs_out_of_bots_and_into_our_queue, daemon=True)
         msgthr.start()
-        print("%s %-10s   %-10s  Rookery main loop bibbety bobbety boop" % (s_now(), self.desired_nickname, ''))
+#        print("%s %-10s   %-10s  Rookery main loop bibbety bobbety boop" % (s_now(), self.desired_nickname, ''))
         while not self.gotta_quit:
             sleep(A_TICK)
             if not self.paused:
@@ -243,11 +243,11 @@ class PrateRookery:
         if irc_server is None:
             irc_server = choice(connected_homies).irc_server
         if irc_server not in [h.irc_server for h in connected_homies]:
-            raise RookeryCorridorNotOpenYetError("You specified an IRC server that has no corridor between me and the owner of the public key you specified.")
+            raise RookerySimpipeNotOpenYetError("You specified an IRC server that has no Simpipe between me and the owner of the public key you specified.")
         try:
             homie = [h for h in connected_homies if h.irc_server == irc_server][0]
         except IndexError as e:
-            raise RookeryCorridorNotOpenYetError("I cannot find a compatible IRC server for the specified public key.") from e
+            raise RookerySimpipeNotOpenYetError("I cannot find a compatible IRC server for the specified public key.") from e
 #        print("%s %-26s: %-10s: Tx'd %3d bytes to   %-9s on %s" % (s_now(), '', self.desired_nickname, len(datablock), homie.nickname, homie.irc_server))
         self.bots[homie.irc_server].crypto_put(
                 user=homie.nickname, byteblock=datablock)

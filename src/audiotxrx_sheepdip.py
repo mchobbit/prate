@@ -16,7 +16,8 @@ from queue import Queue, Empty
 from my.audiotools import MyMic, raw_to_ogg
 import os
 import datetime
-from my.irctools.jaracorocks.harem import Harem, receive_data_from_corridor
+from my.irctools.jaracorocks.harem import Harem
+from my.irctools.jaracorocks.harem.simpipe import receive_data_from_simpipe
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)
@@ -32,7 +33,7 @@ bob_nick = 'bob%d' % randint(111, 999)
 print("                                                 Creating harems for Alice and Bob")
 alice_harem = Harem([the_room], alice_nick, my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
 bob_harem = Harem([the_room], bob_nick, my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
-while not (alice_harem.ready and bob_harem.ready):
+while not (alice_harem.connected_and_joined and bob_harem.connected_and_joined):
     sleep(1)
 
 print("                                                 Waiting for harems to shake hands")
@@ -43,9 +44,9 @@ while the_noof_homies != len(alice_harem.get_homies_list(True)):
     the_noof_homies = len(alice_harem.get_homies_list(True))
     sleep(STARTUP_TIMEOUT // 3 + 1)
 
-print("                                                 Opening a corridor between Alice and Bob")
-alice_corridor = alice_harem.open(bobs_PK)
-bob_corridor = bob_harem.open(alices_PK)
+print("                                                 Opening a simpipe between Alice and Bob")
+alice_simpipe = alice_harem.open(bobs_PK)
+bob_simpipe = bob_harem.open(alices_PK)
 sleep(10)
 
 '''
@@ -58,22 +59,22 @@ with open("/tmp/my.ogg", "wb") as f:
 
 # os.system("/opt/homebrew/bin/mpv /tmp/my.ogg")
 
-alice_corridor.put(raw_data)
+alice_simpipe.put(raw_data)
 sleep(10)
-msg = receive_data_from_corridor(bob_corridor)
+msg = receive_data_from_simpipe(bob_simpipe)
 sleep(1)
 
 
-# d = bob_corridor.get()
+# d = bob_simpipe.get()
 
-alice_corridor.put(raw_data)
+alice_simpipe.put(raw_data)
 sleep(15)
 bufsize = 4096
 incoming_data = bytearray()
 
 while True:
     try:
-        incoming_data += bytearray(bob_corridor.get(timeout=5))
+        incoming_data += bytearray(bob_simpipe.get(timeout=5))
         if len(incoming_data) >= bufsize:
             with open("/tmp/oops.ogg", "wb") as f:
                 f.write(raw_to_ogg(bytes(incoming_data[:bufsize])))
@@ -83,7 +84,7 @@ while True:
         break
 
 while True:
-    bob_corridor.get_nowait()
+    bob_simpipe.get_nowait()
 
 
 
@@ -105,7 +106,7 @@ while True:
         break
     else:
         print("Sending to Alice")
-        alice_corridor.put(raw_to_ogg(raw_audio))
+        alice_simpipe.put(raw_to_ogg(raw_audio))
         # fname = "/tmp/out_%d.ogg" % fileno
         # with open(fname, "wb") as f:
         #     f.write(raw_to_ogg(raw_audio))
@@ -114,7 +115,7 @@ while True:
         # os.system("/opt/homebrew/bin/mpv %s" % fname)
         # fileno += 1
         print("Waiting for Bob")
-        ogg_data = receive_data_from_corridor(bob_corridor, timeout=5)
+        ogg_data = receive_data_from_simpipe(bob_simpipe, timeout=5)
         with open('/tmp/recent_%d.ogg' % fileno, 'wb') as f:
             f.write(ogg_data)
         print("Playing audio")
@@ -125,7 +126,7 @@ while True:
         # while True:
         #     fileno = 0
         #     try:
-        #         incoming_data += bytearray(bob_corridor.get(timeout=1))
+        #         incoming_data += bytearray(bob_simpipe.get(timeout=1))
         #         if len(incoming_data) >= bufsize:
         #             print("Retrieving #%d from Bob" % fileno)
         #             fname = "/tmp/oops_%d.ogg" % fileno
@@ -139,11 +140,11 @@ while True:
 
 '''
 while True:
-    bob_corridor.get_nowait()
+    bob_simpipe.get_nowait()
 
 
-        msg = receive_data_from_corridor(bob_corridor)
-    #        msg = bob_corridor.get_nowait()
+        msg = receive_data_from_simpipe(bob_simpipe)
+    #        msg = bob_simpipe.get_nowait()
         fileno += 1
         with open("/tmp/out_%d.raw" % fileno, "wb") as f:
             f.write(msg)

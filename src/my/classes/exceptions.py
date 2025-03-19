@@ -63,11 +63,11 @@ Error
                 FernetKeyIsUnknownError
                 FernetKeyIsInvalidError
     RookeryError
-        RookeryCorridorError
-            RookeryCorridorAlreadyClosedError
-            RookeryCorridorNoTrueHomiesError
-            RookeryCorridorNotOpenYetError
-            RookeryCorridorTimeoutError
+        RookerySimpipeError
+            RookerySimpipeAlreadyClosedError
+            RookerySimpipeNoTrueHomiesError
+            RookerySimpipeNotOpenYetError
+            RookerySimpipeTimeoutError
 Example:
     n/a
 
@@ -556,15 +556,15 @@ class RookeryError(Error):
         super().__init__(message)
 
 
-class RookeryCorridorError(RookeryError):
-    """Class for all RookeryCorridorError"""
+class RookerySimpipeError(RookeryError):
+    """Class for all RookerySimpipeError"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class RookeryCorridorAlreadyClosedError(RookeryCorridorError):
+class RookerySimpipeAlreadyClosedError(RookerySimpipeError):
     """"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -572,15 +572,15 @@ class RookeryCorridorAlreadyClosedError(RookeryCorridorError):
         super().__init__(message)
 
 
-class RookeryCorridorNoTrueHomiesError(RookeryCorridorError):
-    """There are no available homies for this corridor."""
+class RookerySimpipeNoTrueHomiesError(RookerySimpipeError):
+    """There are no available homies for this simpipe."""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
 
         super().__init__(message)
 
 
-class RookeryCorridorNotOpenYetError(RookeryCorridorError):
+class RookerySimpipeNotOpenYetError(RookerySimpipeError):
     """"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation
@@ -588,7 +588,7 @@ class RookeryCorridorNotOpenYetError(RookeryCorridorError):
         super().__init__(message)
 
 
-class RookeryCorridorTimeoutError(RookeryCorridorError):
+class RookerySimpipeTimeoutError(RookerySimpipeError):
     """If a file transfer takes too long"""
 
     def __init__(self, message):  # pylint: disable=useless-parent-delegation

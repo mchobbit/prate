@@ -29,14 +29,14 @@ from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIME
 from my.irctools.jaracorocks.harem import Harem, wait_for_harem_to_stabilize
 from random import randint
 from my.stringtools import generate_random_alphanumeric_string
-from my.classes.exceptions import RookeryCorridorTimeoutError
+from my.classes.exceptions import RookerySimpipeTimeoutError
 from my.irctools.jaracorocks.pratebot import PrateBot
 import sys
 
 
-def do_big_timing_test(data_to_send, corridor1, corridor2, timeout):
+def do_big_timing_test(data_to_send, simpipe1, simpipe2, timeout):
     t_0 = datetime.datetime.now()
-    corridor1.put(data_to_send)
+    simpipe1.put(data_to_send)
     sleep(10)
     t_0b = datetime.datetime.now()
     t_1 = datetime.datetime.now()
@@ -45,7 +45,7 @@ def do_big_timing_test(data_to_send, corridor1, corridor2, timeout):
         if len(bytes(received_data)) == len(bytes(data_to_send)):
             break
         try:
-            rxd_dat = corridor2.get_nowait()
+            rxd_dat = simpipe2.get_nowait()
             print("Rx'd =>", rxd_dat)
             received_data += rxd_dat
             t_1 = datetime.datetime.now()
@@ -108,29 +108,29 @@ while not (alice_harem.connected_and_joined and bob_harem.connected_and_joined):
 alice_harem.trigger_handshaking()
 bob_harem.trigger_handshaking()
 wait_for_harem_to_stabilize(alice_harem)
-alice_corridor = alice_harem.open(bobs_PK)
-bob_corridor = bob_harem.open(alices_PK)
+alice_simpipe = alice_harem.open(bobs_PK)
+bob_simpipe = bob_harem.open(alices_PK)
 sleep(5)
-alice_corridor.dupes = 5  # dupes
-alice_corridor.frame_size = 256  # frame_size
+alice_simpipe.dupes = 5  # dupes
+alice_simpipe.frame_size = 256  # frame_size
 datalen_lst = [32, 0]
 
 for datalen in datalen_lst:
-    print("%s servers=%d; dupes=%d; frame_size=%d; datalen=%d" % ('-' * 33, noof_servers, alice_corridor.dupes, alice_corridor.frame_size, datalen))
+    print("%s servers=%d; dupes=%d; frame_size=%d; datalen=%d" % ('-' * 33, noof_servers, alice_simpipe.dupes, alice_simpipe.frame_size, datalen))
     all_data = generate_random_alphanumeric_string(datalen).encode()
-    alice_corridor.put(all_data)
+    alice_simpipe.put(all_data)
     rxd_data = "WE NEVER GOT THERE"
     try:
-        rxd_data = bob_corridor.get(timeout=60)
+        rxd_data = bob_simpipe.get(timeout=60)
     except Empty as e:
-        raise RookeryCorridorTimeoutError("Transfer took too long! --- %s servers=%d; dupes=%d; frame_size=%d; datalen=%d; FAILED" % ('-' * 33, noof_servers, alice_corridor.dupes, alice_corridor.frame_size, datalen)) from e
+        raise RookerySimpipeTimeoutError("Transfer took too long! --- %s servers=%d; dupes=%d; frame_size=%d; datalen=%d; FAILED" % ('-' * 33, noof_servers, alice_simpipe.dupes, alice_simpipe.frame_size, datalen)) from e
     if all_data != rxd_data:
-        print("%s servers=%d; dupes=%d; frame_size=%d; datalen=%d; FAILED" % ('-' * 33, noof_servers, alice_corridor.dupes, alice_corridor.frame_size, datalen))
+        print("%s servers=%d; dupes=%d; frame_size=%d; datalen=%d; FAILED" % ('-' * 33, noof_servers, alice_simpipe.dupes, alice_simpipe.frame_size, datalen))
         if all_data != rxd_data:
             print("%s != %s" % (all_data, rxd_data))
-    assert(bob_corridor.empty() is True)
-alice_corridor.close()
-bob_corridor.close()
+    assert(bob_simpipe.empty() is True)
+alice_simpipe.close()
+bob_simpipe.close()
 alice_harem.quit()
 bob_harem.quit()
 
@@ -148,42 +148,42 @@ while the_noof_homies != len(alice_harem.get_homies_list(True)):
     the_noof_homies = len(alice_harem.get_homies_list(True))
     sleep(STARTUP_TIMEOUT // 2 + 1)
 
-print("                                                 Opening a corridor between Alice and Bob")
-alice_corridor = alice_harem.open(bobs_PK)
+print("                                                 Opening a simpipe between Alice and Bob")
+alice_simpipe = alice_harem.open(bobs_PK)
 a2ice_corrido2 = alice_harem.open(bobs_PK)
 sleep(5)
-bob_corridor = bob_harem.open(alices_PK)
+bob_simpipe = bob_harem.open(alices_PK)
 b2b_corrid_2 = bob_harem.open(alices_PK)
-assert(bob_corridor == b2b_corrid_2)
-assert(alice_corridor == a2ice_corrido2)
-assert(bob_corridor != alice_corridor)
+assert(bob_simpipe == b2b_corrid_2)
+assert(alice_simpipe == a2ice_corrido2)
+assert(bob_simpipe != alice_simpipe)
 
 # all_data = BORN_TO_DIE_IN_BYTES
 all_data = b"1234567 ABCDEFG IJKLMNO QRSTUVW YZ543210"
-alice_corridor.frame_size = 8
-alice_corridor.put(all_data)
+alice_simpipe.frame_size = 8
+alice_simpipe.put(all_data)
 sleep(10)
-recvd = bob_corridor.get()
+recvd = bob_simpipe.get()
 print("Sent %d bytes; received %d bytes" % (len(all_data), len(recvd)))
-# do_big_timing_test(open("/Users/mchobbit/Downloads/cushion.stl", "rb").read(), alice_corridor, bob_corridor, 20)
-# do_big_timing_test(open("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz", "rb").read(), alice_corridor, bob_corridor, 20)
-# do_big_timing_test(open("/Users/mchobbit/Downloads/side_cushion.stl", "rb").read(), alice_corridor, bob_corridor, 20)
+# do_big_timing_test(open("/Users/mchobbit/Downloads/cushion.stl", "rb").read(), alice_simpipe, bob_simpipe, 20)
+# do_big_timing_test(open("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz", "rb").read(), alice_simpipe, bob_simpipe, 20)
+# do_big_timing_test(open("/Users/mchobbit/Downloads/side_cushion.stl", "rb").read(), alice_simpipe, bob_simpipe, 20)
 assert(all_data == recvd)
 sleep(1)
 '''
 
-# assert(bob_corridor.get() == b"MARCO?")
+# assert(bob_simpipe.get() == b"MARCO?")
 #
 # sleep(2)
-# bob_corridor.put(b"POLO!")
+# bob_simpipe.put(b"POLO!")
 # sleep(2)
-# assert(alice_corridor.get() == b"POLO!")
+# assert(alice_simpipe.get() == b"POLO!")
 # sleep(2)
 #
-# print("                                                 Closing corridors")
-# alice_corridor.close()
+# print("                                                 Closing simpipes")
+# alice_simpipe.close()
 # sleep(2)
-# bob_corridor.close()
+# bob_simpipe.close()
 # print("                                                 <FIN>")
 # alice_harem.quit()
 # bob_harem.quit()
