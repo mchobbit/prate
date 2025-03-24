@@ -328,7 +328,7 @@ class TestcorridorsOpeningAndClosing(unittest.TestCase):
         self.assertFalse(alice_corridor.is_closed)
         self.assertEqual([alice_corridor], [r for r in self.alice_harem.corridors if r.uid == alice_corridor.uid])
         self.assertEqual(alice_corridor.destination_pk, bobs_PK)
-        self.assertEqual(self.bob_harem.corridors[0].pubkey, alices_PK)
+        self.assertEqual(self.bob_harem.corridors[0].destination_pk, alices_PK)
         self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
         sleep(10)
         alice_corridor.close(timeout=300)
@@ -491,61 +491,61 @@ class TestTurnDownForWhatDJSnake(unittest.TestCase):
 
     def testSimplestAA(self):  # QQQ Does this one pass? Is it causing problems?
         self.run_test_SOaCn_slim(5)
-    #     self.run_test_SOaCn_beefier(5)
-    #
-    # def testSimplestBB(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(4)
-    #     self.run_test_SOaCn_beefier(4)
-    #
-    # def testSimplestCC(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(3)
-    #     self.run_test_SOaCn_beefier(3)
-    #
-    # def testSimplestDD(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(2)
-    #     self.run_test_SOaCn_beefier(2)
-    #
-    # def testSimplestEE(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(1)
-    #     self.run_test_SOaCn_beefier(1)
-    #     self.run_test_SOaCn_slim(1)
-    #     self.run_test_SOaCn_beefier(1)
-    #
-    # def testSimplestFF(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(0)
-    #
-    # def testSimplestQQ(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(0)
-    #     self.run_test_SOaCn_beefier(3)
-    #
-    # def testSimplestRR(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(0)
-    #     self.run_test_SOaCn_beefier(0)
-    #
-    # def testSimplestSS(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(3)
-    #     self.run_test_SOaCn_beefier(3)
-    #
-    # def testSimplestZZ(self):  # QQQ Does this one pass? Is it causing problems?
-    #     self.run_test_SOaCn_slim(5)
-    #     self.run_test_SOaCn_beefier(5)
-    #
-    # def testSimplestOpenAndClosePartTwo(self):
-    #     for pausdur in (10, 5, 3, 2, 1, .1):
-    #         alice_corridor = self.alice_harem.open(bobs_PK)
-    #         self.assertEqual(self.bob_harem.corridors[0].pubkey, alices_PK)
-    #         self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
-    #         alice_corridor.close(timeout=300)
-    #         self.assertEqual(self.alice_harem.corridors, [])
-    #         self.assertEqual([], self.alice_harem.corridors)
-    #         self.assertEqual([], self.alice_harem.corridors)
-    #         sleep(pausdur)
-    #         self.assertTrue(alice_corridor.is_closed)
-    #         sleep(5 if [] != self.alice_harem.corridors else 0)
-    #         sleep(5 if [] != self.bob_harem.corridors else 0)
-    #         self.assertEqual([], self.bob_harem.corridors)
-    #         self.assertEqual([], self.bob_harem.corridors)
-    #         sleep(2)
+        self.run_test_SOaCn_beefier(5)
+
+    def testSimplestBB(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(4)
+        self.run_test_SOaCn_beefier(4)
+
+    def testSimplestCC(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(3)
+        self.run_test_SOaCn_beefier(3)
+
+    def testSimplestDD(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(2)
+        self.run_test_SOaCn_beefier(2)
+
+    def testSimplestEE(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(1)
+        self.run_test_SOaCn_beefier(1)
+        self.run_test_SOaCn_slim(1)
+        self.run_test_SOaCn_beefier(1)
+
+    def testSimplestFF(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(0)
+
+    def testSimplestQQ(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(0)
+        self.run_test_SOaCn_beefier(3)
+
+    def testSimplestRR(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(0)
+        self.run_test_SOaCn_beefier(0)
+
+    def testSimplestSS(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(3)
+        self.run_test_SOaCn_beefier(3)
+
+    def testSimplestZZ(self):  # QQQ Does this one pass? Is it causing problems?
+        self.run_test_SOaCn_slim(5)
+        self.run_test_SOaCn_beefier(5)
+
+    def testSimplestOpenAndClosePartTwo(self):
+        for pausdur in (10, 5, 3, 2, 1, .1):
+            alice_corridor = self.alice_harem.open(bobs_PK)
+            self.assertEqual(self.bob_harem.corridors[0].destination_pk, alices_PK)
+            self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
+            alice_corridor.close(timeout=300)
+            self.assertEqual(self.alice_harem.corridors, [])
+            self.assertEqual([], self.alice_harem.corridors)
+            self.assertEqual([], self.alice_harem.corridors)
+            sleep(pausdur)
+            self.assertTrue(alice_corridor.is_closed)
+            sleep(5 if [] != self.alice_harem.corridors else 0)
+            sleep(5 if [] != self.bob_harem.corridors else 0)
+            self.assertEqual([], self.bob_harem.corridors)
+            self.assertEqual([], self.bob_harem.corridors)
+            sleep(2)
 
     def testSimplest0sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
         alice_corridor = self.alice_harem.open(bobs_PK)
