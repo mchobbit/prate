@@ -31,6 +31,14 @@ ENDTHREAD_TIMEOUT = 20
 MAX_CRYPTO_MSG_LENGTH = int((MAX_PRIVMSG_LENGTH - MAX_NICKNAME_LENGTH) * 0.618)
 A_TICK = 0.1  # ... as in, 'hold on a tick!'
 
+# Used by harems & corridors
+_OPEN_A_CORRIDOR_ = b'O'
+_RECIPROCATE_OPENING_ = b'P'
+_CLOSE_A_CORRIDOR_ = b'X'
+_RECIPROCATE_CLOSING_ = b'Y'
+# _GET_STATUS_OF_CORRIDOR_ = b'S'
+_THIS_IS_A_DATA_FRAME_ = b'D'
+
 
 def get_my_public_ip_address():
     """Get my public IP address.

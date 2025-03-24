@@ -26,7 +26,7 @@ from queue import Empty
 from Crypto.PublicKey import RSA
 from time import sleep
 from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
-from my.irctools.jaracorocks.harem import Harem, wait_for_harem_to_stabilize
+from my.irctools.jaracorocks.harem222 import Harem, wait_for_harem_to_stabilize
 from random import randint
 from my.stringtools import generate_random_alphanumeric_string
 from my.classes.exceptions import RookerySimpipeTimeoutError

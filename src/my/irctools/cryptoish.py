@@ -194,5 +194,5 @@ def int_64bit_cksum(byteblock):
 
 
 def bytes_64bit_cksum(byteblock):
-    return hashlib.sha1(byteblock).digest()[:8]  # FIXME: sha256 is more secure
+    return hashlib.sha256(byteblock).digest()[:8]
 

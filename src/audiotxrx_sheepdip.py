@@ -16,8 +16,8 @@ from queue import Queue, Empty
 from my.audiotools import MyMic, raw_to_ogg
 import os
 import datetime
-from my.irctools.jaracorocks.harem import Harem
-from my.irctools.jaracorocks.harem.simpipe import receive_data_from_simpipe
+from my.irctools.jaracorocks.harem222 import Harem
+from my.irctools.jaracorocks.harem222.simpipe import receive_data_from_simpipe
 
 alices_rsa_key = RSA.generate(RSA_KEY_SIZE)
 bobs_rsa_key = RSA.generate(RSA_KEY_SIZE)

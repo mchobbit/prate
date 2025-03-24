@@ -49,7 +49,7 @@ from my.irctools.jaracorocks.pratebot import PrateBot
 from random import randint, choice
 from my.stringtools import s_now, generate_random_alphanumeric_string, MAX_NICKNAME_LENGTH
 from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
-from my.classes.exceptions import IrcPrivateMessageTooLongError, PublicKeyUnknownError, RookerySimpipeNotOpenYetError, IrcInitialConnectionTimeoutError, \
+from my.classes.exceptions import IrcPrivateMessageTooLongError, PublicKeyUnknownError, RookeryCorridorNotOpenYetError, IrcInitialConnectionTimeoutError, \
     IrcFingerprintMismatchCausedByServer, EncryptionHandshakeTimeoutError, IrcNicknameTooLongError
 
 
@@ -98,7 +98,7 @@ class PrateRookery:
         assert(not hasattr(self, '__my_main_thread'))
         assert(not hasattr(self, '__my_main_loop'))
         self.__log_into_all_functional_IRC_servers_mutex = Lock()
-        print("%s %-10s   %-10s  Initializing rookery" % (s_now(), desired_nickname, ''))
+#         print("%s %-10s   %-10s  Initializing rookery" % (s_now(), desired_nickname, ''))
         if startup_timeout <= 2:
             raise ValueError("Startup timeout should be more than two!")
         if type(list_of_all_irc_servers) not in (list, tuple):
@@ -191,7 +191,7 @@ class PrateRookery:
         return True if False not in [self.bots[k].connected_and_joined for k in self.bots] else False
 
     def __my_main_loop(self):
-        print("%s %-10s   %-10s  Rookery main loop begins" % (s_now(), self.desired_nickname, ''))
+#        print("%s %-10s   %-10s  Rookery main loop begins" % (s_now(), self.desired_nickname, ''))
         msgthr = Thread(target=self.keep_piping_the_privmsgs_out_of_bots_and_into_our_queue, daemon=True)
         msgthr.start()
 #        print("%s %-10s   %-10s  Rookery main loop bibbety bobbety boop" % (s_now(), self.desired_nickname, ''))
@@ -200,14 +200,14 @@ class PrateRookery:
             if not self.paused:
                 self.process_incoming_buffer()
         msgthr.join(timeout=ENDTHREAD_TIMEOUT)
-        print("%s %-10s   %-10s  Rookery main loop ends" % (s_now(), self.desired_nickname, ''))
+#        print("%s %-10s   %-10s  Rookery main loop ends" % (s_now(), self.desired_nickname, ''))
 
     def keep_piping_the_privmsgs_out_of_bots_and_into_our_queue(self):
         while not self.gotta_quit:
             try:
                 the_bots = list(set(self.bots))
             except Exception as e:  # pylint: disable=broad-exception-caught
-                print("%s %-26s: %-10s: Did the dictionary change? =>" % (s_now(), '', self.desired_nickname), e)
+                print("%s %-30s: %-10s: Did the dictionary change? =>" % (s_now(), '', self.desired_nickname), e)
                 sleep(A_TICK)
                 continue
             else:
@@ -243,12 +243,12 @@ class PrateRookery:
         if irc_server is None:
             irc_server = choice(connected_homies).irc_server
         if irc_server not in [h.irc_server for h in connected_homies]:
-            raise RookerySimpipeNotOpenYetError("You specified an IRC server that has no Simpipe between me and the owner of the public key you specified.")
+            raise RookeryCorridorNotOpenYetError("You specified an IRC server that has no Corridor between me and the owner of the public key you specified.")
         try:
             homie = [h for h in connected_homies if h.irc_server == irc_server][0]
         except IndexError as e:
-            raise RookerySimpipeNotOpenYetError("I cannot find a compatible IRC server for the specified public key.") from e
-#        print("%s %-26s: %-10s: Tx'd %3d bytes to   %-9s on %s" % (s_now(), '', self.desired_nickname, len(datablock), homie.nickname, homie.irc_server))
+            raise RookeryCorridorNotOpenYetError("I cannot find a compatible IRC server for the specified public key.") from e
+#        print("%s %-30s: %-10s: Tx'd %3d bytes to   %-9s on %s" % (s_now(), '', self.desired_nickname, len(datablock), homie.nickname, homie.irc_server))
         self.bots[homie.irc_server].crypto_put(
                 user=homie.nickname, byteblock=datablock)
 
@@ -259,7 +259,7 @@ class PrateRookery:
         except Empty:
             pass
         else:
-#            print("%s %-26s: %-10s: Rx'd %3d bytes from %-9s on %s" % (s_now(), '', self.desired_nickname, len(datablock), user, irc_server))
+#            print("%s %-30s: %-10s: Rx'd %3d bytes from %-9s on %s" % (s_now(), '', self.desired_nickname, len(datablock), user, irc_server))
             self.our_getqueue.put((pubkey, datablock))
 
     @property
@@ -324,14 +324,14 @@ class PrateRookery:
         return self.__bots
 
     def trigger_handshaking(self):
-        print("%s %-10s   %-10s  Triggering inter-rookery handshakes" % (s_now(), self.desired_nickname, ''))
+#        print("%s %-10s   %-10s  Triggering all handshakes" % (s_now(), self.desired_nickname, ''))
         if not self.connected_and_joined:
             these_irc_servers_failed_to_handshake = [self.bots[k].irc_server for k in self.bots]
             raise EncryptionHandshakeTimeoutError("These IRC servers failed to handshake: %s" % ', '.join(these_irc_servers_failed_to_handshake))
         for k in self.bots:
             bot = self.bots[k]
             if k == self.bots[k].nickname:  # I don't need to shake hands with myself :)
-                pass  # print("%s %-26s: %-10s: no need to trigger handshaking w/ %s" % (s_now(), bot.irc_server, bot.nickname, k))
+                pass  # print("%s %-30s: %-10s: no need to trigger handshaking w/ %s" % (s_now(), bot.irc_server, bot.nickname, k))
             else:
                 bot.trigger_handshaking()
 
@@ -368,23 +368,23 @@ class PrateRookery:
                                    startup_timeout=self.startup_timeout,
                                    maximum_reconnections=self.maximum_reconnections,
                                    strictly_nick=False,
-                                   autohandshake=self.autohandshake)
+                                   autohandshake=False)  # LET SELF.TRIGGER_HANDSHAKE() DO ALL THESE CALLS! self.autohandshake)
         except (IrcInitialConnectionTimeoutError, IrcFingerprintMismatchCausedByServer):
-            print("%s %-26s: %-10s: PrateBot failed login" % (s_now(), k, self.desired_nickname))
+            print("%s %-30s: %-10s: failed login" % (s_now(), k, self.desired_nickname))
         else:
-            print("%s %-26s: %-10s: PrateBot logged in OK" % (s_now(), k, self.desired_nickname))
+            print("%s %-30s: %-10s: logged in OK" % (s_now(), k, self.desired_nickname))
             with self.__log_into_all_functional_IRC_servers_mutex:
                 self.bots[k] = bot
 
     def quit(self):
-        print("%s %-26s: %-10s: Quitting all pratebots." % (s_now(), self.desired_nickname, ''))
+#        print("%s %-30s: %-10s: Parting" % (s_now(), self.desired_nickname, ''))
         all_bots_keys = list(set(self.bots.keys()))
         for k in all_bots_keys:
             try:
-                print("%s %-26s: %-10s: Quitting this pratebot." % (s_now(), k, self.desired_nickname))
+                print("%s %-30s: %-10s: Parting" % (s_now(), k, self.desired_nickname))
                 self.bots[k].quit()
             except Exception as e:  # pylint: disable=broad-exception-caught
-                print("%s %-26s: %-10s: Exception while quitting:" % (s_now(), '', self.desired_nickname), e)
+                print("%s %-30s: %-10s: Exception while quitting:" % (s_now(), '', self.desired_nickname), e)
 
 ########################################################################################################
 
