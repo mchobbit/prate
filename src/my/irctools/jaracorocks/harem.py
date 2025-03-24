@@ -247,24 +247,29 @@ class Harem(PrateRookery):
         if destination not in [h.pubkey for h in self.get_homies_list(True)]:
             raise PublicKeyBadKeyError("Please handshake first. Then I'll be able to find your guy w/ his pubkey.")
         our_uid = uid_from_pubkey(self.my_pubkey)
-        print("%s [?%-8d?]     %-10s<==> %-10s  ESTABLISHING A CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
-        bout = bytes(_OPEN_A_CORRIDOR_ + our_uid.to_bytes(3, 'little'))
-        self.put(destination, bout, bypass_harem=True)
-        sleep(self.__kludge_counter_to_avoid_race_condition_later)  # When closing two harems at once, ... you'll be glad I did this.
-        self.__kludge_counter_to_avoid_race_condition_later = max(3, self.__kludge_counter_to_avoid_race_condition_later)
-        t = datetime.datetime.now()
-        while (datetime.datetime.now() - t).seconds < timeout:
-            sleep(1)
-            cs = [c for c in self.corridors if c.our_uid == our_uid and c.his_uid is not None]
-            if cs != []:
-                if len(cs) > 1:
-                    print("WARNING -- MULTIPLE CORRIDORS WITH OUR UID")
-                corridor = cs[0]
-                print("%s [%s]     %-10s<==> %-10s  CORRIDOR ESTABLISHED" % (s_now(), corridor.str_uid, self.desired_nickname, self.nicks_for_pk(destination)))
-                self.display_corridors()
-                return cs[0]
-#        self.display_corridors()
-        raise RookeryCorridorTimeoutError("Timed out while opening corridor")
+        try:
+            corridor = [c for c in self.corridors if c.uid == our_uid][0]
+            print("%s [?%-8d?]     %-10s<==> %-10s  USING EXISTING CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
+            return corridor
+        except IndexError:
+            print("%s [?%-8d?]     %-10s<==> %-10s  ESTABLISHING A CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
+            bout = bytes(_OPEN_A_CORRIDOR_ + our_uid.to_bytes(3, 'little'))
+            self.put(destination, bout, bypass_harem=True)
+            sleep(self.__kludge_counter_to_avoid_race_condition_later)  # When closing two harems at once, ... you'll be glad I did this.
+            self.__kludge_counter_to_avoid_race_condition_later = max(3, self.__kludge_counter_to_avoid_race_condition_later)
+            t = datetime.datetime.now()
+            while (datetime.datetime.now() - t).seconds < timeout:
+                sleep(1)
+                cs = [c for c in self.corridors if c.our_uid == our_uid and c.his_uid is not None]
+                if cs != []:
+                    if len(cs) > 1:
+                        print("WARNING -- MULTIPLE CORRIDORS WITH OUR UID")
+                    corridor = cs[0]
+                    print("%s [%s]     %-10s<==> %-10s  CORRIDOR ESTABLISHED" % (s_now(), corridor.str_uid, self.desired_nickname, self.nicks_for_pk(destination)))
+                    self.display_corridors()
+                    return cs[0]
+    #        self.display_corridors()
+            raise RookeryCorridorTimeoutError("Timed out while opening corridor")
 
     def display_corridors(self):
         print("%s╔═══ %-10s  We now have %s════╗" % (s_now(), self.desired_nickname, '1 corridor ' if len(self.corridors) == 1 else '%d corridors' % len(self.corridors)))
