@@ -42,10 +42,10 @@ import datetime
 
 class Corridor:
 
-    def __init__(self, our_uid, his_uid, pubkey, harem):  # pubkey is HIS PUBKEY
+    def __init__(self, our_uid, his_uid, destination_pk, harem):  # pubkey is HIS PUBKEY
         if our_uid is None and his_uid is None:
             raise ValueError("At least one of the UIDs mustn't be None.")
-        if type(pubkey) is not RSA.RsaKey or (our_uid is None and his_uid is None):
+        if type(destination_pk) is not RSA.RsaKey or (our_uid is None and his_uid is None):
             raise ValueError("Corridor params are wrong types")
         self.__is_closed = False
         self.__is_closed_lock = ReadWriteLock()
@@ -68,14 +68,14 @@ class Corridor:
         self.__dupes_lock = ReadWriteLock()
         self.__lastframethatispatout = -1
         self.__lastframethatispatout_lock = ReadWriteLock()
-        self.__pubkey = pubkey  # his pubkey
+        self.__destination_pk = destination_pk  # his pubkey
         self.__harem = harem
         self.__my_framing_thread = Thread(target=self.__my_framing_loop, daemon=True)
         self.__my_framing_thread.start()
 
     def __repr__(self):
         class_name = type(self).__name__
-        pk = self.pubkey
+        pk = self.destination_pk
         if pk is not None:
             pk = squeeze_da_keez(pk)
             pk = "%s..." % (pk[:16])
@@ -245,8 +245,8 @@ class Corridor:
             self.__dupes_lock.release_write()
 
     @property
-    def pubkey(self):
-        return self.__pubkey
+    def destination_pk(self):
+        return self.__destination_pk
 
     @property
     def uid(self):
@@ -289,7 +289,7 @@ class Corridor:
         return self.__harem
 
     def __my_framing_loop(self):
-        nicks4pk = self.harem.nicks_for_pk(self.pubkey)
+        nicks4pk = self.harem.nicks_for_pk(self.destination_pk)
         if nicks4pk == '':
             nicks4pk = '(zombie)'  # print("WARNING -- cannot find any nicknames for this public key. This suggests that it's a leftover from a previous corridor.")
         print("%s [%s]     %s is listening for frames from %s" % (s_now(), self.str_uid, self.harem.desired_nickname, nicks4pk))
@@ -311,7 +311,7 @@ class Corridor:
 
     def put(self, datablock):
         if self.gotta_close or self.is_closed:
-            raise RookeryCorridorAlreadyClosedError("You (%s) cannot send to %s corridor #%d: it is not open." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), self.uid))
+            raise RookeryCorridorAlreadyClosedError("You (%s) cannot send to %s corridor #%d: it is not open." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self.uid))
         if type(datablock) is not bytes:
             raise ValueError("Corridor.put() takes BYTES!")
         assert(type(self.uid) is int)
@@ -326,10 +326,10 @@ class Corridor:
             this_block = datablock[indexpos:(indexpos + block_len)]
             subframe = bytes(_THIS_IS_A_DATA_FRAME_ + self.uid.to_bytes(3, 'little') + self._frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
             frame = bytes(subframe + bytes_64bit_cksum(subframe))
-            print("%s [#%-9d]     %-10s---> %-10s  Tx'd #%3d frame of %3d bytes" % (s_now(), self.uid, self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), self._frameno, len(frame)))
-            # print("%s %-10s<==%-10s  put%3d bytes packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), len(this_block)), frame, "  to corridor")
+            print("%s [#%-9d]     %-10s---> %-10s  Tx'd #%3d frame of %3d bytes" % (s_now(), self.uid, self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self._frameno, len(frame)))
+            # print("%s %-10s<==%-10s  put%3d bytes packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), len(this_block)), frame, "  to corridor")
             for i in range(0, self.dupes + 1):
-                self.harem.put(self.pubkey, frame, ircsvrs[(self._frameno + i) % noof_ircsvrs], bypass_harem=True)
+                self.harem.put(self.destination_pk, frame, ircsvrs[(self._frameno + i) % noof_ircsvrs], bypass_harem=True)
             indexpos += block_len
             self._frameno += 1
 
@@ -346,15 +346,15 @@ class Corridor:
 
     def __getSUB(self, block=True, timeout=None, nowait=False):
         if self.gotta_close or self.is_closed:
-            raise RookeryCorridorAlreadyClosedError("You (%s) cannot receive from %s corridor #%d: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), self.uid))
+            raise RookeryCorridorAlreadyClosedError("You (%s) cannot receive from %s corridor #%d: it is closed." % (self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self.uid))
         retval = self.my_get_queue.get_nowait() if nowait else self.my_get_queue.get(block=block, timeout=timeout)
-#        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey), retval))
+#        print("%s %-10s<==%-10s  %s" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), retval))
         return retval
 
     def process_frame(self, frame):
         if self.uid not in self._frames_lst:
             self._frames_lst = [None]
-#                print("%s %-10s<==%-10s  Corridor rx'd packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.pubkey)), frame)
+#                print("%s %-10s<==%-10s  Corridor rx'd packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk)), frame)
         control_cmd = frame[0]
         if control_cmd != ord(_THIS_IS_A_DATA_FRAME_):
             print("Warning -- process_frame() -- incoming frame is not a data frame")
@@ -370,7 +370,7 @@ class Corridor:
         cksum = frame[(block_len + 10):]
         if frame_uid != self.uid:
             print("%s [#%-9d]                    %-10s  Rx'd #%3d frame (was for corridor #%d; I suspect someone closed a corridor somewhere & I should ignore this packet. So, I'll ignore it.)" % (s_now(), frame_uid, self.harem.desired_nickname, this_frameno, self.uid))
-        else:  # print("%s [#%-9d] src %-10s dst %-10s  Rx'd #%3d frame" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.pubkey), self.harem.desired_nickname, this_frameno))
+        else:  # print("%s [#%-9d] src %-10s dst %-10s  Rx'd #%3d frame" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.destination_pk), self.harem.desired_nickname, this_frameno))
             if frame_uid not in self._frames_lst:
                 self._frames_lst = [None]
             while len(self._frames_lst) <= this_frameno:
@@ -378,7 +378,7 @@ class Corridor:
             if self._frames_lst[this_frameno] is None:
                 assert(cksum == bytes_64bit_cksum(frame[:block_len + 10]))
                 self._frames_lst[this_frameno] = subframe
-                print("%s [#%-9d]                    %-10s  Rx'd #%3d frame %s" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.pubkey), this_frameno,
+                print("%s [#%-9d]                    %-10s  Rx'd #%3d frame %s" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.destination_pk), this_frameno,
                                 ' ' * this_frameno + ''.join(('.' if r is None else '+') for r in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1])))  # , frame)
             if self._lastframethatispatout < this_frameno and (None not in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]):
                 if self.streaming or block_len == 0:
@@ -390,14 +390,14 @@ class Corridor:
 
     def close(self, timeout=HANDSHAKE_TIMEOUT):
         """Tell the other end of the corridor to shut down. Then, shut our own end down."""
-        nicks4pk = self.harem.nicks_for_pk(self.pubkey)
+        nicks4pk = self.harem.nicks_for_pk(self.destination_pk)
         if nicks4pk == '':
             nicks4pk = '(zombie)'  # print("WARNING -- cannot find any nicknames for this public key. This suggests that it's a leftover from a previous corridor.")
         print("%s [?%-8d?]     %-10s---> %-10s  DESTROYING & FORGETTING CORRIDOR" % (s_now(), self.uid, nicks4pk, self.harem.desired_nickname))
         print("%s [%s]                    %-10s  I have told %s to close corridor... and now, I'm waiting to be told to do the same." % (s_now(), self.str_uid, nicks4pk, self.harem.desired_nickname))
         try:
             bout = bytes(_CLOSE_A_CORRIDOR_ + self.his_uid.to_bytes(3, 'little'))
-            self.harem.put(self.pubkey, bout, bypass_harem=True)
+            self.harem.put(self.destination_pk, bout, bypass_harem=True)
         except PublicKeyUnknownError:
             print("%s [%s]     %-10s---> %-10s  We've already closed the other end, apparently? (The PK is invalid now.) Cool." % (s_now(), self.str_uid, nicks4pk, self.harem.desired_nickname))
         t = datetime.datetime.now()

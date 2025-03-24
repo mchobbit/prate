@@ -203,7 +203,7 @@ class Harem(PrateRookery):
                 raise RookeryCorridorMorethanoneError("WHY ARE THERE %d MATCHING CORRIDORS?" % len(possible_corridors))
         except IndexError:
             if control_cmd in (_OPEN_A_CORRIDOR_, _RECIPROCATE_OPENING_):
-                corridor = Corridor(our_uid=uid_from_pubkey(self.my_pubkey), his_uid=his_uid, pubkey=source, harem=self)
+                corridor = Corridor(our_uid=uid_from_pubkey(self.my_pubkey), his_uid=his_uid, destination_pk=source, harem=self)
                 self.corridors.append(corridor)
                 print("%s [%s]     %-10s<==> %-10s  Creating corridor" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname))
         if control_cmd == _OPEN_A_CORRIDOR_:
@@ -253,11 +253,13 @@ class Harem(PrateRookery):
         if destination not in [h.pubkey for h in self.get_homies_list(True)]:
             raise PublicKeyBadKeyError("Please handshake first. Then I'll be able to find your guy w/ his pubkey.")
         our_uid = uid_from_pubkey(self.my_pubkey)
-        try:
-            corridor = [c for c in self.corridors if c.uid == our_uid][0]
+        matches = [] if self.corridors is None else [c for c in self.corridors if c.destination_pk == destination]
+        if len(matches) > 0:
+            assert(len(matches) < 2)
+            corridor = matches[0]
             print("%s [?%-8d?]     %-10s<==> %-10s  USING EXISTING CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
             return corridor
-        except IndexError:
+        else:
             print("%s [?%-8d?]     %-10s<==> %-10s  ESTABLISHING A CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
             bout = bytes(_OPEN_A_CORRIDOR_ + our_uid.to_bytes(3, 'little'))
             self.put(destination, bout, bypass_harem=True)
@@ -281,7 +283,7 @@ class Harem(PrateRookery):
         print("%s╔═══ %-10s  We now have %s════╗" % (s_now(), self.desired_nickname, '1 corridor ' if len(self.corridors) == 1 else '%d corridors' % len(self.corridors)))
         simpipenumber = 1
         for c in self.corridors:
-            print("        ╠[%s]      %2d of %-2d      %-10s ╣" % (c.str_uid, simpipenumber, len(self.corridors), self.nicks_for_pk(c.pubkey)))
+            print("        ╠[%s]      %2d of %-2d      %-10s ╣" % (c.str_uid, simpipenumber, len(self.corridors), self.nicks_for_pk(c.destination_pk)))
             simpipenumber += 1
         print("        ╚═══════════════════════════════════════════╝")
 
