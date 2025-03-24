@@ -213,25 +213,25 @@ class Harem(PrateRookery):
         elif control_cmd == _RECIPROCATE_OPENING_:
             print("%s [%s]                    %-10s  I opened %s's corridor" % (s_now(), corridor.str_uid, self.desired_nickname, self.nicks_for_pk(source)))  #  if None in (corridor.our_uid, corridor.his_uid) else '==> #%d' % corridor.uid))
         elif control_cmd == _CLOSE_A_CORRIDOR_:
-            use_this_uid = his_uid if corridor is None else corridor.uid
-            corridor.gotta_close = True  # Trigger the closure of main loop, which will also trigger corridor.is_closed=True
-            print("%s [#%-9d]     %-10s<==> %-10s  As per %s's request, %s has closed their end" % (s_now(), use_this_uid, self.nicks_for_pk(source), self.desired_nickname, self.nicks_for_pk(source), self.desired_nickname))
-            for i in range(0, 30):
-                sleep(.1)
-                if corridor.is_closed:
-                    break
-                if i % 5 == 0:
-                    print("%s [%s]     %-10s<==> %-10s  Waiting for corridor's main loop to close" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname))
+            if corridor is None:
+                use_this_uid = his_uid
+                print("%s [#%-9d]     %-10s<==> %-10s  As per %s's request, %s has closed their end <== I've been asked to close a corridor that has already been closed on my end" % (s_now(), use_this_uid, self.nicks_for_pk(source), self.desired_nickname, self.nicks_for_pk(source), self.desired_nickname))
+            else:
+                use_this_uid = corridor.uid
+                print("%s [#%-9d]     %-10s<==> %-10s  As per %s's request, %s has closed their end" % (s_now(), use_this_uid, self.nicks_for_pk(source), self.desired_nickname, self.nicks_for_pk(source), self.desired_nickname))
+                corridor.gotta_close = True  # Trigger the closure of main loop, which will also trigger corridor.is_closed=True
+                for i in range(0, 30):
+                    sleep(.1)
+                    if corridor.is_closed:
+                        break
+                    if i % 5 == 0:
+                        print("%s [%s]     %-10s<==> %-10s  Waiting for corridor's main loop to close" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname))
             bout = bytes(_RECIPROCATE_CLOSING_ + use_this_uid.to_bytes(3, 'little'))  # Tell him our uid. Then, we both use the highest-value uid.
             self.put(source, bout, bypass_harem=True)
         elif control_cmd == _RECIPROCATE_CLOSING_:
-            use_this_uid = his_uid if corridor is None else corridor.uid
             corridor.gotta_close = True  # Trigger the closure of main loop, which will also trigger corridor.is_closed=True
+            use_this_uid = his_uid if corridor is None else corridor.uid
             print("%s [#%-9d]     %-10s<==> %-10s  %s confirms he has closed his end" % (s_now(), use_this_uid, self.nicks_for_pk(source), self.desired_nickname, self.nicks_for_pk(source)))
-        # elif control_cmd == _GET_STATUS_OF_CORRIDOR_:
-        #     print("%s [%s]     %-10s<==> %-10s  Get status of corridor? What should I do with this?" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname))
-        #     if corridor is None:
-        #         raise RookeryCorridorNotFoundError("I cannot send a date frame to a nonexistent corridor")
         elif control_cmd == _THIS_IS_A_DATA_FRAME_:
 #             print("%s [%s]     %-10s<==> %-10s  Routing a frame to this corridor" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname))
             corridor.q4me_via_harem.put(frame)
