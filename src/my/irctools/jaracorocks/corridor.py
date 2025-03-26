@@ -58,7 +58,7 @@ class Corridor:
         self.my_get_queue = Queue()
         self.__streaming = False  # If True, feed incoming data to buffer as it comes in; don't wait for the final packet!
         self.__streaming_lock = ReadWriteLock()
-        self.__frames_lst = {}
+        self.__frames_lst = []
         self.__frames_lst_lock = ReadWriteLock()
         self.__frameno = 0
         self.__frameno_lock = ReadWriteLock()
@@ -326,7 +326,7 @@ class Corridor:
             this_block = datablock[indexpos:(indexpos + block_len)]
             subframe = bytes(_THIS_IS_A_DATA_FRAME_ + self.uid.to_bytes(3, 'little') + self._frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
             frame = bytes(subframe + bytes_64bit_cksum(subframe))
-            print("%s [#%-9d]     %-10s---> %-10s  Tx'd #%3d frame of %3d bytes" % (s_now(), self.uid, self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self._frameno, len(frame)))
+            print("%s [#%-9d]     %-10s---> %-10s  Tx'd #%3d frame of %3d bytes (containing %d bytes of actual data)" % (s_now(), self.uid, self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self._frameno, len(frame), block_len))
             # print("%s %-10s<==%-10s  put%3d bytes packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), len(this_block)), frame, "  to corridor")
             for i in range(0, self.dupes + 1):
                 self.harem.put(self.destination_pk, frame, ircsvrs[(self._frameno + i) % noof_ircsvrs], bypass_harem=True)
@@ -352,9 +352,6 @@ class Corridor:
         return retval
 
     def process_frame(self, frame):
-        if self.uid not in self._frames_lst:
-            self._frames_lst = [None]
-#                print("%s %-10s<==%-10s  Corridor rx'd packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk)), frame)
         control_cmd = frame[0]
         if control_cmd != ord(_THIS_IS_A_DATA_FRAME_):
             print("Warning -- process_frame() -- incoming frame is not a data frame")
@@ -370,23 +367,26 @@ class Corridor:
         cksum = frame[(block_len + 10):]
         if frame_uid != self.uid:
             print("%s [#%-9d]                    %-10s  Rx'd #%3d frame (was for corridor #%d; I suspect someone closed a corridor somewhere & I should ignore this packet. So, I'll ignore it.)" % (s_now(), frame_uid, self.harem.desired_nickname, this_frameno, self.uid))
-        else:  # print("%s [#%-9d] src %-10s dst %-10s  Rx'd #%3d frame" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.destination_pk), self.harem.desired_nickname, this_frameno))
-            if frame_uid not in self._frames_lst:
-                self._frames_lst = [None]
+        else:
+            if block_len == 0:
+                print("Let's track this.")
             while len(self._frames_lst) <= this_frameno:
                 self._frames_lst += [None]
-            if self._frames_lst[this_frameno] is None:
-                assert(cksum == bytes_64bit_cksum(frame[:block_len + 10]))
+            assert(cksum == bytes_64bit_cksum(frame[:block_len + 10]))
+            if self._frames_lst[this_frameno] != subframe:
                 self._frames_lst[this_frameno] = subframe
-                print("%s [#%-9d]                    %-10s  Rx'd #%3d frame %s" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.destination_pk), this_frameno,
-                                ' ' * this_frameno + ''.join(('.' if r is None else '+') for r in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1])))  # , frame)
-            if self._lastframethatispatout < this_frameno and (None not in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]):
-                if self.streaming or block_len == 0:
-                    print("%s [#%-9d]                    %-10s  Que'd %3d thru %3d (inclusive)" % (s_now(), self.uid, self.harem.desired_nickname, self._lastframethatispatout + 1, this_frameno))
-                    outdat = b''.join([self._frames_lst[i] for i in range(self._lastframethatispatout + 1, this_frameno + 1)])
-                    self.my_get_queue.put(outdat)
-                    # print("Data sent: %d bytes" % len(outdat))
-                    self._lastframethatispatout = this_frameno
+            else:
+                print("DUPE. That's ok -- no hard feelings")
+            print("%s [#%-9d]                    %-10s  Rx'd #%3d frame %s (containing %d bytes of actual data)" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.destination_pk), this_frameno,
+                                ' ' * this_frameno + ''.join(('.' if r is None else '+') for r in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]), block_len))  # , frame)
+            if (self.streaming or block_len == 0) \
+            and self._lastframethatispatout < this_frameno \
+            and (None not in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]):
+                print("%s [#%-9d]                    %-10s  Que'd %3d thru %3d (inclusive)" % (s_now(), self.uid, self.harem.desired_nickname, self._lastframethatispatout + 1, this_frameno))
+                outdat = b''.join([self._frames_lst[i] for i in range(self._lastframethatispatout + 1, this_frameno + 1)])
+                self.my_get_queue.put(outdat)
+                # print("Data sent: %d bytes" % len(outdat))
+                self._lastframethatispatout = this_frameno
 
     def close(self, timeout=HANDSHAKE_TIMEOUT):
         """Tell the other end of the corridor to shut down. Then, shut our own end down."""

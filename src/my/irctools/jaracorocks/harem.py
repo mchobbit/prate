@@ -260,9 +260,8 @@ class Harem(PrateRookery):
         matches = [] if self.corridors is None else [c for c in self.corridors if c.destination_pk == destination]
         if len(matches) > 0:
             assert(len(matches) < 2)
-            corridor = matches[0]
             print("%s [?%-8d?]     %-10s<==> %-10s  USING EXISTING CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
-            return corridor
+            return matches[0]
         else:
             print("%s [?%-8d?]     %-10s<==> %-10s  ESTABLISHING A CORRIDOR" % (s_now(), our_uid, self.desired_nickname, self.nicks_for_pk(destination)))
             bout = bytes(_OPEN_A_CORRIDOR_ + our_uid.to_bytes(3, 'little'))
@@ -276,8 +275,7 @@ class Harem(PrateRookery):
                 if cs != []:
                     if len(cs) > 1:
                         print("WARNING -- MULTIPLE CORRIDORS WITH OUR UID")
-                    corridor = cs[0]
-                    print("%s [%s]     %-10s<==> %-10s  CORRIDOR ESTABLISHED" % (s_now(), corridor.str_uid, self.desired_nickname, self.nicks_for_pk(destination)))
+                    print("%s [%s]     %-10s<==> %-10s  CORRIDOR ESTABLISHED" % (s_now(), cs[0].str_uid, self.desired_nickname, self.nicks_for_pk(destination)))
                     self.display_corridors()
                     return cs[0]
     #        self.display_corridors()

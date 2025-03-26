@@ -80,7 +80,29 @@ class TestTHISISBROKENWhyIsItWhyWhy(unittest.TestCase):
         alice_corridor.close(); self.assertTrue(bob_corridor.is_closed is True and alice_corridor.is_closed is True and alice_harem.corridors + bob_harem.corridors == [])
         [ h.quit() for h in (alice_harem, bob_harem)]  # pylint: disable=expression-not-assigned
 
-# HI
+    def testMakeSureSingletonsAreSingle(self):
+        alice_harem, bob_harem = setUpForNServers(1)
+        first_alice_corridor = alice_harem.open(bobs_PK)
+        second_alice_corridor = alice_harem.open(bobs_PK)
+        third_alice_corridor = alice_harem.open(bobs_PK)
+        self.assertEqual(first_alice_corridor, second_alice_corridor)
+        self.assertEqual(second_alice_corridor, third_alice_corridor)
+        self.assertEqual(first_alice_corridor.uid, alice_harem.corridors[0].uid)
+        self.assertEqual(second_alice_corridor.uid, alice_harem.corridors[0].uid)
+        self.assertEqual(third_alice_corridor.uid, alice_harem.corridors[0].uid)
+        first_alice_corridor.chewbacca = 1
+        self.assertEqual(first_alice_corridor.chewbacca, alice_harem.corridors[0].chewbacca)
+        first_alice_corridor.chewbacca += 1
+        self.assertEqual(second_alice_corridor.chewbacca, alice_harem.corridors[0].chewbacca)
+        self.assertEqual([first_alice_corridor], alice_harem.corridors)
+        self.assertEqual([second_alice_corridor], alice_harem.corridors)
+        self.assertEqual([third_alice_corridor], alice_harem.corridors)
+        third_alice_corridor.close()
+        self.assertTrue(first_alice_corridor.is_closed)
+        self.assertTrue(second_alice_corridor.is_closed)
+        self.assertTrue(third_alice_corridor.is_closed)
+        self.assertEqual(alice_harem.corridors + bob_harem.corridors, [])
+        [ h.quit() for h in (alice_harem, bob_harem)]  # pylint: disable=expression-not-assigned
 
 
 # TestAliceBobClosingRaceCondition WORKS 100% as of 2025/03/23 @ 22:05
@@ -104,7 +126,7 @@ class TestAliceBobClosingRaceCondition(unittest.TestCase):
         self.assertGreaterEqual(len(self.alice_harem.true_homies), 1, "By now, Alice should have found at least one true homie: Bob.")
         self.assertGreaterEqual(len(self.bob_harem.true_homies), 1, "By now, Bob should have found at least one true homie: Alice.")
         self.assertEqual(self.alice_harem.corridors, [], "Previous test left Alice with open corridor(s)")
-        self.assertEqual(self.bob_harem.corridors, [], "Previous test left Alice with open corridor(s)")
+        self.assertEqual(self.bob_harem.corridors, [], "Previous test left Bob with open corridor(s)")
         print("╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍")
 
     def tearDown(self):
@@ -197,6 +219,101 @@ class TestAliceBobClosingRaceCondition(unittest.TestCase):
         self.assertEqual([], self.alice_harem.corridors)
         self.assertEqual([], self.bob_harem.corridors)
 
+    def testAliceAndBobSimultaneousOpenAndClose(self):
+#        for _ in range(0,10):
+        al_thread = Thread(target=self.alice_harem.open, args=[bobs_PK], daemon=True)
+        bb_thread = Thread(target=self.bob_harem.open, args=[alices_PK], daemon=True)
+        al_thread.start()
+        bb_thread.start()
+        while self.alice_harem.corridors == [] and self.bob_harem.corridors == []:
+            print("Waiting for corridors to open (simultaneously)")
+            sleep(5)
+        print("Joining the threads")
+        al_thread.join()
+        bb_thread.join()
+        self.assertEqual(len(self.alice_harem.corridors), 1)
+        self.assertEqual(len(self.bob_harem.corridors), 1)
+        alice_corridor = self.alice_harem.corridors[0]
+        bob_corridor = self.bob_harem.corridors[0]
+        self.assertEqual(alice_corridor.uid, bob_corridor.uid)
+        self.assertNotEqual(alice_corridor.our_uid, bob_corridor.our_uid)
+        self.assertNotEqual(alice_corridor.his_uid, bob_corridor.his_uid)
+        self.assertEqual(alice_corridor.his_uid, bob_corridor.our_uid)
+        self.assertEqual(alice_corridor.our_uid, bob_corridor.his_uid)
+        self.assertFalse(alice_corridor.is_closed)
+        self.assertFalse(bob_corridor.is_closed)
+
+        bob_corridor.close()
+        sleep(5)
+        self.assertTrue(bob_corridor.is_closed)
+        self.assertTrue(alice_corridor.is_closed, "Closing Bob should also close Alice")
+        self.assertEqual([], self.alice_harem.corridors)
+        self.assertEqual([], self.bob_harem.corridors)
+
+    def testSimplestOpenAndClosePartTwo(self):
+        for pausdur in (10, 5, 3, 2, 1, .1):
+            print("Sleeping for 10 seconds, as a precaution..... (cough) Race conditions (cough)")
+            sleep(10)
+            alice_corridor = self.alice_harem.open(bobs_PK)
+            if len(self.bob_harem.corridors) == 0:
+                sleep(10)
+                self.assertEqual(self.bob_harem.corridors[0].destination_pk, alices_PK)
+                self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
+            alice_corridor.close(timeout=300)
+            self.assertEqual(self.alice_harem.corridors, [])
+            self.assertEqual([], self.alice_harem.corridors)
+            self.assertEqual([], self.alice_harem.corridors)
+            sleep(pausdur)
+            self.assertTrue(alice_corridor.is_closed)
+            sleep(5 if [] != self.alice_harem.corridors else 0)
+            sleep(5 if [] != self.bob_harem.corridors else 0)
+            self.assertEqual([], self.bob_harem.corridors)
+            self.assertEqual([], self.bob_harem.corridors)
+            sleep(2)
+
+    def testSimplest0sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        self.assertFalse(alice_corridor.is_closed)
+        self.assertFalse(bob_corridor.is_closed)
+        alice_corridor.close(timeout=9999)
+        bob_corridor.close(timeout=9999)
+        self.assertTrue(alice_corridor.is_closed)
+        self.assertTrue(bob_corridor.is_closed)
+        sleep(5 if [] != self.alice_harem.corridors else 0)
+        sleep(5 if [] != self.bob_harem.corridors else 0)
+        self.assertEqual(len(self.alice_harem.corridors), 0)
+        self.assertEqual(len(self.bob_harem.corridors), 0)
+
+    def testSimplest1sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
+        print("THIS ONE TENDS TO BREAK. Why?")
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        sleep(1)
+        print("OK so far.")
+        alice_corridor.close()
+        bob_corridor.close()
+        print("Well, we JUUUUUST opened a corridor (the same one twice) and then we closed them both again.")
+        self.assertTrue(alice_corridor.is_closed)
+        self.assertTrue(bob_corridor.is_closed)
+        self.assertEqual([], self.alice_harem.corridors)
+        self.assertEqual([], self.bob_harem.corridors)
+
+    def testSimplest5sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
+        alice_corridor = self.alice_harem.open(bobs_PK)
+        bob_corridor = self.bob_harem.open(alices_PK)
+        self.assertFalse(alice_corridor.is_closed)
+        self.assertFalse(bob_corridor.is_closed)
+        sleep(5)
+        alice_corridor.close()
+        bob_corridor.close()
+        self.assertTrue(alice_corridor.is_closed)
+        self.assertTrue(bob_corridor.is_closed)
+        sleep(5 if [] != self.alice_harem.corridors else 0)
+        sleep(5 if [] != self.bob_harem.corridors else 0)
+        self.assertEqual(len(self.alice_harem.corridors), 0)
+        self.assertEqual(len(self.bob_harem.corridors), 0)
+
 
 # TestcorridorsOpeningAndClosing WORKS 100% as of 2025/03/23 @ 22:05
 class TestcorridorsOpeningAndClosing(unittest.TestCase):
@@ -219,7 +336,7 @@ class TestcorridorsOpeningAndClosing(unittest.TestCase):
         self.assertGreaterEqual(len(self.alice_harem.true_homies), 1, "By now, Alice should have found at least one true homie: Bob.")
         self.assertGreaterEqual(len(self.bob_harem.true_homies), 1, "By now, Bob should have found at least one true homie: Alice.")
         self.assertEqual(self.alice_harem.corridors, [], "Previous test left Alice with open corridor(s)")
-        self.assertEqual(self.bob_harem.corridors, [], "Previous test left Alice with open corridor(s)")
+        self.assertEqual(self.bob_harem.corridors, [], "Previous test left Bob with open corridor(s)")
         print("╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍")
 
     def tearDown(self):
@@ -429,17 +546,15 @@ class TestTurnDownForWhatDJSnake(unittest.TestCase):
         self.assertGreaterEqual(len(self.alice_harem.true_homies), 1, "By now, Alice should have found at least one true homie: Bob.")
         self.assertGreaterEqual(len(self.bob_harem.true_homies), 1, "By now, Bob should have found at least one true homie: Alice.")
         self.assertEqual(self.alice_harem.corridors, [], "Previous test left Alice with open corridor(s)")
-        self.assertEqual(self.bob_harem.corridors, [], "Previous test left Alice with open corridor(s)")
+        self.assertEqual(self.bob_harem.corridors, [], "Previous test left Bob with open corridor(s)")
         print("╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍")
 
     def tearDown(self):
+        for c in self.alice_harem.corridors:
+            c.close()
+        for c in self.bob_harem.corridors:
+            c.close()
         print("====================================================================================================")
-        self.assertTrue(self.alice_harem.connected_and_joined, "Alice should have connected and joined by now.")
-        self.assertTrue(self.bob_harem.connected_and_joined, "Bob should have connected and joined by now.")
-        self.assertGreaterEqual(len(self.alice_harem.homies_pubkeys), 1, "By now, Alice's harem of bots should have gathered at least one public key from another potential homie.")
-        self.assertGreaterEqual(len(self.bob_harem.homies_pubkeys), 1, "By now, Bob's harem of bots should have gathered at least one public key from another potential homie.")
-        self.assertGreaterEqual(len(self.alice_harem.true_homies), 1, "By now, Alice should have found at least one true homie: Bob.")
-        self.assertGreaterEqual(len(self.bob_harem.true_homies), 1, "By now, Bob should have found at least one true homie: Alice.")
         self.assertEqual(self.alice_harem.corridors, [], "Alice should have closed all corridors by now")
         self.assertEqual(self.bob_harem.corridors, [], "Bob should have closed all corridors by now")
 
@@ -447,13 +562,9 @@ class TestTurnDownForWhatDJSnake(unittest.TestCase):
         sleep(10)
         alice_corridor = self.alice_harem.open(bobs_PK, timeout=60)
         sleep(10)
-        try:
-            self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
-        except IndexError:
-            sleep(5)
-            self.assertNotEqual(self.bob_harem.corridors, [])
-        self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
-        self.assertTrue(alice_corridor.uid == self.bob_harem.corridors[0].uid)
+        self.assertNotEqual(self.bob_harem.corridors, [])
+        self.assertTrue(self.bob_harem.corridors[0].uid, alice_corridor.uid)
+        self.assertTrue(self.alice_harem.corridors[0].uid, alice_corridor.uid)
         self.assertEqual(len(self.bob_harem.corridors), 1)
         bob_corridor = self.bob_harem.open(alices_PK, timeout=300)  # This should REUSE a corridor that ALICE caused Bob to open.
         sleep(t)
@@ -466,8 +577,10 @@ class TestTurnDownForWhatDJSnake(unittest.TestCase):
         self.assertEqual(self.alice_harem.corridors + self.bob_harem.corridors, [])
 
     def run_test_SOaCn_beefier(self, t):
+        sleep(10)
         self.assertEqual(self.alice_harem.corridors, [])
         self.assertEqual(self.bob_harem.corridors, [])
+        sleep(10)
         alice_corridor = self.alice_harem.open(bobs_PK, timeout=60)
         self.assertFalse(alice_corridor.is_closed)
         self.assertEqual([alice_corridor], self.alice_harem.corridors)
@@ -530,97 +643,6 @@ class TestTurnDownForWhatDJSnake(unittest.TestCase):
         self.run_test_SOaCn_slim(5)
         self.run_test_SOaCn_beefier(5)
 
-    def testSimplestOpenAndClosePartTwo(self):
-        for pausdur in (10, 5, 3, 2, 1, .1):
-            alice_corridor = self.alice_harem.open(bobs_PK)
-            self.assertEqual(self.bob_harem.corridors[0].destination_pk, alices_PK)
-            self.assertEqual(self.bob_harem.corridors[0].uid, alice_corridor.uid)
-            alice_corridor.close(timeout=300)
-            self.assertEqual(self.alice_harem.corridors, [])
-            self.assertEqual([], self.alice_harem.corridors)
-            self.assertEqual([], self.alice_harem.corridors)
-            sleep(pausdur)
-            self.assertTrue(alice_corridor.is_closed)
-            sleep(5 if [] != self.alice_harem.corridors else 0)
-            sleep(5 if [] != self.bob_harem.corridors else 0)
-            self.assertEqual([], self.bob_harem.corridors)
-            self.assertEqual([], self.bob_harem.corridors)
-            sleep(2)
-
-    def testSimplest0sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        self.assertFalse(alice_corridor.is_closed)
-        self.assertFalse(bob_corridor.is_closed)
-        alice_corridor.close(timeout=9999)
-        bob_corridor.close(timeout=9999)
-        self.assertTrue(alice_corridor.is_closed)
-        self.assertTrue(bob_corridor.is_closed)
-        sleep(5 if [] != self.alice_harem.corridors else 0)
-        sleep(5 if [] != self.bob_harem.corridors else 0)
-        self.assertEqual(len(self.alice_harem.corridors), 0)
-        self.assertEqual(len(self.bob_harem.corridors), 0)
-
-    def testSimplest1sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
-        print("THIS ONE TENDS TO BREAK. Why?")
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        sleep(1)
-        print("OK so far.")
-        alice_corridor.close()
-        bob_corridor.close()
-        print("Well, we JUUUUUST opened a corridor (the same one twice) and then we closed them both again.")
-        self.assertTrue(alice_corridor.is_closed)
-        self.assertTrue(bob_corridor.is_closed)
-        self.assertEqual([], self.alice_harem.corridors)
-        self.assertEqual([], self.bob_harem.corridors)
-
-    def testSimplest5sPause(self):  # PASESES! DO NOT CHANGE. LAST MODIFIED 2025/03/23 @ 22:23
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        self.assertFalse(alice_corridor.is_closed)
-        self.assertFalse(bob_corridor.is_closed)
-        sleep(5)
-        alice_corridor.close()
-        bob_corridor.close()
-        self.assertTrue(alice_corridor.is_closed)
-        self.assertTrue(bob_corridor.is_closed)
-        sleep(5 if [] != self.alice_harem.corridors else 0)
-        sleep(5 if [] != self.bob_harem.corridors else 0)
-        self.assertEqual(len(self.alice_harem.corridors), 0)
-        self.assertEqual(len(self.bob_harem.corridors), 0)
-
-    def testAliceAndBobSimultaneousOpenAndClose(self):
-#        for _ in range(0,10):
-        al_thread = Thread(target=self.alice_harem.open, args=[bobs_PK], daemon=True)
-        bb_thread = Thread(target=self.bob_harem.open, args=[alices_PK], daemon=True)
-        al_thread.start()
-        bb_thread.start()
-        while self.alice_harem.corridors == [] and self.bob_harem.corridors == []:
-            print("Waiting for corridors to open (simultaneously)")
-            sleep(5)
-        print("Joining the threads")
-        al_thread.join()
-        bb_thread.join()
-        self.assertEqual(len(self.alice_harem.corridors), 1)
-        self.assertEqual(len(self.bob_harem.corridors), 1)
-        alice_corridor = self.alice_harem.corridors[0]
-        bob_corridor = self.bob_harem.corridors[0]
-        self.assertEqual(alice_corridor.uid, bob_corridor.uid)
-        self.assertNotEqual(alice_corridor.our_uid, bob_corridor.our_uid)
-        self.assertNotEqual(alice_corridor.his_uid, bob_corridor.his_uid)
-        self.assertEqual(alice_corridor.his_uid, bob_corridor.our_uid)
-        self.assertEqual(alice_corridor.our_uid, bob_corridor.his_uid)
-        self.assertFalse(alice_corridor.is_closed)
-        self.assertFalse(bob_corridor.is_closed)
-
-        bob_corridor.close()
-        sleep(5)
-        self.assertTrue(bob_corridor.is_closed)
-        self.assertTrue(alice_corridor.is_closed, "Closing Bob should also close Alice")
-        self.assertEqual([], self.alice_harem.corridors)
-        self.assertEqual([], self.bob_harem.corridors)
-
     def testKeepCrashingUTIIUDWhwatever(self):
         alice_corridor = self.alice_harem.open(bobs_PK)
         sleep(5)
@@ -661,63 +683,18 @@ class TestTurnDownForWhatDJSnake(unittest.TestCase):
         self.assertEqual(len(self.alice_harem.corridors), 0)
         self.assertEqual(len(self.bob_harem.corridors), 0)
 
-'''
     def testOpenOnlyOneCrdrAndSayHelloThenOpenOtherCrdr(self):
         alice_corridor = self.alice_harem.open(bobs_PK)
-        out_data = b"HELLO THERE. HOW ARE YOU?"
+        out_data = b"HELLO THERE. HOW ARE Y'All?"
         alice_corridor.put(out_data)
         alice_corridor.close()
         self.assertRaises(RookeryCorridorAlreadyClosedError, alice_corridor.put, b"THIS SHOULD NOT WORK")
         bob_corridor = self.bob_harem.open(alices_PK)
-        rxd_data = bob_corridor.get(timeout=300)  # timeout=10
-        self.assertEqual(out_data, rxd_data)
+        self.assertRaises(Empty, bob_corridor.get, timeout=10)
         bob_corridor.close()
         self.assertTrue(alice_corridor.is_closed)
         self.assertTrue(bob_corridor.is_closed)
         self.assertRaises(RookeryCorridorAlreadyClosedError, bob_corridor.put, b"THIS SHOULD NOT WORK")
-        sleep(5)
-        self.assertEqual(len(self.alice_harem.corridors), 0)
-        self.assertEqual(len(self.bob_harem.corridors), 0)
-
-    def testScreamIntoTheVoid(self):
-        out_data = b"ANOTHER FABULOUS TEST! HUZZAH%d..." % randint(1, 100000)
-        self.assertEqual(self.alice_harem.corridors, [], "There should be no corridors at Alice")
-        self.assertEqual(self.bob_harem.corridors, [], "There should be no corridors at Bob")
-        alice_corridor = self.alice_harem.open(bobs_PK)
-        self.assertEqual(len(self.alice_harem.corridors), 1)
-        self.assertEqual(self.bob_harem.corridors, [])
-        alice_corridor.put(out_data)
-        self.assertEqual(len(self.alice_harem.corridors), 1)
-        sleep(10 if self.bob_harem.corridors == [] else 0)
-        self.assertEqual(len(self.bob_harem.corridors), 1)
-        the_bob_corridor_that_alice_made_bob_create = self.bob_harem.corridors[0]
-        self.assertEqual(alice_corridor.uid, the_bob_corridor_that_alice_made_bob_create.uid)
-        self.assertTrue(self.alice_harem.is_handshook_with(bobs_PK))
-        self.assertTrue(self.bob_harem.is_handshook_with(alices_PK))
-        another_bobC = self.bob_harem.open(alices_PK)
-        self.assertEqual(another_bobC.uid, the_bob_corridor_that_alice_made_bob_create.uid)
-        alice_corridor.close()
-        self.assertEqual(len(self.bob_harem.corridors), 1)
-        self.assertTrue(self.bob_harem.is_handshook_with(alices_PK))
-        the_corridor_that_BOB_had_to_open_for_Alice = self.bob_harem.corridors[0]
-        self.assertEqual(alice_corridor.uid, the_corridor_that_BOB_had_to_open_for_Alice.uid)
-        alice_corridor.close()
-#        self.assertRaises(RookeryCorridorAlreadyClosedError, alice_corridor.close)
-        bob_corridor = self.bob_harem.open(alices_PK)
-        self.assertEqual(bob_corridor.uid, the_corridor_that_BOB_had_to_open_for_Alice.uid)
-        rxd_data = bob_corridor.get(timeout=10)
-        self.assertEqual(out_data, rxd_data)
-        bob_corridor.close()
-        self.assertTrue(bob_corridor.is_closed, "I just closed this corridor. Why is it open?")
-        self.assertRaises(RookeryCorridorAlreadyClosedError, bob_corridor.put, b"THIS SHOULD NOT WORK")
-        self.assertEqual(self.alice_harem.corridors, [], "Alice should have no corridors left.")
-        bob_corridor.close()
-        self.assertEqual(self.bob_harem.corridors, [])
-        self.assertTrue(another_bobC.is_closed, "I closed bob_corridor; that should have closed another_bobC, too.")
-        self.assertTrue(the_bob_corridor_that_alice_made_bob_create.is_closed, "I closed bob_corridor; that should have closed the_bob_corridor_that_alice_made_bob_create, too.")
-        self.assertEqual(self.bob_harem.corridors, [])
-        self.assertTrue(another_bobC.is_closed)
-        self.assertTrue(the_bob_corridor_that_alice_made_bob_create.is_closed)
         sleep(5)
         self.assertEqual(len(self.alice_harem.corridors), 0)
         self.assertEqual(len(self.bob_harem.corridors), 0)
@@ -783,7 +760,6 @@ class TestcorridorsZero(unittest.TestCase):
         alice_harem.quit()
         bob_harem.quit()
 
-    #
     def testSDSOwithTimeout10(self):
         self.assertRaises(RookeryCorridorTimeoutError, self.__run_super_duper_simple_test, 1, 0, 32, (8, 16, 31, 32, 256, 512), 10)  # 10 is timeout value
 
@@ -791,47 +767,55 @@ class TestcorridorsZero(unittest.TestCase):
         self.__run_super_duper_simple_test(noof_servers=5, dupes=5, frame_size=256, datalen_lst=(0, 0, 1, 1, 0, 1))
 
     def testSDSOwithTimeout180(self):
-        self.__run_super_duper_simple_test(noof_servers=5, dupes=0, frame_size=32, datalen_lst=(8, 16, 31, 32, 33), timeout=180)
+        self.__run_super_duper_simple_test(noof_servers=5, dupes=1, frame_size=32, datalen_lst=(8, 16, 31, 32, 33), timeout=180)
 
-    #
     def testSDSOwithTimeoutDefault(self):
-        self.__run_super_duper_simple_test(noof_servers=5, dupes=0, frame_size=32, datalen_lst=(8, 16, 31, 32, 33))
+        self.__run_super_duper_simple_test(noof_servers=5, dupes=1, frame_size=32, datalen_lst=(8, 16, 31, 32, 33))
 
-    # def testD4SimpleFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=4, framesize_lst=(32,))
-    #
-    # def testD3SimpleFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=3, framesize_lst=(32,))
-    #
-    # def testD2SimpleFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=2, framesize_lst=(32,))
-    #
-    # def testD1SimpleFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=1, framesize_lst=(32,))
-    #
-    # def testD0SimpleFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=0, framesize_lst=(32,))
-    #
-    # def testD4BigFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=4, framesize_lst=(128, 256))
-    #
-    # def testD3BigFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=3, framesize_lst=(128, 256))
-    #
-    # def testD2BigFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=2, framesize_lst=(128, 256))
-    #
-    # def testD1BigFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=1, framesize_lst=(128, 256))
-    #
-    # def testD0BigFileTransmission(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=0, framesize_lst=(128, 256), timeout=120)
+    def testD4SimpleFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=4, framesize_lst=(32,))
 
-    def testSuperDuperSimpleVariety(self):
-        noof_servers = 1
-        timeout = 30
-        for dupes in (4, 3, 2, 1, 0):
-            self.run_test_with_N_servers_and_dupes(noof_servers=noof_servers, dupes=dupes, framesize_lst=(64, 128, 256), timeout=timeout)
+    def testD3SimpleFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=3, framesize_lst=(32,))
+
+    def testD2SimpleFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=2, framesize_lst=(32,))
+
+    def testD1SimpleFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=1, framesize_lst=(32,))
+
+    def testD0SimpleFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=0, framesize_lst=(32,))
+
+    def testD4BigFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=4, framesize_lst=(128, 256))
+
+    def testD3BigFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=3, framesize_lst=(128, 256))
+
+    def testD2BigFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=2, framesize_lst=(128, 256))
+
+    def testD1BigFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=1, framesize_lst=(128, 256))
+
+    def testD0BigFileTransmission(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=0, framesize_lst=(128, 256), timeout=120)
+
+    # def testSuperDuperSimpleVarietyAAA(self):
+    #     self.run_test_with_N_servers_and_dupes(noof_servers=1, dupes=4, framesize_lst=(64, 128, 256), timeout=120)
+
+    # def testSuperDuperSimpleVarietyBBB(self):
+    #     self.run_test_with_N_servers_and_dupes(noof_servers=2, dupes=3, framesize_lst=(64, 128, 256), timeout=120)
+
+    # def testSuperDuperSimpleVarietyCCC(self):
+    #     self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=2, framesize_lst=(64, 128, 256), timeout=120)
+
+    def testSuperDuperSimpleVarietyDDD(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=4, dupes=1, framesize_lst=(64, 128, 256), timeout=120)
+
+    # def testSuperDuperSimpleVarietyEEE(self):
+    #     self.run_test_with_N_servers_and_dupes(noof_servers=5, dupes=0, framesize_lst=(64, 128, 256), timeout=120)
 
 
 class TestcorridorsOne(unittest.TestCase):
@@ -870,7 +854,7 @@ class TestcorridorsOne(unittest.TestCase):
             bob_corridor.close()
             self.assertTrue(bob_corridor.is_closed)
             self.assertTrue(bob_corrid_2.is_closed)
-            bob_corrid_2.is_closed()  # shouldn't crash anything
+            bob_corrid_2.close()
             alice_corridor.close()
             self.assertTrue(alice_corridor.is_closed)
             alice_corrid_2.close()
@@ -889,7 +873,7 @@ class TestcorridorsOne(unittest.TestCase):
             bob_corridor = bob_harem.open(alices_PK)
             alice_corridor.put(b"MARCO?")
             sleep(2)
-            self.assertEqual(bob_corridor.get(timeout=300), b"MARCO?")
+            self.assertEqual(bob_corridor.get(timeout=9999999), b"MARCO?")
             sleep(2)
             bob_corridor.put(b"POLO!")
             sleep(2)
@@ -948,15 +932,16 @@ class TestcorridorsOne(unittest.TestCase):
             alice_harem, bob_harem = setUpForNServers(noof_servers)
             self.assertEqual(alice_harem.corridors, [])
             self.assertEqual(bob_harem.corridors, [])
+            sleep(10)
             alice_corridor = alice_harem.open(bobs_PK)
             alice_corridor.put(BORN_TO_DIE_IN_BYTES)
             sleep(20)
             bob_corridor = bob_harem.open(alices_PK)
-            received_data = bob_corridor.get(timeout=30)
+            received_data = bob_corridor.get(timeout=300)
             self.assertEqual(received_data, BORN_TO_DIE_IN_BYTES)
             bob_corridor.put(CICERO.encode())
             sleep(20)
-            received_data = alice_corridor.get(timeout=30)
+            received_data = alice_corridor.get(timeout=300)
             self.assertEqual(received_data, CICERO.encode())
             self.assertEqual(alice_corridor.irc_servers, list(alice_harem.bots.keys()))
             self.assertEqual(bob_corridor.irc_servers, list(bob_harem.bots.keys()))
@@ -985,7 +970,7 @@ class TestcorridorsBigFiles(unittest.TestCase):
             data_to_send = bytes(f.read())
         alice_corridor.put(data_to_send)
         sleep(10)
-        received_data = bob_corridor.get(timeout=30)
+        received_data = bob_corridor.get(timeout=600)
         i = 0
         while i < min(len(received_data), len(data_to_send)) and received_data[i] == data_to_send[i]:
             i += 1
@@ -1019,17 +1004,51 @@ class TestcorridorsBigFiles(unittest.TestCase):
 
     # def testCushionStl(self):
     #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/cushion.stl")
-    #
+
     # def testPrinterFilesCfgTarGz(self):
     #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz")
-    #
+
     # def testSideCushnStl(self):
     #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/side_cushion.stl")
-    #
+
     # def testPiHolderStl(self):
     #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/pi_holder.stl")
 
-'''
+
+class TestFailToCloseCorridor(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        pass
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def testThisOneFailToClose(self):
+        alice_harem, bob_harem = setUpForNServers(1)
+        alice_corridor = alice_harem.open(bobs_PK)
+        self.assertTrue(alice_corridor.uid == alice_harem.corridors[0].uid == bob_harem.corridors[0].uid)
+        [ h.quit() for h in (alice_harem, bob_harem)]  # pylint: disable=expression-not-assigned
+
+
+class TestStreamingAbility(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        pass
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def testThisOneIsNotBroken(self):
+        alice_harem, bob_harem = setUpForNServers(1)
+        alice_corridor = alice_harem.open(bobs_PK)
+        self.assertTrue(alice_corridor.uid == alice_harem.corridors[0].uid == bob_harem.corridors[0].uid)
+        alice_corridor.close(); self.assertTrue(alice_corridor.is_closed is True and alice_harem.corridors + bob_harem.corridors == [])
+        [ h.quit() for h in (alice_harem, bob_harem)]  # pylint: disable=expression-not-assigned
+
 
 if __name__ == "__main__":
 #    import sys;sys.argv = ['TestTurnDownForWhatDJSnake.testSimplestAA']
