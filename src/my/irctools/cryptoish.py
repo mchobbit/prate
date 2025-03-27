@@ -30,10 +30,21 @@ import hashlib
 from my.classes.exceptions import PublicKeyBadKeyError, FernetKeyIsInvalidError, FernetKeyIsUnknownError
 from cryptography.fernet import Fernet, InvalidToken
 from threading import Lock
+import datetime
 
 
 def sha1(nickname):
     return base64.b85encode(hashlib.sha1(nickname.encode()).digest()).decode()
+
+
+def datetimenow_to_4bytes():
+    n = datetime.datetime.now()
+    return (n.minute * 60000000 + n.second * 1000000 + n.microsecond).to_bytes(4, 'little')
+
+
+def datetimenow_to_int():
+    n = datetime.datetime.now()
+    return (n.minute * 60000000 + n.second * 1000000 + n.microsecond)
 
 
 def skinny_key(k:RSA.RsaKey) -> str:
