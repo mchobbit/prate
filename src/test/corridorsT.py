@@ -734,7 +734,7 @@ class TestcorridorsZero(unittest.TestCase):
         alice_harem.quit()
         bob_harem.quit()
 
-    def run_test_with_N_servers_and_dupes(self, noof_servers, dupes, framesize_lst, timeout=600):
+    def run_test_with_N_servers_and_dupes(self, noof_servers, dupes, framesize_lst, timeout=300):
         for frame_size in framesize_lst:
             self.__run_super_duper_simple_test(noof_servers=noof_servers, dupes=dupes,
                                                frame_size=frame_size, datalen_lst=(
@@ -751,7 +751,7 @@ class TestcorridorsZero(unittest.TestCase):
         all_data = generate_random_alphanumeric_string(500).encode()
         alice_corridor.put(all_data)
         sleep(5)
-        rxd_data = bob_corridor.get(timeout=1200)
+        rxd_data = bob_corridor.get(timeout=300)
         if all_data != rxd_data:
             self.assertEqual(all_data, rxd_data)
         self.assertRaises(Empty, bob_corridor.get_nowait)
@@ -761,7 +761,7 @@ class TestcorridorsZero(unittest.TestCase):
         bob_harem.quit()
 
     def testSDSOwithTimeout10(self):
-        self.assertRaises(RookeryCorridorTimeoutError, self.__run_super_duper_simple_test, 1, 0, 32, (8, 16, 31, 32, 256, 512), 10)  # 10 is timeout value
+        self.assertRaises(RookeryCorridorTimeoutError, self.__run_super_duper_simple_test, 1, 0, 32, (8, 16, 31, 32, 256, 512), 3)  # 3 is timeout value
 
     def testSlightlyOddValues(self):
         self.__run_super_duper_simple_test(noof_servers=5, dupes=5, frame_size=256, datalen_lst=(0, 0, 1, 1, 0, 1))
@@ -802,20 +802,20 @@ class TestcorridorsZero(unittest.TestCase):
     def testD0BigFileTransmission(self):
         self.run_test_with_N_servers_and_dupes(noof_servers=8, dupes=0, framesize_lst=(128, 256), timeout=120)
 
-    # def testSuperDuperSimpleVarietyAAA(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=1, dupes=4, framesize_lst=(64, 128, 256), timeout=120)
+    def testSuperDuperSimpleVarietyAAA(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=1, dupes=4, framesize_lst=(64, 128, 256), timeout=120)
 
-    # def testSuperDuperSimpleVarietyBBB(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=2, dupes=3, framesize_lst=(64, 128, 256), timeout=120)
+    def testSuperDuperSimpleVarietyBBB(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=2, dupes=3, framesize_lst=(64, 128, 256), timeout=120)
 
-    # def testSuperDuperSimpleVarietyCCC(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=2, framesize_lst=(64, 128, 256), timeout=120)
+    def testSuperDuperSimpleVarietyCCC(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=3, dupes=2, framesize_lst=(64, 128, 256), timeout=120)
 
     def testSuperDuperSimpleVarietyDDD(self):
         self.run_test_with_N_servers_and_dupes(noof_servers=4, dupes=1, framesize_lst=(64, 128, 256), timeout=120)
 
-    # def testSuperDuperSimpleVarietyEEE(self):
-    #     self.run_test_with_N_servers_and_dupes(noof_servers=5, dupes=0, framesize_lst=(64, 128, 256), timeout=120)
+    def testSuperDuperSimpleVarietyEEE(self):
+        self.run_test_with_N_servers_and_dupes(noof_servers=5, dupes=0, framesize_lst=(64, 128, 256), timeout=120)
 
 
 class TestcorridorsOne(unittest.TestCase):
@@ -865,20 +865,21 @@ class TestcorridorsOne(unittest.TestCase):
             bob_harem.quit()
 
     def testMarcoPolo(self):
-        for noof_servers in range(1, 5):
+        for noof_servers in range(1, 10):
             alice_harem, bob_harem = setUpForNServers(noof_servers)
             self.assertEqual(alice_harem.corridors, [])
             self.assertEqual(bob_harem.corridors, [])
             alice_corridor = alice_harem.open(bobs_PK)
+            sleep(10)
             bob_corridor = bob_harem.open(alices_PK)
             alice_corridor.put(b"MARCO?")
-            sleep(2)
-            self.assertEqual(bob_corridor.get(timeout=9999999), b"MARCO?")
-            sleep(2)
+            sleep(5)
+            self.assertEqual(bob_corridor.get(timeout=120), b"MARCO?")
+            sleep(5)
             bob_corridor.put(b"POLO!")
-            sleep(2)
-            self.assertEqual(alice_corridor.get(timeout=30), b"POLO!")
-            sleep(2)
+            sleep(5)
+            self.assertEqual(alice_corridor.get(timeout=120), b"POLO!")
+            sleep(5)
             self.assertEqual(alice_corridor.irc_servers, list(alice_harem.bots.keys()))
             self.assertEqual(bob_corridor.irc_servers, list(bob_harem.bots.keys()))
             alice_corridor.close()
@@ -895,9 +896,9 @@ class TestcorridorsOne(unittest.TestCase):
             bob_corridor = bob_harem.open(alices_PK)
             sleep(30)
             alice_corridor.put(b"MARCO?")
-            self.assertEqual(bob_corridor.get(timeout=30), b"MARCO?")
+            self.assertEqual(bob_corridor.get(timeout=120), b"MARCO?")
             bob_corridor.put(b"POLO!")
-            self.assertEqual(alice_corridor.get(timeout=30), b"POLO!")
+            self.assertEqual(alice_corridor.get(timeout=120), b"POLO!")
             self.assertEqual(alice_corridor.irc_servers, list(alice_harem.bots.keys()))
             self.assertEqual(bob_corridor.irc_servers, list(bob_harem.bots.keys()))
             alice_corridor.close()
@@ -914,11 +915,11 @@ class TestcorridorsOne(unittest.TestCase):
             bob_corridor = bob_harem.open(alices_PK)
             alice_corridor.put(BORN_TO_DIE_IN_BYTES)
             sleep(20)
-            received_data = bob_corridor.get(timeout=30)
+            received_data = bob_corridor.get(timeout=120)
             self.assertEqual(received_data, BORN_TO_DIE_IN_BYTES)
             bob_corridor.put(CICERO.encode())
             sleep(20)
-            received_data = alice_corridor.get(timeout=30)
+            received_data = alice_corridor.get(timeout=120)
             self.assertEqual(received_data, CICERO.encode())
             self.assertEqual(alice_corridor.irc_servers, list(alice_harem.bots.keys()))
             self.assertEqual(bob_corridor.irc_servers, list(bob_harem.bots.keys()))
@@ -1002,17 +1003,17 @@ class TestcorridorsBigFiles(unittest.TestCase):
     def tearDown(self):
         pass
 
-    # def testCushionStl(self):
-    #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/cushion.stl")
+    def testCushionStl(self):
+        self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/cushion.stl")
 
-    # def testPrinterFilesCfgTarGz(self):
-    #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz")
+    def testPrinterFilesCfgTarGz(self):
+        self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz")
 
-    # def testSideCushnStl(self):
-    #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/side_cushion.stl")
+    def testSideCushnStl(self):
+        self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/side_cushion.stl")
 
-    # def testPiHolderStl(self):
-    #     self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/pi_holder.stl")
+    def testPiHolderStl(self):
+        self.runABigBadThoroughTestOnThisFile("/Users/mchobbit/Downloads/pi_holder.stl")
 
 
 class TestFailToCloseCorridor(unittest.TestCase):

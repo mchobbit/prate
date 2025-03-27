@@ -27,17 +27,19 @@ Example:
 
 """
 
-from threading import Thread
+from threading import Thread, Lock
 from Crypto.PublicKey import RSA
 from my.classes.exceptions import RookeryCorridorAlreadyClosedError, PublicKeyUnknownError, RookeryCorridorTimeoutError
 from time import sleep
-from my.irctools.cryptoish import squeeze_da_keez, bytes_64bit_cksum
+from my.irctools.cryptoish import squeeze_da_keez, datetimenow_to_4bytes, datetimenow_to_int
 from queue import Empty, Queue
-from random import shuffle
+from random import choice
 from my.stringtools import s_now
 from my.classes.readwritelock import ReadWriteLock
-from my.globals import _THIS_IS_A_DATA_FRAME_, HANDSHAKE_TIMEOUT, A_TICK, _CLOSE_A_CORRIDOR_
+from my.globals import _THIS_IS_A_DATA_FRAME_, HANDSHAKE_TIMEOUT, A_TICK, _CLOSE_A_CORRIDOR_, _RECEIVEDFRAMES_SITREP_
 import datetime
+import pickle
+from math import sqrt
 
 
 class Corridor:
@@ -47,6 +49,9 @@ class Corridor:
             raise ValueError("At least one of the UIDs mustn't be None.")
         if type(destination_pk) is not RSA.RsaKey or (our_uid is None and his_uid is None):
             raise ValueError("Corridor params are wrong types")
+        self.__server_availability = {}
+        self.__server_availability_lock = ReadWriteLock()
+        self.__chooseserver_lock = Lock()
         self.__is_closed = False
         self.__is_closed_lock = ReadWriteLock()
         self.__our_uid = our_uid
@@ -127,6 +132,23 @@ class Corridor:
             self.__streaming = value
         finally:
             self.__streaming_lock.release_write()
+
+    @property
+    def server_availability(self):
+        self.__server_availability_lock.acquire_read()
+        try:
+            retval = self.__server_availability
+            return retval
+        finally:
+            self.__server_availability_lock.release_read()
+
+    @server_availability.setter
+    def server_availability(self, value):
+        self.__server_availability_lock.acquire_write()
+        try:
+            self.__server_availability = value
+        finally:
+            self.__server_availability_lock.release_write()
 
     @frame_size.setter
     def frame_size(self, value):
@@ -317,21 +339,35 @@ class Corridor:
         assert(type(self.uid) is int)
         indexpos = 0
         length_of_all_data = len(datablock)
-        ircsvrs = self.irc_servers
-        noof_ircsvrs = len(ircsvrs)
-        shuffle(ircsvrs)
         block_len = 999999
         while block_len > 0 and not self.gotta_close:
             block_len = min(self.frame_size, length_of_all_data - indexpos)
             this_block = datablock[indexpos:(indexpos + block_len)]
-            subframe = bytes(_THIS_IS_A_DATA_FRAME_ + self.uid.to_bytes(3, 'little') + self._frameno.to_bytes(4, 'little') + block_len.to_bytes(2, 'little') + this_block)
-            frame = bytes(subframe + bytes_64bit_cksum(subframe))
-            print("%s [#%-9d]     %-10s---> %-10s  Tx'd #%3d frame of %3d bytes (containing %d bytes of actual data)" % (s_now(), self.uid, self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self._frameno, len(frame), block_len))
+            frame = bytes(_THIS_IS_A_DATA_FRAME_ + self.uid.to_bytes(3, 'little') + self._frameno.to_bytes(4, 'little') + \
+                              datetimenow_to_4bytes() + block_len.to_bytes(2, 'little') + this_block)
             # print("%s %-10s<==%-10s  put%3d bytes packet" % (s_now(), self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), len(this_block)), frame, "  to corridor")
-            for i in range(0, self.dupes + 1):
-                self.harem.put(self.destination_pk, frame, ircsvrs[(self._frameno + i) % noof_ircsvrs], bypass_harem=True)
-            indexpos += block_len
-            self._frameno += 1
+            t = datetime.datetime.now()
+            done = False
+            while not self.gotta_close and not done:
+                the_server_to_use = None
+                with self.__chooseserver_lock:
+                    for s in self.irc_servers:
+                        if s not in self.server_availability:
+                            self.server_availability[s] = None
+                        if self.server_availability[s] is None:
+                            self.server_availability[s] = self._frameno
+                            the_server_to_use = s
+                            break
+                if the_server_to_use is not None:
+                    print("%s [#%-9d]     %-10s---> %-10s  Tx'd #%3d frame of %3d bytes w/ %s" % (s_now(), self.uid, self.harem.desired_nickname, self.harem.nicks_for_pk(self.destination_pk), self._frameno, len(frame), the_server_to_use))
+                    self.harem.put(self.destination_pk, frame, the_server_to_use, bypass_harem=True)
+                    indexpos += block_len
+                    self._frameno += 1
+                    done = True
+                else:
+                    sleep(A_TICK)
+            if (datetime.datetime.now() - t).seconds >= HANDSHAKE_TIMEOUT:
+                raise RookeryCorridorTimeoutError("Ran out of time while trying to find a server that will send frame #%d down corridor %s" % (self._frameno, self.uid))
 
     def empty(self):
         return self.my_get_queue.empty()
@@ -353,40 +389,75 @@ class Corridor:
 
     def process_frame(self, frame):
         control_cmd = frame[0]
-        if control_cmd != ord(_THIS_IS_A_DATA_FRAME_):
+        frame_uid = int.from_bytes(frame[1:4], 'little')
+        this_frameno = int.from_bytes(frame[4:8], 'little')
+        timestamp = int.from_bytes(frame[8:12], 'little')
+        block_len = int.from_bytes(frame[12:14], 'little')
+        this_block = frame[14:]
+        if len(this_block) != block_len:
+            assert(len(this_block) == block_len)
+        if frame_uid != self.uid:
+            print("%s [#%-9d]                    %-10s  Rx'd #%3d frame (was for corridor #%d; I suspect someone closed a corridor somewhere & I should ignore this packet. So, I'll ignore it.)" % (s_now(), frame_uid, self.harem.desired_nickname, this_frameno, self.uid))
+        elif control_cmd == ord(_RECEIVEDFRAMES_SITREP_):
+            self._process_a_sitrep_frame(this_block)
+        elif control_cmd == ord(_THIS_IS_A_DATA_FRAME_):
+            self._process_a_data_frame(this_frameno, timestamp, this_block)
+        else:
             print("Warning -- process_frame() -- incoming frame is not a data frame")
             print("frame:", frame)
             print("ctrl :", control_cmd)
             assert(control_cmd == ord(_THIS_IS_A_DATA_FRAME_))
-        frame_uid = int.from_bytes(frame[1:4], 'little')
-        this_frameno = int.from_bytes(frame[4:8], 'little')
-        block_len = int.from_bytes(frame[8:10], 'little')
-        subframe = frame[10:(block_len + 10)]
-        if len(subframe) != block_len:
-            assert(len(subframe) == block_len)
-        cksum = frame[(block_len + 10):]
-        if frame_uid != self.uid:
-            print("%s [#%-9d]                    %-10s  Rx'd #%3d frame (was for corridor #%d; I suspect someone closed a corridor somewhere & I should ignore this packet. So, I'll ignore it.)" % (s_now(), frame_uid, self.harem.desired_nickname, this_frameno, self.uid))
+
+    def _process_a_sitrep_frame(self, this_block):
+        try:
+            alleged_corridor_uid, this_frameno, transmission_timestamp, receipt_timestamp = pickle.loads(this_block)
+            assert(alleged_corridor_uid == self.uid)
+        except (ValueError, IndexError, AssertionError):
+            print("%s [#%-9d]                    %-10s  SITREP IS ALL JACKED UP -- cannot understand the sitrep frame" % (s_now(), self.uid, self.harem.nicks_for_pk(self.destination_pk)))
         else:
-            if block_len == 0:
-                print("Let's track this.")
-            while len(self._frames_lst) <= this_frameno:
-                self._frames_lst += [None]
-            assert(cksum == bytes_64bit_cksum(frame[:block_len + 10]))
-            if self._frames_lst[this_frameno] != subframe:
-                self._frames_lst[this_frameno] = subframe
-            else:
-                print("DUPE. That's ok -- no hard feelings")
-            print("%s [#%-9d]                    %-10s  Rx'd #%3d frame %s (containing %d bytes of actual data)" % (s_now(), frame_uid, self.harem.nicks_for_pk(self.destination_pk), this_frameno,
-                                ' ' * this_frameno + ''.join(('.' if r is None else '+') for r in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]), block_len))  # , frame)
-            if (self.streaming or block_len == 0) \
-            and self._lastframethatispatout < this_frameno \
-            and (None not in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1]):
-                print("%s [#%-9d]                    %-10s  Que'd %3d thru %3d (inclusive)" % (s_now(), self.uid, self.harem.desired_nickname, self._lastframethatispatout + 1, this_frameno))
-                outdat = b''.join([self._frames_lst[i] for i in range(self._lastframethatispatout + 1, this_frameno + 1)])
-                self.my_get_queue.put(outdat)
-                # print("Data sent: %d bytes" % len(outdat))
-                self._lastframethatispatout = this_frameno
+            now = datetimenow_to_int()
+            tx_time_in_us = receipt_timestamp - transmission_timestamp
+            pingback_time_in_us = now - receipt_timestamp
+            try:
+                svr_name = [k for k in self.server_availability if self.server_availability[k] == this_frameno][0]
+                self.server_availability[svr_name] = None
+                s = "%s [#%-9d]                    %-10s  frame#%3d rx'd  (%1.2f, %1.2f seconds); releasing %s" % \
+                    (s_now(), self.uid, self.harem.nicks_for_pk(self.destination_pk), this_frameno, tx_time_in_us / 1000000, pingback_time_in_us / 1000000, svr_name)
+                print(s)
+            except (IndexError, KeyError):
+                print("%s [#%-9d]                    %-10s  SITREP IS ALL JACKED UP -- cannot find this irc server in our magic list" % (s_now(), self.uid, self.harem.nicks_for_pk(self.destination_pk)))
+
+    def _process_a_data_frame(self, this_frameno, timestamp, this_block):
+        block_len = len(this_block)
+        while len(self._frames_lst) <= this_frameno:
+            self._frames_lst += [None]
+        if self._frames_lst[this_frameno] != this_block:
+            self._frames_lst[this_frameno] = this_block
+            sitrep_dat = pickle.dumps([self.uid, this_frameno, timestamp, datetimenow_to_int()])
+            self.harem.put(self.destination_pk, bytes(_RECEIVEDFRAMES_SITREP_
+                                           +self.uid.to_bytes(3, 'little')
+                                           +self._frameno.to_bytes(4, 'little')
+                                           +datetimenow_to_4bytes()
+                                           +len(sitrep_dat).to_bytes(2, 'little')
+                                           +sitrep_dat
+                                           ),
+                                       choice(self.irc_servers), bypass_harem=True)
+        else:
+            print("DUPE. That's ok -- no hard feelings")
+        write_up_to_here = self._lastframethatispatout + 1
+        while write_up_to_here < len(self._frames_lst) and self._frames_lst[write_up_to_here] is not None:
+            write_up_to_here += 1
+        write_up_to_here -= 1
+        print("Corridor #%-5d Frame #%-5d    %2d bytes" % (self.uid, this_frameno, block_len))
+        if write_up_to_here > self._lastframethatispatout \
+        and (self.streaming is True or len(self._frames_lst[write_up_to_here]) == 0):
+            print("%s [#%-9d]                    %-10s  Que'd %3d thru %3d (inclusive)" % (s_now(), self.uid, self.harem.desired_nickname, self._lastframethatispatout + 1, this_frameno))
+            outdat = b''.join([self._frames_lst[i] for i in range(self._lastframethatispatout + 1, write_up_to_here)])
+            self.my_get_queue.put(outdat)
+            self._lastframethatispatout = write_up_to_here
+        else:
+            print("%s [#%-9d]                    %-10s  Rx'd #%3d frame %s" % (s_now(), self.uid, self.harem.nicks_for_pk(self.destination_pk), this_frameno,
+                            ' ' * int(sqrt(this_frameno)) + ''.join(('.' if r is None else '+') for r in self._frames_lst[self._lastframethatispatout + 1:this_frameno + 1])))  # , frame)
 
     def close(self, timeout=HANDSHAKE_TIMEOUT):
         """Tell the other end of the corridor to shut down. Then, shut our own end down."""
@@ -413,3 +484,4 @@ class Corridor:
         print("%s [?%-8d?]     %-10s---> %-10s  CORRIDOR DESTROYED & FORGOTTEN" % (s_now(), self.uid, nicks4pk, self.harem.desired_nickname))
         if len(self.harem.corridors) > 0:
             self.harem.display_corridors()
+
