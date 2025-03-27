@@ -34,7 +34,7 @@ from time import sleep
 from my.irctools.cryptoish import squeeze_da_keez
 from queue import Empty
 from my.globals import SENSIBLE_NOOF_RECONNECTIONS, STARTUP_TIMEOUT, ENDTHREAD_TIMEOUT, _OPEN_A_CORRIDOR_, \
-    _RECIPROCATE_OPENING_, _CLOSE_A_CORRIDOR_, _RECIPROCATE_CLOSING_, HANDSHAKE_TIMEOUT, _THIS_IS_A_DATA_FRAME_, A_TICK  # ALL_REALWORLD_IRC_NETWORK_NAMES
+    _RECIPROCATE_OPENING_, _CLOSE_A_CORRIDOR_, _RECIPROCATE_CLOSING_, HANDSHAKE_TIMEOUT, _THIS_IS_A_DATA_FRAME_, A_TICK, _RECEIVEDFRAMES_SITREP_  # ALL_REALWORLD_IRC_NETWORK_NAMES
 from my.stringtools import s_now
 from my.classes.readwritelock import ReadWriteLock
 from my.irctools.jaracorocks.praterookery import PrateRookery
@@ -236,9 +236,13 @@ class Harem(PrateRookery):
                 use_this_uid = corridor.uid
                 corridor.gotta_close = True  # Trigger the closure of main loop, which will also trigger corridor.is_closed=True
                 print("%s [#%-9d]     %-10s<==> %-10s  %s confirms he has closed his end" % (s_now(), use_this_uid, self.nicks_for_pk(source), self.desired_nickname, self.nicks_for_pk(source)))
-        elif control_cmd == _THIS_IS_A_DATA_FRAME_:
+        elif control_cmd in (_THIS_IS_A_DATA_FRAME_, _RECEIVEDFRAMES_SITREP_):
 #             print("%s [%s]     %-10s<==> %-10s  Routing a frame to this corridor" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname))
-            corridor.q4me_via_harem.put(frame)
+            if corridor is None:
+                use_this_uid = his_uid
+                print("%s [?%-8d?]     %-10s<==> %-10s  I cannot route the frame to a corridor: I can't find a matching corridor!" % (s_now(), his_uid, self.desired_nickname, self.nicks_for_pk(source)))
+            else:
+                corridor.q4me_via_harem.put(frame)
         else:
             print("%s [%s]     %-10s<==> %-10s  WHAT IS THIS? =>" % (s_now(), corridor.str_uid, self.nicks_for_pk(source), self.desired_nickname), frame)
 
