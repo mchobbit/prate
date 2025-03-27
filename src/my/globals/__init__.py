@@ -36,8 +36,8 @@ _OPEN_A_CORRIDOR_ = b'O'
 _RECIPROCATE_OPENING_ = b'P'
 _CLOSE_A_CORRIDOR_ = b'X'
 _RECIPROCATE_CLOSING_ = b'Y'
-# _GET_STATUS_OF_CORRIDOR_ = b'S'
 _THIS_IS_A_DATA_FRAME_ = b'D'
+_RECEIVEDFRAMES_SITREP_ = b'S'
 
 
 def get_my_public_ip_address():
