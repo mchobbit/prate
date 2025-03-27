@@ -441,8 +441,10 @@ autoreconnect={self.autoreconnect!r}, strictly_nick={self.strictly_nick!r}, auto
         self.should_we_quit = True
 #        print("quit(irc=%s, nick=%s) is starting" % (self.irc_server, self.nickname))
         super().quit(yes_even_the_reactor_thread=yes_even_the_reactor_thread, timeout=timeout)
-        if hasattr(self, '__my_main_thread'):  # Is someone deleting it?
-#            print("HUZZAH! WE CAN CLOSE THE MAIN THREAD.")
+        if not hasattr(self, '__my_main_thread'):
+            sleep(1)
+        else:  # Is someone deleting it?
+#             print("HUZZAH! WE CAN CLOSE THE MAIN THREAD.")
             self.__my_main_thread.join(timeout=timeout)
 #        print("quit(irc=%s, nick=%s) is leaving" % (self.irc_server, self.nickname))
         print("%s %-30s: %-10s: Left server" % (s_now(), self.irc_server, self.nickname))

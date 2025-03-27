@@ -51,6 +51,7 @@ from my.stringtools import s_now, generate_random_alphanumeric_string, MAX_NICKN
 from my.globals import STARTUP_TIMEOUT, SENSIBLE_NOOF_RECONNECTIONS, A_TICK, ENDTHREAD_TIMEOUT, ALL_SANDBOX_IRC_NETWORK_NAMES, MAX_CRYPTO_MSG_LENGTH, RSA_KEY_SIZE
 from my.classes.exceptions import IrcPrivateMessageTooLongError, PublicKeyUnknownError, RookeryCorridorNotOpenYetError, IrcInitialConnectionTimeoutError, \
     IrcFingerprintMismatchCausedByServer, EncryptionHandshakeTimeoutError, IrcNicknameTooLongError
+import datetime
 
 
 class PrateRookery:
@@ -376,15 +377,30 @@ class PrateRookery:
             with self.__log_into_all_functional_IRC_servers_mutex:
                 self.bots[k] = bot
 
-    def quit(self):
-#        print("%s %-30s: %-10s: Parting" % (s_now(), self.desired_nickname, ''))
+    def quit(self, timeout=ENDTHREAD_TIMEOUT):
+        print("%s %-30s: %-10s: Parting" % (s_now(), self.desired_nickname, ''))
+        t = datetime.datetime.now()
         all_bots_keys = list(set(self.bots.keys()))
-        for k in all_bots_keys:
-            try:
-                print("%s %-30s: %-10s: Parting" % (s_now(), k, self.desired_nickname))
-                self.bots[k].quit()
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print("%s %-30s: %-10s: Exception while quitting:" % (s_now(), '', self.desired_nickname), e)
+        our_threads = [Thread(target=self.bots[k].quit, daemon=True) for k in all_bots_keys]
+        for t in our_threads:
+            t.start()
+        # sleep(2)
+        # print("%s %-30s: %-10s: Waiting for bots %s to quit" % (s_now(), '', self.desired_nickname, ','.join([k for k in all_bots_keys if self.bots[k].connected])))
+        for t in our_threads:
+            t.join(timeout=timeout)
+
+        # for k in all_bots_keys:
+        #     try:
+        #         print("%s %-30s: %-10s: Parting" % (s_now(), k, self.desired_nickname))
+        #         self.bots[k].quit()
+        #     except Exception as e:  # pylint: disable=broad-exception-caught
+        #         print("%s %-30s: %-10s: Exception while quitting:" % (s_now(), '', self.desired_nickname), e)
+        # print("%s %-30s: %-10s: Waiting for bots %s to quit" % (s_now(), '', self.desired_nickname, ','.join([k for k in all_bots_keys if self.bots[k].connected])))
+        # while (datetime.datetime.now() - t).seconds < timeout and [] != [k for k in all_bots_keys if self.bots[k].connected]:
+        #     sleep(1)
+        # if (datetime.datetime.now() - t).seconds >= timeout:
+        #     print("%s %-30s: %-10s: warning -- quit func timed out while waiting for some bots to close" % (s_now(), '', self.desired_nickname))
+        print("%s %-30s: %-10s: Finished Quitting" % (s_now(), '', self.desired_nickname))
 
 ########################################################################################################
 
