@@ -25,13 +25,12 @@ import datetime
 from queue import Empty
 from Crypto.PublicKey import RSA
 from time import sleep
-from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE, STARTUP_TIMEOUT
-from my.irctools.jaracorocks.harem222 import Harem, wait_for_harem_to_stabilize
+from my.globals import ALL_SANDBOX_IRC_NETWORK_NAMES, RSA_KEY_SIZE
 from random import randint
 from my.stringtools import generate_random_alphanumeric_string
-from my.classes.exceptions import RookerySimpipeTimeoutError
-from my.irctools.jaracorocks.pratebot import PrateBot
 import sys
+from my.irctools.jaracorocks.harem import Harem, wait_for_harem_to_stabilize
+from my.globals.poetry import BORN_TO_DIE_IN_BYTES
 
 
 def do_big_timing_test(data_to_send, simpipe1, simpipe2, timeout):
@@ -72,131 +71,34 @@ carols_PK = carols_rsa_key.public_key()
 some_random_rsa_key = RSA.generate(RSA_KEY_SIZE)
 some_random_PK = some_random_rsa_key.public_key()
 
-bot1 = PrateBot(channels=['#prate'], nickname='mac1', irc_server='cinqcent.local', port=6667, rsa_key=alices_rsa_key,
-                startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True, autohandshake=True)
-bot2 = PrateBot(channels=['#prate'], nickname='mac2', irc_server='cinqcent.local', port=6667, rsa_key=bobs_rsa_key,
-                startup_timeout=30, maximum_reconnections=2, strictly_nick=True, autoreconnect=True, autohandshake=True)
-
-while not (bot1.connected_and_joined and bot2.connected_and_joined):
-    sleep(1)
-
-while not bot1.is_handshook_with(bot2.pubkey):
-    sleep(1)
-
-assert(bot1.connected is True)
-assert(bot1.joined is True)
-assert(bot2.connected is True)
-assert(bot2.joined is True)
-assert(bot1.is_handshook_with(bot2.pubkey))
-assert(bot2.is_handshook_with(bot1.pubkey))
-bot1.quit()
-bot2.quit()
-sys.exit(0)
-
-noof_servers = 5
+noof_servers = 12
 my_list_of_all_irc_servers = ALL_SANDBOX_IRC_NETWORK_NAMES[:noof_servers]  # ALL_REALWORLD_IRC_NETWORK_NAMES
-the_room = '#room' + generate_random_alphanumeric_string(5)
 alice_nick = 'alice%d' % randint(111, 999)
 bob_nick = 'bob%d' % randint(111, 999)
-
-alice_harem = Harem([the_room], alice_nick, my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False, return_immediately=False)
-bob_harem = Harem([the_room], bob_nick, my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False, return_immediately=False)
-
+the_room = '#room' + generate_random_alphanumeric_string(5)
+alice_harem = Harem([the_room], alice_nick, my_list_of_all_irc_servers, alices_rsa_key)
+bob_harem = Harem([the_room], bob_nick, my_list_of_all_irc_servers, bobs_rsa_key)
 while not (alice_harem.connected_and_joined and bob_harem.connected_and_joined):
     sleep(1)
 
-alice_harem.trigger_handshaking()
-bob_harem.trigger_handshaking()
 wait_for_harem_to_stabilize(alice_harem)
-alice_simpipe = alice_harem.open(bobs_PK)
-bob_simpipe = bob_harem.open(alices_PK)
-sleep(5)
-alice_simpipe.dupes = 5  # dupes
-alice_simpipe.frame_size = 256  # frame_size
-datalen_lst = [32, 0]
-
-for datalen in datalen_lst:
-    print("%s servers=%d; dupes=%d; frame_size=%d; datalen=%d" % ('-' * 33, noof_servers, alice_simpipe.dupes, alice_simpipe.frame_size, datalen))
-    all_data = generate_random_alphanumeric_string(datalen).encode()
-    alice_simpipe.put(all_data)
-    rxd_data = "WE NEVER GOT THERE"
-    try:
-        rxd_data = bob_simpipe.get(timeout=60)
-    except Empty as e:
-        raise RookerySimpipeTimeoutError("Transfer took too long! --- %s servers=%d; dupes=%d; frame_size=%d; datalen=%d; FAILED" % ('-' * 33, noof_servers, alice_simpipe.dupes, alice_simpipe.frame_size, datalen)) from e
-    if all_data != rxd_data:
-        print("%s servers=%d; dupes=%d; frame_size=%d; datalen=%d; FAILED" % ('-' * 33, noof_servers, alice_simpipe.dupes, alice_simpipe.frame_size, datalen))
-        if all_data != rxd_data:
-            print("%s != %s" % (all_data, rxd_data))
-    assert(bob_simpipe.empty() is True)
-alice_simpipe.close()
-bob_simpipe.close()
-alice_harem.quit()
-bob_harem.quit()
-
-print("                                                 Creating harems for Alice and Bob")
-alice_harem = Harem([the_room], alice_nick, my_list_of_all_irc_servers, alices_rsa_key, autohandshake=False)
-bob_harem = Harem([the_room], bob_nick, my_list_of_all_irc_servers, bobs_rsa_key, autohandshake=False)
-while not (alice_harem.connected_and_joined and bob_harem.connected_and_joined):
-    sleep(1)
-
-print("                                                 Waiting for harems to shake hands")
-alice_harem.trigger_handshaking()
-bob_harem.trigger_handshaking()
-the_noof_homies = -1
-while the_noof_homies != len(alice_harem.get_homies_list(True)):
-    the_noof_homies = len(alice_harem.get_homies_list(True))
-    sleep(STARTUP_TIMEOUT // 2 + 1)
-
-print("                                                 Opening a simpipe between Alice and Bob")
-alice_simpipe = alice_harem.open(bobs_PK)
-a2ice_corrido2 = alice_harem.open(bobs_PK)
-sleep(5)
-bob_simpipe = bob_harem.open(alices_PK)
-b2b_corrid_2 = bob_harem.open(alices_PK)
-assert(bob_simpipe == b2b_corrid_2)
-assert(alice_simpipe == a2ice_corrido2)
-assert(bob_simpipe != alice_simpipe)
-
-# all_data = BORN_TO_DIE_IN_BYTES
-all_data = b"1234567 ABCDEFG IJKLMNO QRSTUVW YZ543210"
-alice_simpipe.frame_size = 8
-alice_simpipe.put(all_data)
+alice_corridor = alice_harem.open(bobs_PK)
 sleep(10)
-recvd = bob_simpipe.get()
+bob_corridor = bob_harem.open(alices_PK)
+assert(bob_corridor.uid == alice_corridor.uid)
+alice_corridor.frame_size = 256
+all_data = open("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz", "rb").read()  # BORN_TO_DIE_IN_BYTES
+alice_corridor.put(all_data)
+recvd = bob_corridor.get()
 print("Sent %d bytes; received %d bytes" % (len(all_data), len(recvd)))
+assert(all_data == recvd)
 # do_big_timing_test(open("/Users/mchobbit/Downloads/cushion.stl", "rb").read(), alice_simpipe, bob_simpipe, 20)
 # do_big_timing_test(open("/Users/mchobbit/Downloads/t1-printer-files.cfg.tar.gz", "rb").read(), alice_simpipe, bob_simpipe, 20)
 # do_big_timing_test(open("/Users/mchobbit/Downloads/side_cushion.stl", "rb").read(), alice_simpipe, bob_simpipe, 20)
-assert(all_data == recvd)
-sleep(1)
-'''
+alice_corridor.close()
+alice_harem.quit()
+bob_harem.quit()
+sleep(10)
+print("<<<<<FIN>>>>>")
+sys.exit(0)
 
-# assert(bob_simpipe.get() == b"MARCO?")
-#
-# sleep(2)
-# bob_simpipe.put(b"POLO!")
-# sleep(2)
-# assert(alice_simpipe.get() == b"POLO!")
-# sleep(2)
-#
-# print("                                                 Closing simpipes")
-# alice_simpipe.close()
-# sleep(2)
-# bob_simpipe.close()
-# print("                                                 <FIN>")
-# alice_harem.quit()
-# bob_harem.quit()
-
-#
-# assert(alice_rookery.connected_homies_lst[0].fernetkey == bob_rookery.connected_homies_lst[0].fernetkey)
-# alice_rookery.put(bob_pk, datablock)
-# who_said_it, what_did_they_say = bob_rookery.get()
-
-# import datetime
-# t = datetime.datetime.now()
-# alice_rookery.put(bob_rsa_key.public_key(), outdat)
-# u = datetime.datetime.now()
-# sender, in_dat = bob_rookery.get()
-# v = datetime.datetime.now()
-'''
